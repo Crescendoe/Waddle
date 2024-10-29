@@ -1,24 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:waterly/screens/home_screen.dart';
 
 class ResultScreen extends StatelessWidget {
   final double waterIntake;
-  final bool isImperial;
 
   const ResultScreen({
     super.key,
     required this.waterIntake,
-    required this.isImperial,
   });
 
   @override
   Widget build(BuildContext context) {
-    // Round the water intake to two decimal places
-    final intake = isImperial
-        ? waterIntake.toStringAsFixed(2)
-        : (waterIntake * 0.0295735)
-            .toStringAsFixed(2); // Convert to liters if metric
+    // Convert the water intake to an integer
+    final intake = waterIntake.toInt();
+    const unit = 'oz';
 
-    final unit = isImperial ? 'oz' : 'L';
+    // Calculate the number of cups (1 cup = 8 oz) and convert to an integer
+    final cups = (waterIntake / 8).toInt();
 
     return Scaffold(
       appBar: AppBar(
@@ -29,9 +27,11 @@ class ResultScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
-              'Your Recommended Daily Water Intake:',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            const Center(
+              child: Text(
+                'Recommended Daily Water Intake:',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
             ),
             const SizedBox(height: 20),
             Text(
@@ -41,10 +41,25 @@ class ResultScreen extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                   color: Colors.blueAccent),
             ),
+            const SizedBox(height: 20),
+            Text(
+              '$cups cups',
+              style: const TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green),
+            ),
             const SizedBox(height: 40),
             ElevatedButton(
               onPressed: () {
-                Navigator.pushNamed(context, '/home');
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => HomeScreen(
+                      waterGoal: waterIntake,
+                    ),
+                  ),
+                );
               },
               style: ElevatedButton.styleFrom(
                 padding:

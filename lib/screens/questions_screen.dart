@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'results_screen.dart'; // Import the results screen
+import 'results_screen.dart';
 
 class QuestionsScreen extends StatefulWidget {
   final dynamic calculateWaterIntake;
@@ -89,6 +89,30 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
             Center(
               child: ElevatedButton(
                 onPressed: () {
+                  if (_ageController.text.isEmpty ||
+                      int.tryParse(_ageController.text) == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Please enter a valid age.')),
+                    );
+                    return;
+                  }
+                  if (_heightController.text.isEmpty ||
+                      double.tryParse(_heightController.text) == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Please enter a valid height.')),
+                    );
+                    return;
+                  }
+                  if (_weightController.text.isEmpty ||
+                      double.tryParse(_weightController.text) == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Please enter a valid weight.')),
+                    );
+                    return;
+                  }
                   _submitData(context);
                 },
                 child: const Text('Calculate Water Intake'),
@@ -107,7 +131,6 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
     final String sex = _selectedSex;
     final String activityLevel = _selectedActivityLevel;
 
-    // Perform the water intake calculation here
     double waterIntake = calculateWaterIntake(
       age,
       height,
@@ -116,49 +139,48 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
       activityLevel,
     );
 
-    // Navigate to the ResultsScreen and pass the calculated water intake
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ResultScreen(
           waterIntake: waterIntake,
-          isImperial: true,
         ),
       ),
     );
   }
 
-  // Example water intake calculation function
   double calculateWaterIntake(
       int age, double height, String sex, double weight, String activityLevel) {
-    double waterIntake = weight * 0.5; // Example calculation in ounces
+    // Use baseline of 0.5 oz per pound of body weight for water intake
+    double waterIntake = weight * 0.5;
+
+    // Activity multiplier adjustments
     Map<String, double> activityMultiplier = {
       'Sedentary': 0.0,
-      'Light': 0.1,
-      'Moderate': 0.2,
-      'High': 0.3,
-      'Extreme': 0.4,
+      'Light': 0.05,
+      'Moderate': 0.1,
+      'High': 0.15,
+      'Extreme': 0.2,
     };
 
+    // Adjust water intake based on activity level
     waterIntake += waterIntake * activityMultiplier[activityLevel]!;
 
-    // Example adjustment based on height
-    waterIntake += height * 0.1;
-
+    // If male, recommend slightly more water intake
     if (sex == 'Male') {
       waterIntake += 16; // Additional ounces for males
     }
 
+    // Adjust water intake for age (older individuals may need less)
     if (age > 30 && age <= 55) {
       waterIntake -= waterIntake * 0.05;
     } else if (age > 55) {
       waterIntake -= waterIntake * 0.10;
     }
 
-    // Round the water intake to the nearest whole number
+    // Round to a more user-friendly number
     waterIntake = waterIntake.roundToDouble();
 
-    // Convert the water intake to an integer before returning
-    return waterIntake.toInt().toDouble();
+    return waterIntake;
   }
 }
