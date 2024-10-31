@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'results_screen.dart';
 
+// Main class for the QuestionsScreen
 class QuestionsScreen extends StatefulWidget {
   final dynamic calculateWaterIntake;
 
@@ -10,14 +11,19 @@ class QuestionsScreen extends StatefulWidget {
   _QuestionsScreenState createState() => _QuestionsScreenState();
 }
 
+// State class for QuestionsScreen
 class _QuestionsScreenState extends State<QuestionsScreen> {
+  // Controllers for text fields
   final TextEditingController _ageController = TextEditingController();
-  final TextEditingController _heightController = TextEditingController();
+  final TextEditingController _feetController = TextEditingController();
+  final TextEditingController _inchesController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
 
+  // Variables to store selected values
   String _selectedSex = 'Male';
   String _selectedActivityLevel = 'Sedentary';
 
+  // List of activity levels
   final List<String> _activityLevels = [
     'Sedentary',
     'Light',
@@ -25,6 +31,27 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
     'High',
     'Extreme'
   ];
+
+  // Validation flags
+  bool _isAgeValid = true;
+  bool _isFeetValid = true;
+  bool _isInchesValid = true;
+  bool _isWeightValid = true;
+
+  // Function to validate input
+  _validateInput(String input, int min, int max, {bool isDouble = false}) {
+    if (input.isEmpty) {
+      return false;
+    }
+
+    if (isDouble) {
+      double value = double.parse(input);
+      return value >= min && value <= max;
+    } else {
+      int value = int.parse(input);
+      return value >= min && value <= max;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,26 +65,74 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('Enter your details:', style: TextStyle(fontSize: 18)),
+            // Age input field
             TextField(
               controller: _ageController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Age'),
+              decoration: InputDecoration(
+                labelText: 'Age',
+                errorText: _isAgeValid ? null : 'Invalid age',
+                errorStyle: const TextStyle(color: Colors.red),
+                labelStyle:
+                    TextStyle(color: _isAgeValid ? Colors.black : Colors.red),
+              ),
             ),
-            TextField(
-              controller: _heightController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Height (in)'),
+            // Height input fields
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _feetController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'Height (ft)',
+                      errorText: _isFeetValid ? null : 'Invalid height in feet',
+                      errorStyle: const TextStyle(color: Colors.red),
+                      labelStyle: TextStyle(
+                          color: _isFeetValid ? Colors.black : Colors.red),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: TextField(
+                    controller: _inchesController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'Height (in)',
+                      errorText:
+                          _isInchesValid ? null : 'Invalid height in inches',
+                      errorStyle: const TextStyle(color: Colors.red),
+                      labelStyle: TextStyle(
+                          color: _isInchesValid ? Colors.black : Colors.red),
+                    ),
+                  ),
+                ),
+              ],
             ),
+            // Weight input field
             TextField(
               controller: _weightController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Weight (lbs)'),
+              decoration: InputDecoration(
+                labelText: 'Weight (lbs)',
+                errorText: _isWeightValid ? null : 'Invalid weight',
+                errorStyle: const TextStyle(color: Colors.red),
+                labelStyle: TextStyle(
+                    color: _isWeightValid ? Colors.black : Colors.red),
+              ),
             ),
             const SizedBox(height: 16),
             const Text('Sex:'),
+            // Dropdown for selecting sex
             DropdownButton<String>(
               value: _selectedSex,
-              items: ['Male', 'Female'].map((String value) {
+              hint: const Text('Select...'),
+              items: [
+                'Prefer not to say',
+                'Male',
+                'Female',
+              ].map((String value) {
                 return DropdownMenuItem<String>(
                   value: value,
                   child: Text(value),
@@ -71,8 +146,10 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
             ),
             const SizedBox(height: 16),
             const Text('Activity Level:'),
+            // Dropdown for selecting activity level
             DropdownButton<String>(
               value: _selectedActivityLevel,
+              hint: const Text('Select...'),
               items: _activityLevels.map((String level) {
                 return DropdownMenuItem<String>(
                   value: level,
@@ -86,33 +163,32 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
               },
             ),
             const SizedBox(height: 32),
+            // Button to calculate water intake
             Center(
               child: ElevatedButton(
                 onPressed: () {
-                  if (_ageController.text.isEmpty ||
-                      int.tryParse(_ageController.text) == null) {
+                  setState(() {
+                    _isAgeValid = _validateInput(_ageController.text, 3, 100);
+                    _isFeetValid = _validateInput(_feetController.text, 2, 10);
+                    _isInchesValid =
+                        _validateInput(_inchesController.text, 0, 11);
+                    _isWeightValid = _validateInput(
+                        _weightController.text, 30, 1000,
+                        isDouble: true);
+                  });
+
+                  if (!_isAgeValid ||
+                      !_isFeetValid ||
+                      !_isInchesValid ||
+                      !_isWeightValid) {
+                    ScaffoldMessenger.of(context).clearSnackBars();
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                          content: Text('Please enter a valid age.')),
+                          content: Text('Please correct the errors in red.')),
                     );
                     return;
                   }
-                  if (_heightController.text.isEmpty ||
-                      double.tryParse(_heightController.text) == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('Please enter a valid height.')),
-                    );
-                    return;
-                  }
-                  if (_weightController.text.isEmpty ||
-                      double.tryParse(_weightController.text) == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('Please enter a valid weight.')),
-                    );
-                    return;
-                  }
+
                   _submitData(context);
                 },
                 child: const Text('Calculate Water Intake'),
@@ -124,9 +200,12 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
     );
   }
 
+  // Function to submit data and navigate to result screen
   void _submitData(BuildContext context) {
     final int age = int.parse(_ageController.text);
-    final double height = double.parse(_heightController.text);
+    final int feet = int.parse(_feetController.text);
+    final int inches = int.parse(_inchesController.text);
+    final double height = (feet * 12).toDouble() + inches.toDouble();
     final double weight = double.parse(_weightController.text);
     final String sex = _selectedSex;
     final String activityLevel = _selectedActivityLevel;
@@ -149,12 +228,11 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
     );
   }
 
+  // Function to calculate water intake based on user input
   double calculateWaterIntake(
       int age, double height, String sex, double weight, String activityLevel) {
-    // Use baseline of 0.5 oz per pound of body weight for water intake
     double waterIntake = weight * 0.5;
 
-    // Activity multiplier adjustments
     Map<String, double> activityMultiplier = {
       'Sedentary': 0.0,
       'Light': 0.05,
@@ -163,22 +241,20 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
       'Extreme': 0.2,
     };
 
-    // Adjust water intake based on activity level
     waterIntake += waterIntake * activityMultiplier[activityLevel]!;
 
-    // If male, recommend slightly more water intake
     if (sex == 'Male') {
-      waterIntake += 16; // Additional ounces for males
+      waterIntake += 16;
+    } else if (sex == 'Prefer not to say') {
+      waterIntake += 8;
     }
 
-    // Adjust water intake for age (older individuals may need less)
     if (age > 30 && age <= 55) {
       waterIntake -= waterIntake * 0.05;
     } else if (age > 55) {
       waterIntake -= waterIntake * 0.10;
     }
 
-    // Round to a more user-friendly number
     waterIntake = waterIntake.roundToDouble();
 
     return waterIntake;

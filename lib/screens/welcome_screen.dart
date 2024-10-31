@@ -45,7 +45,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               const SizedBox(height: 20),
               ScaleTransition(
                 scale: Tween<double>(begin: 0.9, end: 1.0).animate(_animation),
-                child: Icon(
+                child: const Icon(
                   Icons.local_drink,
                   size: 100,
                   color: Colors.blue,
