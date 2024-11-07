@@ -39,8 +39,19 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
   bool _isWeightValid = true;
 
   // Function to validate input
-  _validateInput(String input, int min, int max, {bool isDouble = false}) {
+  bool _validateInput(String input, int min, int max,
+      {bool isDouble = false,
+      bool allowLetters = false,
+      bool allowSpaces = false}) {
     if (input.isEmpty) {
+      return false;
+    }
+
+    if (!allowLetters && input.contains(RegExp(r'[^0-9.]'))) {
+      return false;
+    }
+
+    if (!allowSpaces && input.contains(' ')) {
       return false;
     }
 
@@ -163,10 +174,9 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
               },
             ),
             const SizedBox(height: 32),
-            // Button to calculate water intake
             Center(
               child: ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   setState(() {
                     _isAgeValid = _validateInput(_ageController.text, 3, 100);
                     _isFeetValid = _validateInput(_feetController.text, 2, 10);
@@ -188,6 +198,41 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
                     );
                     return;
                   }
+
+                  // Show loading screen
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (BuildContext context) {
+                      return const Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.blue),
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'Calculating recommended daily water intake...',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.white,
+                                decoration: TextDecoration.none,
+                                fontFamily: 'Roboto',
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+
+                  // Simulate a delay for loading
+                  await Future.delayed(const Duration(seconds: 3));
+
+                  // Close loading screen
+                  Navigator.of(context).pop();
 
                   _submitData(context);
                 },
@@ -231,14 +276,14 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
   // Function to calculate water intake based on user input
   double calculateWaterIntake(
       int age, double height, String sex, double weight, String activityLevel) {
-    double waterIntake = weight * 0.5;
+    double waterIntake = weight * 0.45;
 
     Map<String, double> activityMultiplier = {
       'Sedentary': 0.0,
       'Light': 0.05,
       'Moderate': 0.1,
       'High': 0.15,
-      'Extreme': 0.2,
+      'Extreme': 0.25,
     };
 
     waterIntake += waterIntake * activityMultiplier[activityLevel]!;
@@ -248,11 +293,10 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
     } else if (sex == 'Prefer not to say') {
       waterIntake += 8;
     }
-
     if (age > 30 && age <= 55) {
-      waterIntake -= waterIntake * 0.05;
+      waterIntake += waterIntake * 0.05;
     } else if (age > 55) {
-      waterIntake -= waterIntake * 0.10;
+      waterIntake += waterIntake * 0.1;
     }
 
     waterIntake = waterIntake.roundToDouble();
