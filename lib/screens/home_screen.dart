@@ -39,9 +39,6 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Home'),
-      ),
       body: Stack(
         children: [
           Positioned.fill(
@@ -104,6 +101,45 @@ class _HomeScreenState extends State<HomeScreen>
         child: const Icon(Icons.add),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      bottomNavigationBar: BottomAppBar(
+        shape: const CircularNotchedRectangle(),
+        notchMargin: 6.0,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.calendar_today),
+              onPressed: () {
+                Navigator.pushNamed(context, '/calendar');
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.emoji_events),
+              onPressed: () {
+                Navigator.pushNamed(context, '/challenges');
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.home),
+              onPressed: () {
+                Navigator.pushNamed(context, '/home');
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.pets),
+              onPressed: () {
+                Navigator.pushNamed(context, '/companion');
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.person),
+              onPressed: () {
+                Navigator.pushNamed(context, '/profile');
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -145,13 +181,17 @@ class _HomeScreenState extends State<HomeScreen>
     void incrementWater() {
       Timer(Duration(milliseconds: duration), () {
         setState(() {
-          if (waterConsumed < target) {
+          if (waterConsumed < target && waterConsumed < widget.waterGoal) {
             waterConsumed += 1;
             if (waterConsumed > target) {
               waterConsumed = target;
             }
-            duration = (duration * 1.05).toInt();
+            duration =
+                max((duration * 1.05).toInt(), 20); // Ensure minimum delay
             incrementWater();
+          } else if (waterConsumed >= widget.waterGoal) {
+            waterConsumed = widget.waterGoal;
+            Navigator.pushReplacementNamed(context, '/congrats');
           }
         });
       });
@@ -161,7 +201,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 }
 
-class AnimatedWave extends StatelessWidget {
+class AnimatedWave extends StatefulWidget {
   final AnimationController controller;
   final double height;
 
@@ -169,12 +209,35 @@ class AnimatedWave extends StatelessWidget {
       {super.key, required this.controller, required this.height});
 
   @override
+  _AnimatedWaveState createState() => _AnimatedWaveState();
+}
+
+class _AnimatedWaveState extends State<AnimatedWave> {
+  late double _currentHeight;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentHeight = widget.height;
+  }
+
+  @override
+  void didUpdateWidget(covariant AnimatedWave oldWidget) {
+    if (oldWidget.height != widget.height) {
+      setState(() {
+        _currentHeight = widget.height;
+      });
+    }
+    super.didUpdateWidget(oldWidget);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: controller,
+      animation: widget.controller,
       builder: (context, child) {
         return CustomPaint(
-          painter: WavePainter(controller.value, height),
+          painter: WavePainter(widget.controller.value, _currentHeight),
         );
       },
     );
@@ -381,7 +444,7 @@ class _DrinkAmountSliderState extends State<DrinkAmountSlider> {
             widget.drinkName == 'Sports Drink')
           Text(
             'How much of the ${widget.drinkName} did you drink?',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           )
         else
           Text(

@@ -22,6 +22,7 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
   // Variables to store selected values
   String _selectedSex = 'Male';
   String _selectedActivityLevel = 'Sedentary';
+  String _selectedWeather = 'Cold';
 
   // List of activity levels
   final List<String> _activityLevels = [
@@ -31,6 +32,9 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
     'High',
     'Extreme'
   ];
+
+  // List of weather options
+  final List<String> _weatherOptions = ['Cold', 'Cool', 'Mild', 'Warm', 'Hot'];
 
   // Validation flags
   bool _isAgeValid = true;
@@ -68,14 +72,18 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Questions'),
+        title: const Text('Enter Your Details'),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Enter your details:', style: TextStyle(fontSize: 18)),
+            Text(
+              'Enter your details to calculate your daily water intake. Don\'t worry, this information is not shared with anyone.',
+              style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+            ),
+            const SizedBox(height: 20),
             // Age input field
             TextField(
               controller: _ageController,
@@ -84,10 +92,12 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
                 labelText: 'Age',
                 errorText: _isAgeValid ? null : 'Invalid age',
                 errorStyle: const TextStyle(color: Colors.red),
-                labelStyle:
-                    TextStyle(color: _isAgeValid ? Colors.black : Colors.red),
+                labelStyle: TextStyle(
+                    color: _isAgeValid ? Colors.grey[700] : Colors.red),
+                border: OutlineInputBorder(),
               ),
             ),
+            const SizedBox(height: 16),
             // Height input fields
             Row(
               children: [
@@ -100,7 +110,8 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
                       errorText: _isFeetValid ? null : 'Invalid height in feet',
                       errorStyle: const TextStyle(color: Colors.red),
                       labelStyle: TextStyle(
-                          color: _isFeetValid ? Colors.black : Colors.red),
+                          color: _isFeetValid ? Colors.grey[700] : Colors.red),
+                      border: OutlineInputBorder(),
                     ),
                   ),
                 ),
@@ -115,12 +126,15 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
                           _isInchesValid ? null : 'Invalid height in inches',
                       errorStyle: const TextStyle(color: Colors.red),
                       labelStyle: TextStyle(
-                          color: _isInchesValid ? Colors.black : Colors.red),
+                          color:
+                              _isInchesValid ? Colors.grey[700] : Colors.red),
+                      border: OutlineInputBorder(),
                     ),
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 16),
             // Weight input field
             TextField(
               controller: _weightController,
@@ -130,13 +144,14 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
                 errorText: _isWeightValid ? null : 'Invalid weight',
                 errorStyle: const TextStyle(color: Colors.red),
                 labelStyle: TextStyle(
-                    color: _isWeightValid ? Colors.black : Colors.red),
+                    color: _isWeightValid ? Colors.grey[700] : Colors.red),
+                border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 16),
             const Text('Sex:'),
             // Dropdown for selecting sex
-            DropdownButton<String>(
+            DropdownButtonFormField<String>(
               value: _selectedSex,
               hint: const Text('Select...'),
               items: [
@@ -154,11 +169,14 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
                   _selectedSex = newValue!;
                 });
               },
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+              ),
             ),
             const SizedBox(height: 16),
             const Text('Activity Level:'),
             // Dropdown for selecting activity level
-            DropdownButton<String>(
+            DropdownButtonFormField<String>(
               value: _selectedActivityLevel,
               hint: const Text('Select...'),
               items: _activityLevels.map((String level) {
@@ -172,6 +190,30 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
                   _selectedActivityLevel = newValue!;
                 });
               },
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text('Weather:'),
+            // Dropdown for selecting weather
+            DropdownButtonFormField<String>(
+              value: _selectedWeather,
+              hint: const Text('Select...'),
+              items: _weatherOptions.map((String weather) {
+                return DropdownMenuItem<String>(
+                  value: weather,
+                  child: Text(weather),
+                );
+              }).toList(),
+              onChanged: (newValue) {
+                setState(() {
+                  _selectedWeather = newValue!;
+                });
+              },
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+              ),
             ),
             const SizedBox(height: 32),
             Center(
@@ -254,6 +296,7 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
     final double weight = double.parse(_weightController.text);
     final String sex = _selectedSex;
     final String activityLevel = _selectedActivityLevel;
+    final String weather = _selectedWeather;
 
     double waterIntake = calculateWaterIntake(
       age,
@@ -261,6 +304,7 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
       sex,
       weight,
       activityLevel,
+      weather,
     );
 
     Navigator.push(
@@ -274,8 +318,8 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
   }
 
   // Function to calculate water intake based on user input
-  double calculateWaterIntake(
-      int age, double height, String sex, double weight, String activityLevel) {
+  double calculateWaterIntake(int age, double height, String sex, double weight,
+      String activityLevel, String weather) {
     double waterIntake = weight * 0.45;
 
     Map<String, double> activityMultiplier = {
@@ -286,7 +330,16 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
       'Extreme': 0.25,
     };
 
+    Map<String, double> weatherMultiplier = {
+      'Cold': 0.0,
+      'Cool': 0.05,
+      'Mild': 0.1,
+      'Warm': 0.15,
+      'Hot': 0.25,
+    };
+
     waterIntake += waterIntake * activityMultiplier[activityLevel]!;
+    waterIntake += waterIntake * weatherMultiplier[weather]!;
 
     if (sex == 'Male') {
       waterIntake += 16;
