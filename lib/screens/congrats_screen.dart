@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:waterly/screens/home_screen.dart';
+import 'package:waterly/screens/main_screen.dart';
 
 class CongratsScreen extends StatelessWidget {
   const CongratsScreen({super.key});
@@ -23,8 +23,7 @@ class CongratsScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                      builder: (context) => const HomeScreen(waterGoal: 0.0)),
+                  MaterialPageRoute(builder: (context) => const HomeScreen()),
                 );
               },
               child: const Text('Go to Home'),

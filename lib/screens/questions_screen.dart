@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'results_screen.dart';
+import 'package:provider/provider.dart';
+import '../models/water_tracker.dart';
 
-// Main class for the QuestionsScreen
 class QuestionsScreen extends StatefulWidget {
   final dynamic calculateWaterIntake;
 
@@ -11,7 +11,6 @@ class QuestionsScreen extends StatefulWidget {
   _QuestionsScreenState createState() => _QuestionsScreenState();
 }
 
-// State class for QuestionsScreen
 class _QuestionsScreenState extends State<QuestionsScreen> {
   // Controllers for text fields
   final TextEditingController _ageController = TextEditingController();
@@ -94,7 +93,7 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
                 errorStyle: const TextStyle(color: Colors.red),
                 labelStyle: TextStyle(
                     color: _isAgeValid ? Colors.grey[700] : Colors.red),
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 16),
@@ -111,7 +110,7 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
                       errorStyle: const TextStyle(color: Colors.red),
                       labelStyle: TextStyle(
                           color: _isFeetValid ? Colors.grey[700] : Colors.red),
-                      border: OutlineInputBorder(),
+                      border: const OutlineInputBorder(),
                     ),
                   ),
                 ),
@@ -128,7 +127,7 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
                       labelStyle: TextStyle(
                           color:
                               _isInchesValid ? Colors.grey[700] : Colors.red),
-                      border: OutlineInputBorder(),
+                      border: const OutlineInputBorder(),
                     ),
                   ),
                 ),
@@ -145,7 +144,7 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
                 errorStyle: const TextStyle(color: Colors.red),
                 labelStyle: TextStyle(
                     color: _isWeightValid ? Colors.grey[700] : Colors.red),
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 16),
@@ -273,9 +272,8 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
                   // Simulate a delay for loading
                   await Future.delayed(const Duration(seconds: 3));
 
-                  // Close loading screen
+                  if (!mounted) return;
                   Navigator.of(context).pop();
-
                   _submitData(context);
                 },
                 child: const Text('Calculate Water Intake'),
@@ -287,42 +285,34 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
     );
   }
 
-  // Function to submit data and navigate to result screen
   void _submitData(BuildContext context) {
     final int age = int.parse(_ageController.text);
     final int feet = int.parse(_feetController.text);
     final int inches = int.parse(_inchesController.text);
-    final double height = (feet * 12).toDouble() + inches.toDouble();
     final double weight = double.parse(_weightController.text);
-    final String sex = _selectedSex;
-    final String activityLevel = _selectedActivityLevel;
-    final String weather = _selectedWeather;
 
-    double waterIntake = calculateWaterIntake(
-      age,
-      height,
-      sex,
-      weight,
-      activityLevel,
-      weather,
-    );
+    // Calculate water intake based on user input
+    final waterGoal = _calculateWaterIntake(
+        age,
+        (feet * 12 + inches).toDouble(),
+        _selectedSex,
+        weight,
+        _selectedActivityLevel,
+        _selectedWeather);
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ResultScreen(
-          waterIntake: waterIntake,
-        ),
-      ),
-    );
+    // Update the water goal in WaterTracker to be the returned waterIntake variable from the calculateWaterIntake function
+    Provider.of<WaterTracker>(context, listen: false).setWaterGoal(waterGoal);
+
+    // Navigate to the results screen
+    Navigator.pushNamed(context, '/results');
   }
 
   // Function to calculate water intake based on user input
-  double calculateWaterIntake(int age, double height, String sex, double weight,
-      String activityLevel, String weather) {
+  double _calculateWaterIntake(int age, double height, String sex,
+      double weight, String activityLevel, String weather) {
     double waterIntake = weight * 0.45;
 
-    Map<String, double> activityMultiplier = {
+    final activityMultiplier = {
       'Sedentary': 0.0,
       'Light': 0.05,
       'Moderate': 0.1,
@@ -330,7 +320,7 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
       'Extreme': 0.25,
     };
 
-    Map<String, double> weatherMultiplier = {
+    final weatherMultiplier = {
       'Cold': 0.0,
       'Cool': 0.05,
       'Mild': 0.1,
@@ -352,7 +342,9 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
       waterIntake += waterIntake * 0.1;
     }
 
-    waterIntake = waterIntake.roundToDouble();
+    if (height > 60) {
+      waterIntake += waterIntake * 0.05;
+    }
 
     return waterIntake;
   }

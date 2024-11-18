@@ -1,22 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:waterly/screens/home_screen.dart';
+import 'package:provider/provider.dart';
+import 'package:waterly/models/water_tracker.dart';
 
-class ResultScreen extends StatelessWidget {
-  final double waterIntake;
-
-  const ResultScreen({
-    super.key,
-    required this.waterIntake,
-  });
+class ResultsScreen extends StatelessWidget {
+  const ResultsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Convert the water intake to an integer
-    final intake = waterIntake.toInt();
-    const unit = 'oz';
+    // Pull the water tracker data from the provider
+    final waterTracker = Provider.of<WaterTracker>(context);
+
+    debugPrint('Water Goal: ${waterTracker.waterGoal}');
+    debugPrint('Water Consumed: ${waterTracker.waterConsumed}');
+    debugPrint('Water Consumed: ${waterTracker.waterConsumed}');
+    debugPrint('Water Consumed: ${waterTracker.waterConsumed}');
+
+    final waterIntake = (waterTracker.waterGoal).toInt();
 
     // Calculate the number of cups (1 cup = 8 oz) and convert to an integer
-    final cups = (waterIntake / 8).toInt();
+    final cups = (waterTracker.waterGoal / 8).toInt();
 
     return Scaffold(
       appBar: AppBar(
@@ -35,7 +37,7 @@ class ResultScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             Text(
-              '$intake $unit',
+              '$waterIntake oz',
               style: const TextStyle(
                   fontSize: 40,
                   fontWeight: FontWeight.bold,
@@ -52,14 +54,7 @@ class ResultScreen extends StatelessWidget {
             const SizedBox(height: 40),
             ElevatedButton(
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => HomeScreen(
-                      waterGoal: waterIntake,
-                    ),
-                  ),
-                );
+                Navigator.pushNamed(context, '/home');
               },
               style: ElevatedButton.styleFrom(
                 padding:

@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:waterly/screens/congrats_screen.dart';
-import 'package:waterly/screens/registration_screen.dart';
-import 'package:waterly/screens/welcome_screen.dart';
-import 'package:waterly/screens/questions_screen.dart';
-import 'package:waterly/screens/home_screen.dart';
+import 'package:provider/provider.dart';
+import 'package:waterly/models/water_tracker.dart';
 import 'package:waterly/screens/accountCreated_screen.dart';
+import 'package:waterly/screens/congrats_screen.dart';
+import 'package:waterly/screens/main_screen.dart';
+import 'package:waterly/screens/questions_screen.dart';
+import 'package:waterly/screens/registration_screen.dart';
+import 'package:waterly/screens/results_screen.dart';
+import 'package:waterly/screens/welcome_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => WaterTracker()..loadWaterData(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -27,10 +35,9 @@ class MyApp extends StatelessWidget {
         '/registration': (context) => const RegistrationScreen(),
         '/accountCreated': (context) => const AccountCreatedScreen(),
         '/questions': (context) => const QuestionsScreen(),
-        '/home': (context) => const HomeScreen(
-              waterGoal: 0.0,
-            ),
+        '/home': (context) => const MainScreen(),
         '/congrats': (context) => const CongratsScreen(),
+        '/results': (context) => const ResultsScreen(),
       },
     );
   }
