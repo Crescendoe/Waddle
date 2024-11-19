@@ -58,47 +58,65 @@ class _MainScreenState extends State<MainScreen>
           ),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-          _pageController.animateToPage(
-            index,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-          );
-        },
-        items: [
-          _buildBottomNavItem(
-            icon: Icons.calendar_today,
-            label: 'Streaks',
-            index: 0,
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.blue.withOpacity(0.5),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 10,
+              spreadRadius: 1,
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(30),
+            topRight: Radius.circular(30),
           ),
-          _buildBottomNavItem(
-            icon: Icons.emoji_events,
-            label: 'Challenges',
-            index: 1,
+          child: BottomNavigationBar(
+            currentIndex: _selectedIndex,
+            onTap: (index) {
+              setState(() {
+                _selectedIndex = index;
+              });
+              _pageController.animateToPage(
+                index,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+              );
+            },
+            items: [
+              _buildBottomNavItem(
+                icon: Icons.calendar_today,
+                label: 'Streaks',
+                index: 0,
+              ),
+              _buildBottomNavItem(
+                icon: Icons.emoji_events,
+                label: 'Challenges',
+                index: 1,
+              ),
+              _buildBottomNavItem(
+                icon: Icons.home,
+                label: 'Home',
+                index: 2,
+              ),
+              _buildBottomNavItem(
+                icon: Icons.pets,
+                label: 'Companion',
+                index: 3,
+              ),
+              _buildBottomNavItem(
+                icon: Icons.person,
+                label: 'Profile',
+                index: 4,
+              ),
+            ],
+            type: BottomNavigationBarType.fixed,
+            showUnselectedLabels: false,
           ),
-          _buildBottomNavItem(
-            icon: Icons.home,
-            label: 'Home',
-            index: 2,
-          ),
-          _buildBottomNavItem(
-            icon: Icons.pets,
-            label: 'Companion',
-            index: 3,
-          ),
-          _buildBottomNavItem(
-            icon: Icons.person,
-            label: 'Profile',
-            index: 4,
-          ),
-        ],
-        type: BottomNavigationBarType.fixed,
-        showUnselectedLabels: false,
+        ),
       ),
     );
   }
@@ -301,8 +319,6 @@ class _HomeScreenState extends State<HomeScreen>
 
     debugPrint('Water Goal: ${waterTracker.waterGoal}');
     debugPrint('Water Consumed: ${waterTracker.waterConsumed}');
-    debugPrint('Water Consumed: ${waterTracker.waterConsumed}');
-    debugPrint('Water Consumed: ${waterTracker.waterConsumed}');
 
     final waterGoal = (waterTracker.waterGoal).toInt();
     final waterGoalCups = (waterTracker.waterGoal / 8).toInt();
@@ -367,8 +383,8 @@ class _HomeScreenState extends State<HomeScreen>
                     return Text(
                       // display the amount of ounces to go or cups to go when compared to the waterGoal value form WaterTracker provider
                       showCups
-                          ? '${(waterGoalCups - waterConsumedCups).toStringAsFixed(0)} cups to go'
-                          : '${(waterGoal - waterConsumed).toStringAsFixed(0)} oz to go',
+                          ? '${(waterGoalCups - waterConsumedCups).toStringAsFixed(0)} cups to go!'
+                          : '${(waterGoal - waterConsumed).toStringAsFixed(0)} oz to go!',
                       style: const TextStyle(
                         fontSize: 16,
                         color: Colors.black87,
