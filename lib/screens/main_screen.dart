@@ -159,6 +159,7 @@ class StreakScreen extends StatefulWidget {
 class _StreakScreenState extends State<StreakScreen> {
   Map<DateTime, bool> _loggedDays = {};
   int _currentStreak = 0;
+  DateTime _currentDate = DateTime.now();
 
   @override
   void initState() {
@@ -179,18 +180,77 @@ class _StreakScreenState extends State<StreakScreen> {
     });
   }
 
+  String _getMonthName(int month) {
+    List<String> monthNames = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December'
+    ];
+    return monthNames[month - 1];
+  }
+
   Widget _buildCalendar() {
-    final now = DateTime.now();
+    var now = _currentDate;
     final firstDayOfMonth = DateTime(now.year, now.month, 1);
     final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
 
     return Column(
       children: [
+        // Display the current month (in text, such as "November") and year, with arrows to navigate between months when tapped. The arrows should scroll the user through each month one at a time.
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: ['S', 'M', 'T', 'W', 'T', 'F', 'S']
-              .map((day) => Text(day))
-              .toList(),
+          children: [
+            if (now.year > 2024 || (now.year == 2024 && now.month > 1))
+              IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () {
+                  setState(() {
+                    final previousMonth = DateTime(now.year, now.month - 1, 1);
+                    _loggedDays.clear();
+                    _currentDate = previousMonth;
+                    now = previousMonth;
+                  });
+                },
+              ),
+            Text(
+              '${_getMonthName(now.month)} ${now.year}',
+              style: const TextStyle(fontSize: 20),
+            ),
+            if (now.year < 2099 || (now.year == 2099 && now.month < 12))
+              IconButton(
+                icon: const Icon(Icons.arrow_forward),
+                onPressed: () {
+                  setState(() {
+                    final nextMonth = DateTime(now.year, now.month + 1, 1);
+                    _loggedDays.clear();
+                    _currentDate = nextMonth;
+                    now = nextMonth;
+                  });
+                },
+              ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        const Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            Text('S', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text('M', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text('T', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text('W', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text('T', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text('F', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text('S', style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
         ),
         GridView.builder(
           shrinkWrap: true,
@@ -203,20 +263,46 @@ class _StreakScreenState extends State<StreakScreen> {
             final isLogged = _loggedDays[day] ?? false;
             final isGoalMet = isLogged && _isGoalMet(day);
 
-            return Container(
-              margin: const EdgeInsets.all(4.0),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isGoalMet
-                    ? Colors.blue
-                    : isLogged
-                        ? Colors.grey
-                        : Colors.transparent,
-              ),
-              child: Center(
-                child: isGoalMet
-                    ? const Icon(Icons.local_drink, color: Colors.white)
-                    : Text('${day.day}'),
+            final isToday = day.year == DateTime.now().year &&
+                day.month == DateTime.now().month &&
+                day.day == DateTime.now().day;
+            final isSelected = day.year == _currentDate.year &&
+                day.month == _currentDate.month &&
+                day.day == _currentDate.day;
+
+            return GestureDetector(
+              onTap: () {
+                setState(() {
+                  _currentDate = day;
+                  // method to display the water log for the selected day
+                  _showWaterLog(context, day);
+                });
+              },
+              child: Container(
+                margin: const EdgeInsets.all(4.0),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: isSelected
+                      ? Border.all(color: Colors.blue, width: 2)
+                      : null,
+                  color: isGoalMet
+                      ? Colors.blue
+                      : isLogged
+                          ? Colors.blue.withOpacity(0.2)
+                          : Colors.grey.withOpacity(0.1),
+                ),
+                child: Center(
+                  child: isGoalMet
+                      ? const Icon(Icons.local_drink, color: Colors.white)
+                      : Text(
+                          '${day.day}',
+                          style: TextStyle(
+                            color: isToday ? Colors.blue : Colors.black,
+                            fontWeight:
+                                isToday ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                ),
               ),
             );
           },
@@ -228,6 +314,123 @@ class _StreakScreenState extends State<StreakScreen> {
   bool _isGoalMet(DateTime day) {
     // Implement your logic to check if the water goal was met for the day
     return true;
+  }
+
+  // method to display the water log for the selected day just below the calendar which the user can scroll through
+  void _showWaterLog(BuildContext context, DateTime day) {
+    final logs = context.read<WaterTracker>().getLogsForDay(day);
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25.0)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(16.0),
+          height: 500,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(25.0)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                spreadRadius: 5,
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 50,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: Text(
+                  '${_getMonthName(day.month)} ${day.day}, ${day.year}',
+                  style: const TextStyle(
+                      fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: logs.isEmpty
+                    ? const Center(
+                        child: Text(
+                          'No entries for this day',
+                          style: TextStyle(fontSize: 18, color: Colors.grey),
+                        ),
+                      )
+                    : ListView.builder(
+                        itemCount: logs.length,
+                        itemBuilder: (context, index) {
+                          final log = logs[index];
+                          return Card(
+                            margin: const EdgeInsets.symmetric(vertical: 8.0),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15.0),
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.all(16.0),
+                              // leading for icon of the drink. color changes depending on what the drink is. brown for soda, red for energy drink, green for tea, etc.
+
+                              leading: CircleAvatar(
+                                backgroundColor: log.drinkName == 'Soda'
+                                    ? Colors.brown
+                                    : log.drinkName == 'Energy Drink'
+                                        ? Colors.red
+                                        : log.drinkName == 'Tea'
+                                            ? Colors.green
+                                            : log == 'Coffee'
+                                                ? Colors.brown
+                                                : log == 'Smoothie'
+                                                    ? Colors.purple
+                                                    : log == 'Sports Drink'
+                                                        ? Colors.blue
+                                                        : log == 'Milk'
+                                                            ? Colors.white
+                                                            : log.drinkName ==
+                                                                    'Orange Juice'
+                                                                ? Colors.orange
+                                                                : log.drinkName ==
+                                                                        'Lemonade'
+                                                                    ? Colors
+                                                                        .yellow
+                                                                    : Colors
+                                                                        .blue,
+                                child: const Icon(Icons.local_drink,
+                                    color: Colors.white),
+                              ),
+                              title: Text(
+                                log.drinkName,
+                                style: const TextStyle(
+                                    fontSize: 18, fontWeight: FontWeight.bold),
+                              ),
+                              subtitle: Text('${log.amount} oz'),
+                              trailing: Text(
+                                '${log.entryTime.hour}:${log.entryTime.minute.toString().padLeft(2, '0')}',
+                                style: const TextStyle(
+                                    fontSize: 16, color: Colors.grey),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -431,6 +634,7 @@ class _HomeScreenState extends State<HomeScreen>
           drinkWaterRatio: drinkWaterRatio,
           onConfirm: (double waterIntake) {
             _incrementWaterConsumed(waterIntake);
+            logDrink(context, drinkName, waterIntake, drinkWaterRatio);
             Navigator.pop(context); // Close the slider sheet after confirmation
           },
         );
@@ -468,6 +672,18 @@ class _HomeScreenState extends State<HomeScreen>
 
     incrementWater();
   }
+}
+
+void logDrink(BuildContext context, String drinkName, double amount,
+    double waterContent) {
+  final log = WaterLog(
+    drinkName: drinkName,
+    amount: amount,
+    waterContent: waterContent,
+    entryTime: DateTime.now(),
+  );
+
+  context.read<WaterTracker>().addLog(log);
 }
 
 class AnimatedWave extends StatefulWidget {

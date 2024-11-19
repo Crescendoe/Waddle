@@ -10,6 +10,21 @@ class WaterTracker extends ChangeNotifier {
 
   get unit => null;
 
+  List<WaterLog> _logs = [];
+
+  void addLog(WaterLog log) {
+    _logs.add(log);
+  }
+
+  List<WaterLog> getLogsForDay(DateTime day) {
+    return _logs
+        .where((log) =>
+            log.entryTime.year == day.year &&
+            log.entryTime.month == day.month &&
+            log.entryTime.day == day.day)
+        .toList();
+  }
+
   void setWaterGoal(double goal) {
     waterGoal = goal;
     saveWaterData();
@@ -45,4 +60,17 @@ class WaterTracker extends ChangeNotifier {
   }
 
   void setWater(double target) {}
+}
+
+class WaterLog {
+  final String drinkName;
+  final double amount; // in ounces or cups
+  final double waterContent; // as a percentage
+  final DateTime entryTime;
+
+  WaterLog(
+      {required this.drinkName,
+      required this.amount,
+      required this.waterContent,
+      required this.entryTime});
 }
