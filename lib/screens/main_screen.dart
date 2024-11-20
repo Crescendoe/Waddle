@@ -38,83 +38,100 @@ class _MainScreenState extends State<MainScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          // PageView in the foreground
-          PageView(
-            controller: _pageController,
-            onPageChanged: (index) {
-              setState(() {
-                _selectedIndex = index;
-              });
-            },
-            children: const [
-              StreakScreen(),
-              ChallengesScreen(),
-              HomeScreen(),
-              CompanionScreen(),
-              ProfileScreen(),
+      body: WillPopScope(
+        onWillPop: () async {
+          return false;
+        },
+        child: Scaffold(
+          body: Stack(
+            children: [
+              Positioned.fill(
+                child: AnimatedWave(
+                  controller: _waveController,
+                  height: // Get the water consumed percentage
+                      (context.watch<WaterTracker>().waterConsumed /
+                              context.watch<WaterTracker>().waterGoal) *
+                          100,
+                  totalWidth: MediaQuery.of(context).size.width * 5,
+                ),
+              ),
+              // PageView in the foreground
+              PageView(
+                controller: _pageController,
+                onPageChanged: (index) {
+                  setState(() {
+                    _selectedIndex = index;
+                  });
+                },
+                children: const [
+                  StreakScreen(),
+                  ChallengesScreen(),
+                  HomeScreen(),
+                  CompanionScreen(),
+                  ProfileScreen(),
+                ],
+              ),
             ],
           ),
-        ],
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.blue.withOpacity(0.5),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black26,
-              blurRadius: 10,
-              spreadRadius: 1,
+          bottomNavigationBar: Container(
+            decoration: BoxDecoration(
+              color: Colors.blue.withOpacity(0.6),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 10,
+                  spreadRadius: 1,
+                ),
+              ],
             ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(30),
-            topRight: Radius.circular(30),
-          ),
-          child: BottomNavigationBar(
-            currentIndex: _selectedIndex,
-            onTap: (index) {
-              setState(() {
-                _selectedIndex = index;
-              });
-              _pageController.animateToPage(
-                index,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-              );
-            },
-            items: [
-              _buildBottomNavItem(
-                icon: Icons.calendar_today,
-                label: 'Streaks',
-                index: 0,
+            child: ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(30),
+                topRight: Radius.circular(30),
               ),
-              _buildBottomNavItem(
-                icon: Icons.emoji_events,
-                label: 'Challenges',
-                index: 1,
+              child: BottomNavigationBar(
+                currentIndex: _selectedIndex,
+                onTap: (index) {
+                  setState(() {
+                    _selectedIndex = index;
+                  });
+                  _pageController.animateToPage(
+                    index,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                  );
+                },
+                items: [
+                  _buildBottomNavItem(
+                    icon: Icons.calendar_today,
+                    label: 'Streaks',
+                    index: 0,
+                  ),
+                  _buildBottomNavItem(
+                    icon: Icons.emoji_events,
+                    label: 'Challenges',
+                    index: 1,
+                  ),
+                  _buildBottomNavItem(
+                    icon: Icons.home,
+                    label: 'Home',
+                    index: 2,
+                  ),
+                  _buildBottomNavItem(
+                    icon: Icons.pets,
+                    label: 'Companion',
+                    index: 3,
+                  ),
+                  _buildBottomNavItem(
+                    icon: Icons.person,
+                    label: 'Profile',
+                    index: 4,
+                  ),
+                ],
+                type: BottomNavigationBarType.fixed,
+                showUnselectedLabels: false,
               ),
-              _buildBottomNavItem(
-                icon: Icons.home,
-                label: 'Home',
-                index: 2,
-              ),
-              _buildBottomNavItem(
-                icon: Icons.pets,
-                label: 'Companion',
-                index: 3,
-              ),
-              _buildBottomNavItem(
-                icon: Icons.person,
-                label: 'Profile',
-                index: 4,
-              ),
-            ],
-            type: BottomNavigationBarType.fixed,
-            showUnselectedLabels: false,
+            ),
           ),
         ),
       ),
@@ -415,9 +432,14 @@ class _StreakScreenState extends State<StreakScreen> {
                                 style: const TextStyle(
                                     fontSize: 18, fontWeight: FontWeight.bold),
                               ),
-                              subtitle: Text('${log.amount} oz'),
+                              // subtitle for log ampount to the neareaest tenth of an ounce
+                              subtitle: Text(
+                                '${log.amount.toStringAsFixed(1)} oz',
+                                style: const TextStyle(
+                                    fontSize: 16, color: Colors.grey),
+                              ),
                               trailing: Text(
-                                '${log.entryTime.hour}:${log.entryTime.minute.toString().padLeft(2, '0')}',
+                                '${log.entryTime.hour % 12 == 0 ? 12 : log.entryTime.hour % 12}:${log.entryTime.minute.toString().padLeft(2, '0')} ${log.entryTime.hour < 12 ? 'AM' : 'PM'}',
                                 style: const TextStyle(
                                     fontSize: 16, color: Colors.grey),
                               ),
@@ -540,6 +562,7 @@ class _HomeScreenState extends State<HomeScreen>
                   return AnimatedWave(
                     controller: _controller,
                     height: (tracker.waterConsumed / tracker.waterGoal) * 100,
+                    totalWidth: MediaQuery.of(context).size.width,
                   );
                 },
               ),
@@ -689,9 +712,13 @@ void logDrink(BuildContext context, String drinkName, double amount,
 class AnimatedWave extends StatefulWidget {
   final AnimationController controller;
   final double height;
+  final double totalWidth;
 
   const AnimatedWave(
-      {super.key, required this.controller, required this.height});
+      {super.key,
+      required this.controller,
+      required this.height,
+      required this.totalWidth});
 
   @override
   _AnimatedWaveState createState() => _AnimatedWaveState();
@@ -722,7 +749,11 @@ class _AnimatedWaveState extends State<AnimatedWave> {
       animation: widget.controller,
       builder: (context, child) {
         return CustomPaint(
-          painter: WavePainter(widget.controller.value, _currentHeight),
+          painter: WavePainter(
+            widget.controller.value,
+            _currentHeight,
+            widget.totalWidth,
+          ),
         );
       },
     );
@@ -732,30 +763,39 @@ class _AnimatedWaveState extends State<AnimatedWave> {
 class WavePainter extends CustomPainter {
   final double animationValue;
   final double height;
+  final double totalWidth;
 
-  WavePainter(this.animationValue, this.height);
+  WavePainter(this.animationValue, this.height, this.totalWidth);
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.blue.withOpacity(0.5)
-      ..style = PaintingStyle.fill;
+      ..color = Colors.blue
+      ..style = PaintingStyle.fill
+      ..strokeWidth = 2.0
+      ..shader = LinearGradient(
+        colors: [
+          Colors.blue.withOpacity(0.15),
+          Colors.blue.withOpacity(0.6),
+        ],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(Rect.fromLTWH(0, 0, totalWidth, size.height));
 
     final path = Path();
     const waveHeight = 20.0;
-    final waveLength = size.width;
     final baseHeight = size.height * (1 - height / 100);
 
     path.moveTo(0, baseHeight);
-    for (double i = 0; i <= waveLength; i++) {
+    for (double i = 0; i <= totalWidth; i++) {
       path.lineTo(
         i,
         baseHeight -
             waveHeight *
-                sin((i / waveLength * 2 * pi) + (animationValue * 2 * pi)),
+                sin((i / totalWidth * 2 * pi) + (animationValue * 2 * pi)),
       );
     }
-    path.lineTo(size.width, size.height);
+    path.lineTo(totalWidth, size.height); // Extend to totalWidth
     path.lineTo(0, size.height);
     path.close();
 
