@@ -27,7 +27,16 @@ class MyApp extends StatelessWidget {
       title: 'Waterly',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.blue)
+            .copyWith(secondary: Colors.blue[900]),
+        primaryColor: Colors.blue,
+        hintColor: Colors.blue[900],
+        scaffoldBackgroundColor: Colors.white,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          iconTheme: IconThemeData(color: Colors.black),
+        ),
       ),
       initialRoute: '/',
       routes: {

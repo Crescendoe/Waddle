@@ -679,14 +679,14 @@ class _HomeScreenState extends State<HomeScreen>
             if (context.read<WaterTracker>().waterConsumed > target) {
               context.read<WaterTracker>().setWater(target);
             }
-            duration =
-                max((duration * 1.05).toInt(), 20); // Ensure minimum delay
+            duration = max((duration * 1.05).toInt(), 20);
             incrementWater();
           } else if (context.read<WaterTracker>().waterConsumed >=
               context.read<WaterTracker>().waterGoal) {
             context
                 .read<WaterTracker>()
                 .setWater(context.read<WaterTracker>().waterGoal);
+            context.read<WaterTracker>().incrementStreak();
             Navigator.pushReplacementNamed(context, '/congrats');
           }
         });
