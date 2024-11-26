@@ -8,10 +8,10 @@ class QuestionsScreen extends StatefulWidget {
   const QuestionsScreen({super.key, this.calculateWaterIntake});
 
   @override
-  _QuestionsScreenState createState() => _QuestionsScreenState();
+  QuestionsScreenState createState() => QuestionsScreenState();
 }
 
-class _QuestionsScreenState extends State<QuestionsScreen> {
+class QuestionsScreenState extends State<QuestionsScreen> {
   // Controllers for text fields
   final TextEditingController _ageController = TextEditingController();
   final TextEditingController _feetController = TextEditingController();

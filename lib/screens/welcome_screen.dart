@@ -110,10 +110,13 @@ class WelcomeScreenState extends State<WelcomeScreen>
                 itemCount: _features.length,
                 itemBuilder: (context, index) {
                   final feature = _features[index];
-                  return _buildFeatureCard(
-                    feature['title'] as String,
-                    feature['icon'] as IconData,
-                    feature['description'] as String,
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10.0),
+                    child: _buildFeatureCard(
+                      feature['title'] as String,
+                      feature['icon'] as IconData,
+                      feature['description'] as String,
+                    ),
                   );
                 },
               ),
@@ -170,6 +173,7 @@ class WelcomeScreenState extends State<WelcomeScreen>
 Widget _buildFeatureCard(String title, IconData icon, String description) {
   return Card(
     margin: const EdgeInsets.symmetric(horizontal: 20),
+    elevation: 8, // Increased elevation
     child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
