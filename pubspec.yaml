@@ -40,6 +40,10 @@ dependencies:
   provider: ^6.1.2
   shared_preferences: ^2.3.3
   confetti: ^0.8.0
+  firebase_database: ^11.1.6
+  firebase_data_connect: ^0.1.2+4
+  firebase_core: ^3.8.0
+  firebase_auth: ^5.3.3
 
 dev_dependencies:
   flutter_test:

@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "142745895006",
+    "firebase_url": "https://waterly-3ad4f-default-rtdb.firebaseio.com",
+    "project_id": "waterly-3ad4f",
+    "storage_bucket": "waterly-3ad4f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:142745895006:android:f5b2f7dcd917de9dc134cf",
+        "android_client_info": {
+          "package_name": "com.waterly.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCwtG7G_m4agunb5nzwK8hqDX0kbw6lI8c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

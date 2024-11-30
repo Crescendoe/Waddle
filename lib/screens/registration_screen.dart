@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
@@ -13,6 +14,32 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _isPasswordVisible = false;
+
+  Future<void> _register() async {
+    try {
+      UserCredential userCredential =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: _emailController.text,
+        password: _passwordController.text,
+      );
+      // Navigate to account created screen
+      Navigator.pushNamed(context, '/accountCreated');
+    } on FirebaseAuthException catch (e) {
+      String message;
+      if (e.code == 'weak-password') {
+        message = 'The password provided is too weak.';
+      } else if (e.code == 'email-already-in-use') {
+        message = 'The account already exists for that email.';
+      } else {
+        message = 'An error occurred. Please try again.';
+      }
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('An error occurred. Please try again.')));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +74,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     if (value == null || value.isEmpty) {
                       return 'Please enter your email';
                     }
-                    // Basic email validation
                     if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
                       return 'Please enter a valid email';
                     }
@@ -66,7 +92,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     if (value == null || value.isEmpty) {
                       return 'Please enter your username';
                     }
-                    // Username validation: only alphanumeric characters, 3-15 characters
                     if (!RegExp(r'^[a-zA-Z0-9]{3,15}$').hasMatch(value)) {
                       return 'Username must be 3-15 characters and contain only letters and numbers';
                     }
@@ -99,7 +124,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     if (value == null || value.isEmpty) {
                       return 'Please enter your password';
                     }
-                    // Password validation: at least 8 characters, at least one letter, one number, and can include ? and !
                     if (!RegExp(r'^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d!?]{8,}$')
                         .hasMatch(value)) {
                       return 'Password must be 8+ chars, include 1 letter, 1 number, and can include ? and !';
@@ -137,26 +161,14 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         barrierDismissible: false,
                         builder: (BuildContext context) {
                           return const Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.blue),
-                                ),
-                              ],
-                            ),
+                            child: CircularProgressIndicator(),
                           );
                         },
                       );
-                      // Simulate a delay for loading
-                      await Future.delayed(const Duration(seconds: 3));
-
+                      await _register();
                       if (!mounted) return;
-
                       // Close loading screen
                       Navigator.of(context).pop();
-                      Navigator.pushNamed(context, '/accountCreated');
                     }
                   },
                   style: ElevatedButton.styleFrom(

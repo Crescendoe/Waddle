@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:waterly/models/water_tracker.dart';
 import 'package:waterly/screens/accountCreated_screen.dart';
 import 'package:waterly/screens/congrats_screen.dart';
@@ -10,7 +11,9 @@ import 'package:waterly/screens/registration_screen.dart';
 import 'package:waterly/screens/results_screen.dart';
 import 'package:waterly/screens/welcome_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(
     ChangeNotifierProvider(
       create: (_) => WaterTracker()..loadWaterData(),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-//import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -27,20 +26,20 @@ class _LoginScreenState extends State<LoginScreen> {
         },
       );
 
-      // try {
-      //   await FirebaseAuth.instance.signInWithEmailAndPassword(
-      //     email: _emailController.text,
-      //     password: _passwordController.text,
-      //   );
-      //   if (!mounted) return;
-      //   Navigator.of(context).pop();
-      //   Navigator.pushNamed(context, '/home');
-      // } on FirebaseAuthException catch (e) {
-      //   Navigator.of(context).pop();
-      //   ScaffoldMessenger.of(context).showSnackBar(
-      //     SnackBar(content: Text(e.message ?? 'Login failed')),
-      //   );
-      // }
+      try {
+        await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: _emailController.text,
+          password: _passwordController.text,
+        );
+        if (!mounted) return;
+        Navigator.of(context).pop();
+        Navigator.pushNamed(context, '/home');
+      } on FirebaseAuthException catch (e) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message ?? 'Login failed')),
+        );
+      }
     }
   }
 
