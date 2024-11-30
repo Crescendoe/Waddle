@@ -219,10 +219,20 @@ class _StreakScreenState extends State<StreakScreen> {
     var now = _currentDate;
     final firstDayOfMonth = DateTime(now.year, now.month, 1);
     final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+    final firstDayWeekday = firstDayOfMonth
+        .weekday; // Get the weekday of the 1st day (1 = Monday, ..., 7 = Sunday)
+
+    // Create a list of empty cells to offset the start of the month on the correct weekday
+    final emptyDays = firstDayWeekday == 7
+        ? 0
+        : firstDayWeekday; // If it's Sunday (7), no need for empty cells at the start
+
+    // GridView itemCount should include both emptyDays and the actual days in the month
+    final totalDays = emptyDays + daysInMonth;
 
     return Column(
       children: [
-        // Display the current month (in text, such as "November") and year, with arrows to navigate between months when tapped. The arrows should scroll the user through each month one at a time.
+        // Display the current month (in text, such as "November") and year, with arrows to navigate between months when tapped.
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
@@ -271,12 +281,18 @@ class _StreakScreenState extends State<StreakScreen> {
         ),
         GridView.builder(
           shrinkWrap: true,
-          itemCount: daysInMonth,
+          itemCount: totalDays, // Include emptyDays + daysInMonth
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 7,
           ),
           itemBuilder: (context, index) {
-            final day = firstDayOfMonth.add(Duration(days: index));
+            if (index < emptyDays) {
+              // If the index is less than the number of empty days, show an empty container
+              return const SizedBox.shrink();
+            }
+
+            // Calculate the actual day of the month by subtracting emptyDays from the index
+            final day = firstDayOfMonth.add(Duration(days: index - emptyDays));
             final isLogged = _loggedDays[day] ?? false;
             final isGoalMet = isLogged && _isGoalMet(day);
 
