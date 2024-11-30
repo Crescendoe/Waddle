@@ -414,7 +414,6 @@ class _StreakScreenState extends State<StreakScreen> {
                             ),
                             child: ListTile(
                               contentPadding: const EdgeInsets.all(16.0),
-                              // leading for icon of the drink. color changes depending on what the drink is. brown for soda, red for energy drink, green for tea, etc.
 
                               leading: CircleAvatar(
                                 backgroundColor: log.drinkName == 'Soda'
