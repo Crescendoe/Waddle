@@ -63,7 +63,7 @@ class _MainScreenState extends State<MainScreen>
                     _selectedIndex = index;
                   });
                 },
-                children: const [
+                children: [
                   StreakScreen(),
                   ChallengesScreen(),
                   HomeScreen(),
@@ -219,83 +219,90 @@ class _StreakScreenState extends State<StreakScreen> {
     var now = _currentDate;
     final firstDayOfMonth = DateTime(now.year, now.month, 1);
     final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
-    final firstDayWeekday = firstDayOfMonth
-        .weekday; // Get the weekday of the 1st day (1 = Monday, ..., 7 = Sunday)
-
-    // Create a list of empty cells to offset the start of the month on the correct weekday
-    final emptyDays = firstDayWeekday == 7
-        ? 0
-        : firstDayWeekday; // If it's Sunday (7), no need for empty cells at the start
-
-    // GridView itemCount should include both emptyDays and the actual days in the month
+    final firstDayWeekday = firstDayOfMonth.weekday;
+    final emptyDays = firstDayWeekday == 7 ? 0 : firstDayWeekday;
     final totalDays = emptyDays + daysInMonth;
 
     return Column(
       children: [
-        // Display the current month (in text, such as "November") and year, with arrows to navigate between months when tapped.
+        // Month and Year with arrows
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             if (now.year > 2024 || (now.year == 2024 && now.month > 1))
               IconButton(
-                icon: const Icon(Icons.arrow_back),
+                icon:
+                    const Icon(Icons.arrow_back_ios, color: Colors.blueAccent),
                 onPressed: () {
                   setState(() {
                     final previousMonth = DateTime(now.year, now.month - 1, 1);
-                    _loggedDays.clear();
                     _currentDate = previousMonth;
-                    now = previousMonth;
                   });
                 },
               ),
             Text(
               '${_getMonthName(now.month)} ${now.year}',
-              style: const TextStyle(fontSize: 20),
+              style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blueAccent),
             ),
             if (now.year < 2099 || (now.year == 2099 && now.month < 12))
               IconButton(
-                icon: const Icon(Icons.arrow_forward),
+                icon: const Icon(Icons.arrow_forward_ios,
+                    color: Colors.blueAccent),
                 onPressed: () {
                   setState(() {
                     final nextMonth = DateTime(now.year, now.month + 1, 1);
-                    _loggedDays.clear();
                     _currentDate = nextMonth;
-                    now = nextMonth;
                   });
                 },
               ),
           ],
         ),
         const SizedBox(height: 10),
+        // Days of the week
         const Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            Text('S', style: TextStyle(fontWeight: FontWeight.bold)),
-            Text('M', style: TextStyle(fontWeight: FontWeight.bold)),
-            Text('T', style: TextStyle(fontWeight: FontWeight.bold)),
-            Text('W', style: TextStyle(fontWeight: FontWeight.bold)),
-            Text('T', style: TextStyle(fontWeight: FontWeight.bold)),
-            Text('F', style: TextStyle(fontWeight: FontWeight.bold)),
-            Text('S', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text('S',
+                style:
+                    TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+            Text('M',
+                style:
+                    TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+            Text('T',
+                style:
+                    TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+            Text('W',
+                style:
+                    TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+            Text('T',
+                style:
+                    TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+            Text('F',
+                style:
+                    TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+            Text('S',
+                style:
+                    TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
           ],
         ),
+        const SizedBox(height: 8),
         GridView.builder(
           shrinkWrap: true,
-          itemCount: totalDays, // Include emptyDays + daysInMonth
+          itemCount: totalDays,
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 7,
           ),
           itemBuilder: (context, index) {
             if (index < emptyDays) {
-              // If the index is less than the number of empty days, show an empty container
               return const SizedBox.shrink();
             }
 
-            // Calculate the actual day of the month by subtracting emptyDays from the index
             final day = firstDayOfMonth.add(Duration(days: index - emptyDays));
             final isLogged = _loggedDays[day] ?? false;
             final isGoalMet = isLogged && _isGoalMet(day);
-
             final isToday = day.year == DateTime.now().year &&
                 day.month == DateTime.now().month &&
                 day.day == DateTime.now().day;
@@ -307,22 +314,30 @@ class _StreakScreenState extends State<StreakScreen> {
               onTap: () {
                 setState(() {
                   _currentDate = day;
-                  // method to display the water log for the selected day
                   _showWaterLog(context, day);
                 });
               },
-              child: Container(
-                margin: const EdgeInsets.all(4.0),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                margin: const EdgeInsets.all(6.0),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                              color: Colors.blueAccent.withOpacity(0.5),
+                              blurRadius: 6,
+                              spreadRadius: 2)
+                        ]
+                      : [],
                   border: isSelected
-                      ? Border.all(color: Colors.blue, width: 2)
+                      ? Border.all(color: Colors.blueAccent, width: 3)
                       : null,
                   color: isGoalMet
-                      ? Colors.blue
+                      ? Colors.blueAccent
                       : isLogged
-                          ? Colors.blue.withOpacity(0.2)
-                          : Colors.grey.withOpacity(0.1),
+                          ? Colors.blueAccent.withOpacity(0.3)
+                          : Colors.grey.withOpacity(0.2),
                 ),
                 child: Center(
                   child: isGoalMet
@@ -330,7 +345,7 @@ class _StreakScreenState extends State<StreakScreen> {
                       : Text(
                           '${day.day}',
                           style: TextStyle(
-                            color: isToday ? Colors.blue : Colors.black,
+                            color: isToday ? Colors.blueAccent : Colors.black,
                             fontWeight:
                                 isToday ? FontWeight.bold : FontWeight.normal,
                           ),
@@ -345,11 +360,10 @@ class _StreakScreenState extends State<StreakScreen> {
   }
 
   bool _isGoalMet(DateTime day) {
-    // Implement your logic to check if the water goal was met for the day
+    // Placeholder logic
     return true;
   }
 
-  // method to display the water log for the selected day just below the calendar which the user can scroll through
   void _showWaterLog(BuildContext context, DateTime day) {
     final logs = context.read<WaterTracker>().getLogsForDay(day);
     showModalBottomSheet(
@@ -367,10 +381,9 @@ class _StreakScreenState extends State<StreakScreen> {
                 const BorderRadius.vertical(top: Radius.circular(25.0)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 10,
-                spreadRadius: 5,
-              ),
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  spreadRadius: 5)
             ],
           ),
           child: Column(
@@ -381,9 +394,8 @@ class _StreakScreenState extends State<StreakScreen> {
                   width: 50,
                   height: 5,
                   decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(10)),
                 ),
               ),
               const SizedBox(height: 16),
@@ -414,7 +426,6 @@ class _StreakScreenState extends State<StreakScreen> {
                             ),
                             child: ListTile(
                               contentPadding: const EdgeInsets.all(16.0),
-
                               leading: CircleAvatar(
                                 backgroundColor: log.drinkName == 'Soda'
                                     ? Colors.brown
@@ -422,41 +433,31 @@ class _StreakScreenState extends State<StreakScreen> {
                                         ? Colors.red
                                         : log.drinkName == 'Tea'
                                             ? Colors.green
-                                            : log == 'Coffee'
-                                                ? Colors.brown
-                                                : log == 'Smoothie'
-                                                    ? Colors.purple
-                                                    : log == 'Sports Drink'
-                                                        ? Colors.blue
-                                                        : log == 'Milk'
-                                                            ? Colors.white
-                                                            : log.drinkName ==
-                                                                    'Orange Juice'
-                                                                ? Colors.orange
-                                                                : log.drinkName ==
-                                                                        'Lemonade'
-                                                                    ? Colors
-                                                                        .yellow
-                                                                    : Colors
-                                                                        .blue,
-                                child: const Icon(Icons.local_drink,
-                                    color: Colors.white),
+                                            : log.drinkName == 'Smoothie'
+                                                ? Colors.purple
+                                                : log.drinkName == 'Milk'
+                                                    ? Colors.white
+                                                    : log.drinkName ==
+                                                            'Orange Juice'
+                                                        ? Colors.orange
+                                                        : log.drinkName ==
+                                                                'Water'
+                                                            ? Colors.blueAccent
+                                                            : Colors.grey,
+                                child: Icon(
+                                  Icons.local_drink,
+                                  color: Colors.white,
+                                ),
                               ),
-                              title: Text(
-                                log.drinkName,
-                                style: const TextStyle(
-                                    fontSize: 18, fontWeight: FontWeight.bold),
-                              ),
-                              // subtitle for log ampount to the neareaest tenth of an ounce
+                              title: Text(log.drinkName,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold)),
                               subtitle: Text(
-                                '${log.amount.toStringAsFixed(1)} oz',
-                                style: const TextStyle(
-                                    fontSize: 16, color: Colors.grey),
-                              ),
+                                  'Amount: ${log.amount} oz\nWater Content: ${log.waterContent}%'),
                               trailing: Text(
-                                '${log.entryTime.hour % 12 == 0 ? 12 : log.entryTime.hour % 12}:${log.entryTime.minute.toString().padLeft(2, '0')} ${log.entryTime.hour < 12 ? 'AM' : 'PM'}',
+                                _formatTime(log.entryTime),
                                 style: const TextStyle(
-                                    fontSize: 16, color: Colors.grey),
+                                    fontSize: 12, color: Colors.grey),
                               ),
                             ),
                           );
@@ -470,6 +471,15 @@ class _StreakScreenState extends State<StreakScreen> {
     );
   }
 
+  String _formatTime(DateTime timestamp) {
+    final hour = timestamp.hour;
+    final minute = timestamp.minute;
+    final period = hour < 12 ? 'AM' : 'PM';
+    final formattedHour = hour % 12 == 0 ? 12 : hour % 12;
+    final formattedMinute = minute.toString().padLeft(2, '0');
+    return '$formattedHour:$formattedMinute $period';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -479,15 +489,20 @@ class _StreakScreenState extends State<StreakScreen> {
         automaticallyImplyLeading: false,
       ),
       body: Padding(
-        padding: const EdgeInsets.all(8.0),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildCalendar(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             Text(
               'Current Streak: $_currentStreak days',
-              style: const TextStyle(fontSize: 20),
+              style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87),
             ),
+            const SizedBox(height: 16),
+            Expanded(child: _buildCalendar()),
           ],
         ),
       ),
@@ -506,9 +521,92 @@ class ChallengesScreen extends StatelessWidget {
         centerTitle: true,
         automaticallyImplyLeading: false,
       ),
-      body: const Center(
-        child: Text('Challenges Page'),
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: GridView.builder(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+          ),
+          itemCount: 6, // Number of challenge boxes
+          itemBuilder: (context, index) {
+            return GestureDetector(
+              onTap: () {
+                _showChallengeDetails(context, index);
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.blueAccent,
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 5,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    'Challenge ${index + 1}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
       ),
+    );
+  }
+
+  void _showChallengeDetails(BuildContext context, int index) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25.0)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(16.0),
+          height: 300,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 50,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: Text(
+                  'Challenge ${index + 1} Details',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Here are the details of the challenge. You can add more information about the challenge here.',
+                style: TextStyle(fontSize: 16),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -1032,7 +1130,135 @@ class _DrinkAmountSliderState extends State<DrinkAmountSlider> {
 }
 
 class CompanionScreen extends StatelessWidget {
-  const CompanionScreen({super.key});
+  CompanionScreen({super.key});
+
+  void _showCreatureDetails(BuildContext context, int index) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25.0)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(16.0),
+          height: 400,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 50,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: Text(
+                  'Creature ${index + 1} Details',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _creaturePrerequisites[index]!,
+                style: const TextStyle(fontSize: 16),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  final Map<int, String> _creaturePrerequisites = {
+    0: 'Drink 100 oz of water',
+    1: 'Complete 5 challenges',
+    2: 'Log water for 7 consecutive days',
+    3: 'Reach a 10-day streak',
+    4: 'Drink 200 oz of water',
+    5: 'Complete 10 challenges',
+    6: 'Log water for 14 consecutive days',
+    7: 'Reach a 20-day streak',
+    8: 'Drink 300 oz of water',
+    9: 'Complete 15 challenges',
+    10: 'Log water for 21 consecutive days',
+    11: 'Reach a 30-day streak',
+    12: 'Drink 400 oz of water',
+    13: 'Complete 20 challenges',
+    14: 'Log water for 28 consecutive days',
+    15: 'Reach a 40-day streak',
+    16: 'Drink 500 oz of water',
+    17: 'Complete 25 challenges',
+    18: 'Log water for 35 consecutive days',
+    19: 'Reach a 50-day streak',
+    20: 'Drink 600 oz of water',
+    21: 'Complete 30 challenges',
+    22: 'Log water for 42 consecutive days',
+    23: 'Reach a 60-day streak',
+  };
+
+  bool _isCreatureUnlocked(BuildContext context, int index) {
+    final waterTracker = context.read<WaterTracker>();
+    switch (index) {
+      case 0:
+        return waterTracker.waterConsumed >= 100;
+      case 1:
+        return waterTracker.completedChallenges >= 5;
+      case 2:
+        return waterTracker.currentStreak >= 7;
+      case 3:
+        return waterTracker.currentStreak >= 10;
+      case 4:
+        return waterTracker.waterConsumed >= 200;
+      case 5:
+        return waterTracker.completedChallenges >= 10;
+      case 6:
+        return waterTracker.currentStreak >= 14;
+      case 7:
+        return waterTracker.currentStreak >= 20;
+      case 8:
+        return waterTracker.waterConsumed >= 300;
+      case 9:
+        return waterTracker.completedChallenges >= 15;
+      case 10:
+        return waterTracker.currentStreak >= 21;
+      case 11:
+        return waterTracker.currentStreak >= 30;
+      case 12:
+        return waterTracker.waterConsumed >= 400;
+      case 13:
+        return waterTracker.completedChallenges >= 20;
+      case 14:
+        return waterTracker.currentStreak >= 28;
+      case 15:
+        return waterTracker.currentStreak >= 40;
+      case 16:
+        return waterTracker.waterConsumed >= 500;
+      case 17:
+        return waterTracker.completedChallenges >= 25;
+      case 18:
+        return waterTracker.currentStreak >= 35;
+      case 19:
+        return waterTracker.currentStreak >= 50;
+      case 20:
+        return waterTracker.waterConsumed >= 600;
+      case 21:
+        return waterTracker.completedChallenges >= 30;
+      case 22:
+        return waterTracker.currentStreak >= 42;
+      case 23:
+        return waterTracker.currentStreak >= 60;
+      default:
+        return false;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1042,8 +1268,60 @@ class CompanionScreen extends StatelessWidget {
         centerTitle: true,
         automaticallyImplyLeading: false,
       ),
-      body: const Center(
-        child: Text('Companion Page'),
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: GridView.builder(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+          ),
+          itemCount: 24, // Number of creatures
+          itemBuilder: (context, index) {
+            final isUnlocked = _isCreatureUnlocked(context, index);
+            return GestureDetector(
+              onTap: () {
+                _showCreatureDetails(
+                    context, index); // Trigger bottom sheet on tap
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.blueAccent,
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 5,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      isUnlocked
+                          ? Image.asset(
+                              'assets/creature_$index.png') // Display the creature's design
+                          : const Icon(Icons.lock,
+                              size: 40,
+                              color: Colors.black), // Display a silhouette
+                      const SizedBox(height: 8),
+                      Text(
+                        'Creature ${index + 1}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -1054,15 +1332,194 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final waterTracker = context.watch<WaterTracker>();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile'),
         centerTitle: true,
         automaticallyImplyLeading: false,
       ),
-      body: const Center(
-        child: Text('Profile Page'),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              // Profile image and username with gradient background
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.blueAccent, Colors.lightBlueAccent],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    CircleAvatar(
+                      radius: 60,
+                      child: Icon(Icons.person, size: 60, color: Colors.blue),
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.blue,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Username',
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 30),
+              // User's current streak, record streak, challenges, companions
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildStatisticCard(
+                    icon: Icons.local_fire_department,
+                    label: 'Current Streak',
+                    value: '${waterTracker.currentStreak}',
+                    color: Colors.orangeAccent,
+                  ),
+                  _buildStatisticCard(
+                    icon: Icons.star,
+                    label: 'Record Streak',
+                    value: '${waterTracker.recordStreak}',
+                    color: Colors.yellowAccent,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildStatisticCard(
+                    icon: Icons.check_circle,
+                    label: 'Challenges',
+                    value: '${waterTracker.completedChallenges}',
+                    color: Colors.greenAccent,
+                  ),
+                  _buildStatisticCard(
+                    icon: Icons.people,
+                    label: 'Companions',
+                    value: '${waterTracker.companionsCollected}',
+                    color: Colors.purpleAccent,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 30),
+              // List of options with trailing icons
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.3),
+                      spreadRadius: 2,
+                      blurRadius: 5,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: ListView(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  children: [
+                    _buildOptionTile(
+                      icon: Icons.share,
+                      label: 'Share Profile',
+                      onTap: () {
+                        // Implement share profile functionality
+                      },
+                    ),
+                    _buildOptionTile(
+                      icon: Icons.edit,
+                      label: 'Edit Daily Water Goal',
+                      onTap: () {
+                        // Implement edit daily water goal functionality
+                      },
+                    ),
+                    _buildOptionTile(
+                      icon: Icons.notifications,
+                      label: 'Goal Reminders/Notifications',
+                      onTap: () {
+                        // Implement goal reminders/notifications functionality
+                      },
+                    ),
+                    _buildOptionTile(
+                      icon: Icons.settings,
+                      label: 'Settings',
+                      onTap: () {
+                        // Implement settings functionality
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
+    );
+  }
+
+  Widget _buildStatisticCard({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Container(
+      width: 150,
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 36, color: color),
+          const SizedBox(height: 10),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 16, color: Colors.black87),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 5),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOptionTile({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: Colors.blue),
+      title: Text(
+        label,
+        style: const TextStyle(fontSize: 18),
+      ),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 18),
+      onTap: onTap,
     );
   }
 }

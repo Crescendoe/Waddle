@@ -1,21 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class WaterTracker extends ChangeNotifier {
   double waterConsumed = 0;
   double waterGoal = 0;
   int _currentStreak = 0;
   bool goalMetToday = false;
+  int completedChallenges = 0;
+  int recordStreak = 0;
+  int companionsCollected = 0;
 
   double get getWaterConsumed => waterConsumed;
   double get getWaterGoal => waterGoal;
-  int get currentStreak => _currentStreak; // Add this getter
+  int get currentStreak => _currentStreak;
   bool get getGoalMetToday => goalMetToday;
+  int get getCompletedChallenges => completedChallenges;
+  int get getRecordStreak => recordStreak;
+  int get getCompanionsCollected => companionsCollected;
 
   List<WaterLog> logs = [];
 
-  void addLog(WaterLog log) {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final String userId;
+
+  WaterTracker({required this.userId}) {
+    loadWaterData();
+  }
+
+  void addLog(WaterLog log) async {
     logs.add(log);
+    await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('waterLogs')
+        .add(log.toMap());
+    notifyListeners();
   }
 
   List<WaterLog> getLogsForDay(DateTime day) {
@@ -38,12 +58,10 @@ class WaterTracker extends ChangeNotifier {
     if (waterConsumed > waterGoal) {
       waterConsumed = waterGoal; // Cap water consumed at the goal
     }
-    /*
     if (waterConsumed >= waterGoal) {
       goalMetToday = true;
-      _incrementStreak();
+      incrementStreak();
     }
-    */
     saveWaterData();
     notifyListeners();
   }
@@ -58,8 +76,16 @@ class WaterTracker extends ChangeNotifier {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     waterConsumed = prefs.getDouble('waterConsumed') ?? 0.0;
     waterGoal = prefs.getDouble('waterGoal') ?? 0.0;
-    _currentStreak = prefs.getInt('currentStreak') ?? 0;
     goalMetToday = prefs.getBool('goalMetToday') ?? false;
+
+    DocumentSnapshot userDoc =
+        await _firestore.collection('users').doc(userId).get();
+    if (userDoc.exists) {
+      _currentStreak = userDoc['currentStreak'] ?? 0;
+    } else {
+      _currentStreak = 0;
+    }
+
     notifyListeners();
   }
 
@@ -67,8 +93,11 @@ class WaterTracker extends ChangeNotifier {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setDouble('waterConsumed', waterConsumed);
     await prefs.setDouble('waterGoal', waterGoal);
-    await prefs.setInt('currentStreak', _currentStreak);
     await prefs.setBool('goalMetToday', goalMetToday);
+
+    await _firestore.collection('users').doc(userId).set({
+      'currentStreak': _currentStreak,
+    }, SetOptions(merge: true));
   }
 
   void resetWater() {
@@ -84,6 +113,10 @@ class WaterTracker extends ChangeNotifier {
   void setWater(double target) {}
 }
 
+bool isChallengeCompleted(int index) {
+  return index == 0;
+}
+
 class WaterLog {
   final String drinkName;
   final double amount; // in ounces or cups
@@ -95,4 +128,11 @@ class WaterLog {
       required this.amount,
       required this.waterContent,
       required this.entryTime});
+
+  Map<String, dynamic> toMap() => {
+        'drinkName': drinkName,
+        'amount': amount,
+        'waterContent': waterContent,
+        'entryTime': entryTime.toIso8601String(), // Convert for Firestore
+      };
 }

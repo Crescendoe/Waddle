@@ -156,19 +156,23 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   onPressed: () async {
                     if (_formKey.currentState!.validate()) {
                       // Show loading screen
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (BuildContext context) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        },
-                      );
+                      if (mounted) {
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (BuildContext context) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
+                          },
+                        );
+                      }
                       await _register();
                       if (!mounted) return;
                       // Close loading screen
-                      Navigator.of(context).pop();
+                      if (mounted) {
+                        Navigator.of(context).pop();
+                      }
                     }
                   },
                   style: ElevatedButton.styleFrom(

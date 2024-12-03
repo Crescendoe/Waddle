@@ -16,7 +16,7 @@ void main() async {
   await Firebase.initializeApp();
   runApp(
     ChangeNotifierProvider(
-      create: (_) => WaterTracker()..loadWaterData(),
+      create: (_) => WaterTracker(userId: '')..loadWaterData(),
       child: const MyApp(),
     ),
   );
