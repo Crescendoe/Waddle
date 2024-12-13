@@ -9,6 +9,7 @@ import 'package:waterly/screens/main_screen.dart';
 import 'package:waterly/screens/questions_screen.dart';
 import 'package:waterly/screens/registration_screen.dart';
 import 'package:waterly/screens/results_screen.dart';
+import 'package:waterly/screens/settings_screen.dart';
 import 'package:waterly/screens/welcome_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -49,6 +50,7 @@ class MyApp extends StatelessWidget {
         '/congrats': (context) => const CongratsScreen(),
         '/results': (context) => const ResultsScreen(),
         '/login': (context) => const LoginScreen(),
+        '/settings': (context) => SettingsScreen(),
       },
     );
   }

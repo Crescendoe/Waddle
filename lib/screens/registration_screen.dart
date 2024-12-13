@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -11,9 +12,26 @@ class RegistrationScreen extends StatefulWidget {
 class _RegistrationScreenState extends State<RegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _isPasswordVisible = false;
+
+  Future<void> _saveUserToFirestore(
+      String userID, String email, String username, String password) async {
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(userID).set({
+        'email': email,
+        'username': username,
+        'password': password,
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Failed to save user data. Please try again.')));
+      }
+    }
+  }
 
   Future<void> _register() async {
     try {
@@ -22,6 +40,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         email: _emailController.text,
         password: _passwordController.text,
       );
+      await _saveUserToFirestore(
+          userCredential.user!.uid,
+          _emailController.text,
+          _usernameController.text,
+          _passwordController.text);
       // Navigate to account created screen
       Navigator.pushNamed(context, '/accountCreated');
     } on FirebaseAuthException catch (e) {
@@ -82,6 +105,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 ),
                 const SizedBox(height: 20),
                 TextFormField(
+                  controller: _usernameController,
                   decoration: InputDecoration(
                     labelText: 'Username',
                     border: OutlineInputBorder(
@@ -155,24 +179,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 ElevatedButton(
                   onPressed: () async {
                     if (_formKey.currentState!.validate()) {
-                      // Show loading screen
-                      if (mounted) {
-                        showDialog(
-                          context: context,
-                          barrierDismissible: false,
-                          builder: (BuildContext context) {
-                            return const Center(
-                              child: CircularProgressIndicator(),
-                            );
-                          },
-                        );
-                      }
                       await _register();
-                      if (!mounted) return;
-                      // Close loading screen
-                      if (mounted) {
-                        Navigator.of(context).pop();
-                      }
                     }
                   },
                   style: ElevatedButton.styleFrom(

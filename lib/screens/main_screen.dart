@@ -6,6 +6,10 @@ import 'package:waterly/models/water_tracker.dart';
 import 'dart:math';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:waterly/screens/questions_screen.dart';
+import 'package:waterly/screens/settings_screen.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -1520,15 +1524,58 @@ class ProfileScreen extends StatelessWidget {
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
-                    CircleAvatar(
-                      radius: 60,
-                      child: Icon(Icons.person, size: 60, color: Colors.blue),
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.blue,
+                    GestureDetector(
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) {
+                            return AlertDialog(
+                              title: const Text('Change Profile Avatar'),
+                              content: const Text(
+                                  'Would you like to change your profile avatar image?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                  },
+                                  child: const Text('No'),
+                                ),
+                                TextButton(
+                                  onPressed: () async {
+                                    Navigator.pop(context);
+                                    final ImagePicker picker = ImagePicker();
+                                    final XFile? image = await picker.pickImage(
+                                        source: ImageSource.gallery);
+                                    if (image != null) {
+                                      // Assuming you have a method to upload and save the image
+                                      await context
+                                          .read<WaterTracker>()
+                                          .updateProfileImage(image.path);
+                                    }
+                                  },
+                                  child: const Text('Yes'),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      },
+                      child: CircleAvatar(
+                        radius: 60,
+                        backgroundImage: waterTracker.profileImage != null
+                            ? FileImage(File(waterTracker.profileImage!))
+                            : null,
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.blue,
+                        child: waterTracker.profileImage == null
+                            ? const Icon(Icons.person,
+                                size: 60, color: Colors.blue)
+                            : null,
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      'Username',
+                      waterTracker.username ?? 'Guest',
                       style: const TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
@@ -1543,17 +1590,27 @@ class ProfileScreen extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildStatisticCard(
-                    icon: Icons.local_fire_department,
-                    label: 'Current Streak',
-                    value: '${waterTracker.currentStreak}',
-                    color: Colors.orangeAccent,
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 18.0),
+                      child: _buildStatisticCard(
+                        icon: Icons.local_fire_department,
+                        label: 'Current Streak',
+                        value: '${waterTracker.currentStreak}',
+                        color: Colors.orangeAccent,
+                      ),
+                    ),
                   ),
-                  _buildStatisticCard(
-                    icon: Icons.star,
-                    label: 'Record Streak',
-                    value: '${waterTracker.recordStreak}',
-                    color: Colors.yellowAccent,
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 18.0),
+                      child: _buildStatisticCard(
+                        icon: Icons.star,
+                        label: 'Record Streak',
+                        value: '${waterTracker.recordStreak}',
+                        color: Colors.yellowAccent,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -1561,20 +1618,31 @@ class ProfileScreen extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildStatisticCard(
-                    icon: Icons.check_circle,
-                    label: 'Challenges',
-                    value: '${waterTracker.completedChallenges}',
-                    color: Colors.greenAccent,
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 18.0),
+                      child: _buildStatisticCard(
+                        icon: Icons.check_circle,
+                        label: 'Challenges',
+                        value: '${waterTracker.completedChallenges}',
+                        color: Colors.greenAccent,
+                      ),
+                    ),
                   ),
-                  _buildStatisticCard(
-                    icon: Icons.people,
-                    label: 'Companions',
-                    value: '${waterTracker.companionsCollected}',
-                    color: Colors.purpleAccent,
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 18.0),
+                      child: _buildStatisticCard(
+                        icon: Icons.people,
+                        label: 'Companions',
+                        value: '${waterTracker.companionsCollected}',
+                        color: Colors.purpleAccent,
+                      ),
+                    ),
                   ),
                 ],
               ),
+
               const SizedBox(height: 30),
               // List of options with trailing icons
               Container(
@@ -1586,13 +1654,11 @@ class ProfileScreen extends StatelessWidget {
                       color: Colors.grey.withOpacity(0.3),
                       spreadRadius: 2,
                       blurRadius: 5,
-                      offset: Offset(0, 3),
+                      offset: const Offset(0, 3),
                     ),
                   ],
                 ),
-                child: ListView(
-                  shrinkWrap: true,
-                  physics: NeverScrollableScrollPhysics(),
+                child: Column(
                   children: [
                     _buildOptionTile(
                       icon: Icons.share,
@@ -1605,7 +1671,32 @@ class ProfileScreen extends StatelessWidget {
                       icon: Icons.edit,
                       label: 'Edit Daily Water Goal',
                       onTap: () {
-                        // Implement edit daily water goal functionality
+                        showDialog(
+                          context: context,
+                          builder: (context) {
+                            return AlertDialog(
+                              title: const Text('Change Water Goal'),
+                              content: const Text(
+                                  'Changing your water goal will reset your progress for the day. Are you sure you want to continue?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                  },
+                                  child: const Text('Cancel'),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    Navigator.pushReplacementNamed(
+                                        context, '/questions');
+                                  },
+                                  child: const Text('Continue'),
+                                ),
+                              ],
+                            );
+                          },
+                        );
                       },
                     ),
                     _buildOptionTile(
@@ -1619,7 +1710,11 @@ class ProfileScreen extends StatelessWidget {
                       icon: Icons.settings,
                       label: 'Settings',
                       onTap: () {
-                        // Implement settings functionality
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const SettingsScreen()),
+                        );
                       },
                     ),
                   ],
@@ -1639,7 +1734,6 @@ class ProfileScreen extends StatelessWidget {
     required Color color,
   }) {
     return Container(
-      width: 150,
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
         color: color.withOpacity(0.2),

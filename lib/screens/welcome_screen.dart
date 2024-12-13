@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -42,9 +41,9 @@ class WelcomeScreenState extends State<WelcomeScreen>
       'description': 'Participate in hydration challenges.',
     },
     {
-      'title': 'Creature Collecting',
-      'icon': Icons.pets,
-      'description': 'Earn creatures by completing various tasks.',
+      'title': 'Duck Collection',
+      'icon': Icons.nature,
+      'description': 'Collect ducks as rewards for staying hydrated.',
     },
   ];
 
@@ -85,7 +84,7 @@ class WelcomeScreenState extends State<WelcomeScreen>
                 ),
                 SizedBox(height: 10),
                 Text(
-                  'Welcome to Waterly!',
+                  'Welcome to Waddle!',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   textAlign: TextAlign.center,
                 ),
@@ -157,9 +156,9 @@ class WelcomeScreenState extends State<WelcomeScreen>
                 ),
                 TextButton(
                   onPressed: () {
-                    Navigator.pushNamed(context, '/questions');
+                    Navigator.pushNamed(context, '/login');
                   },
-                  child: const Text('Skip Registration'),
+                  child: const Text('Log In'),
                 ),
               ],
             ),
