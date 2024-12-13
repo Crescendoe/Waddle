@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,6 +14,30 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
+  bool _rememberMe = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRememberedUser();
+  }
+
+  Future<void> _loadRememberedUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final email = prefs.getString('remembered_email');
+    final password = prefs.getString('remembered_password');
+    if (email != null && password != null) {
+      _emailController.text = email;
+      _passwordController.text = password;
+      _login();
+    }
+  }
+
+  Future<void> _rememberUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('remembered_email', _emailController.text);
+    await prefs.setString('remembered_password', _passwordController.text);
+  }
 
   Future<void> _login() async {
     if (_formKey.currentState!.validate()) {
@@ -33,6 +58,9 @@ class _LoginScreenState extends State<LoginScreen> {
         );
         if (!mounted) return;
         Navigator.of(context).pop();
+        if (_rememberMe) {
+          await _rememberUser();
+        }
         Navigator.pushNamed(context, '/home');
       } on FirebaseAuthException catch (e) {
         Navigator.of(context).pop();
@@ -112,6 +140,20 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                 ),
                 const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Checkbox(
+                      value: _rememberMe,
+                      onChanged: (value) {
+                        setState(() {
+                          _rememberMe = value!;
+                        });
+                      },
+                    ),
+                    const Text('Remember Me'),
+                  ],
+                ),
+                const SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: _login,
                   style: ElevatedButton.styleFrom(
@@ -129,7 +171,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                   child: const Text('Forgot Password?'),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 4),
                 TextButton(
                   onPressed: () {
                     Navigator.pushNamed(context, '/registration');

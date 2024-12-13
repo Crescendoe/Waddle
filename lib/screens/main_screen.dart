@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:waterly/models/water_tracker.dart';
@@ -75,7 +77,6 @@ class _MainScreenState extends State<MainScreen>
           ),
           bottomNavigationBar: Container(
             decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.6),
               boxShadow: const [
                 BoxShadow(
                   color: Colors.black26,
@@ -176,25 +177,73 @@ class StreakScreen extends StatefulWidget {
 class _StreakScreenState extends State<StreakScreen> {
   Map<DateTime, bool> _loggedDays = {};
   int _currentStreak = 0;
+  int _calculateCurrentStreak() {
+    int streak = 0;
+    DateTime today = DateTime.now();
+    DateTime currentDay = DateTime(today.year, today.month, today.day);
+
+    while (_loggedDays[currentDay] == true) {
+      streak++;
+      currentDay = currentDay.subtract(const Duration(days: 1));
+    }
+
+    return streak;
+  }
+
   DateTime _currentDate = DateTime.now();
 
   @override
   void initState() {
     super.initState();
     _loadLoggedDays();
+    _loadWaterLogsFromFirebase();
   }
 
   Future<void> _loadLoggedDays() async {
-    final prefs = await SharedPreferences.getInstance();
-    final loggedDays = prefs.getStringList('loggedDays') ?? [];
-    final currentStreak = prefs.getInt('currentStreak') ?? 0;
+    final user = context.read<User>(); // Assuming you have a User provider
+    final userId = user.uid;
+
+    final snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('waterLogs')
+        .get();
+
+    final loggedDays = <DateTime, bool>{};
+    for (var doc in snapshot.docs) {
+      final data = doc.data();
+      final entryTime = DateTime.parse(data['entryTime']);
+      loggedDays[DateTime(entryTime.year, entryTime.month, entryTime.day)] =
+          true;
+    }
 
     setState(() {
-      _loggedDays = {
-        for (var day in loggedDays) DateTime.parse(day): true,
-      };
-      _currentStreak = currentStreak;
+      _loggedDays = loggedDays;
+      _currentStreak = _calculateCurrentStreak();
     });
+  }
+
+  Future<void> _loadWaterLogsFromFirebase() async {
+    final user = context.read<User>(); // Assuming you have a User provider
+    final userId = user.uid;
+
+    final snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('waterLogs')
+        .get();
+
+    final logs = snapshot.docs.map((doc) {
+      final data = doc.data();
+      return WaterLog(
+        drinkName: data['drinkName'],
+        amount: data['amount'],
+        waterContent: data['waterContent'],
+        entryTime: DateTime.parse(data['entryTime']),
+      );
+    }).toList();
+
+    context.read<WaterTracker>().setLogs(logs);
   }
 
   String _getMonthName(int month) {
@@ -667,17 +716,24 @@ class _HomeScreenState extends State<HomeScreen>
     return Scaffold(
       body: Stack(
         children: [
+          // Background cup shape containing the water animation
           Positioned.fill(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 20.0),
-              child: Consumer<WaterTracker>(
-                builder: (context, tracker, child) {
-                  return AnimatedWave(
+            child: Center(
+              child: ClipPath(
+                clipper: CupClipper(), // Custom cup shape
+                child: Container(
+                  width: MediaQuery.of(context).size.width * 0.8,
+                  height: MediaQuery.of(context).size.height * 0.6,
+                  color: Colors.transparent,
+                  child: AnimatedWave(
                     controller: _controller,
-                    height: (tracker.waterConsumed / tracker.waterGoal) * 100,
-                    totalWidth: MediaQuery.of(context).size.width,
-                  );
-                },
+                    height:
+                        (waterTracker.waterConsumed / waterTracker.waterGoal) *
+                            100,
+                    totalWidth: MediaQuery.of(context).size.width *
+                        0.8, // Match width of cup
+                  ),
+                ),
               ),
             ),
           ),
@@ -810,8 +866,98 @@ class _HomeScreenState extends State<HomeScreen>
   }
 }
 
+class CupClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    Path path = Path();
+
+    double cupWidth = size.width;
+    double cupHeight = size.height;
+
+    // Start from the left side at the bottom of the glass (a bit rounded)
+    path.moveTo(cupWidth * 0.05, cupHeight * 0.85);
+
+    // Create a curved bottom (a soft U-shape for the base)
+    path.quadraticBezierTo(
+      cupWidth * 0.5, cupHeight * 1.05, // Lowest point of the base (center)
+      cupWidth * 0.95, cupHeight * 0.85, // Right end of the base
+    );
+
+    // Draw the right side of the glass (slightly inward at the top)
+    path.lineTo(cupWidth * 0.9, cupHeight * 0.1);
+
+    // Create a curved rim at the top (like the rim of a drinking glass)
+    path.quadraticBezierTo(
+      cupWidth * 0.5, 0, // Peak of the curve (center of the rim)
+      cupWidth * 0.1, cupHeight * 0.1, // Left end of the rim
+    );
+
+    // Draw the left side of the glass (tapering down to the base)
+    path.lineTo(cupWidth * 0.05, cupHeight * 0.85);
+
+    path.close(); // Complete the path
+
+    return path;
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) {
+    return false; // No need to reclip unless the shape changes dynamically
+  }
+}
+
+// CustomPainter to draw the glass border
+class GlassBorderPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Create a paint object for the border
+    Paint borderPaint = Paint()
+      ..color = const Color(0xFFB0BEC5) // Light grey color for glass border
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0; // Thickness of the border
+
+    // Use the CupClipper's path for the glass shape
+    Path glassPath = CupClipper().getClip(size);
+
+    // Draw the path with the border paint
+    canvas.drawPath(glassPath, borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return false; // No need to repaint unless something changes
+  }
+}
+
+// Use the CustomClipper and CustomPainter in your widget
+class GlassWidget extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        ClipPath(
+          clipper: CupClipper(), // Clip the shape using CupClipper
+          child: Container(
+            width: 200, // Width of the glass
+            height: 400, // Height of the glass
+            color: Colors.transparent, // No background color
+          ),
+        ),
+        CustomPaint(
+          painter: GlassBorderPainter(), // Paint the border of the glass
+          child: Container(
+            width: 200, // Width of the glass
+            height: 400, // Height of the glass
+            color: Colors.transparent, // No background color
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 void logDrink(BuildContext context, String drinkName, double amount,
-    double waterContent) {
+    double waterContent) async {
   final log = WaterLog(
     drinkName: drinkName,
     amount: amount,
@@ -820,6 +966,22 @@ void logDrink(BuildContext context, String drinkName, double amount,
   );
 
   context.read<WaterTracker>().addLog(log);
+
+  // Send log to Firebase
+  final user = context.read<User>(); // Assuming you have a User provider
+  final userId = user.uid;
+  final logData = {
+    'drinkName': drinkName,
+    'amount': amount,
+    'waterContent': waterContent,
+    'entryTime': log.entryTime.toIso8601String(),
+  };
+
+  await FirebaseFirestore.instance
+      .collection('users')
+      .doc(userId)
+      .collection('waterLogs')
+      .add(logData);
 }
 
 class AnimatedWave extends StatefulWidget {

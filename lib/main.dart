@@ -10,27 +10,36 @@ import 'package:waterly/screens/questions_screen.dart';
 import 'package:waterly/screens/registration_screen.dart';
 import 'package:waterly/screens/results_screen.dart';
 import 'package:waterly/screens/welcome_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  bool isFirstTime = prefs.getBool('isFirstTime') ?? true;
+  bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+
   runApp(
     ChangeNotifierProvider(
       create: (_) => WaterTracker(userId: '')..loadWaterData(),
-      child: const MyApp(),
+      child: MyApp(isFirstTime: isFirstTime, isLoggedIn: isLoggedIn),
     ),
   );
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final bool isFirstTime;
+  final bool isLoggedIn;
+
+  const MyApp({super.key, required this.isFirstTime, required this.isLoggedIn});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Waterly',
       debugShowCheckedModeBanner: false,
-      initialRoute: '/',
+      initialRoute: isFirstTime || !isLoggedIn ? '/' : '/login',
       routes: {
         '/': (context) => const WelcomeScreen(),
         '/registration': (context) => const RegistrationScreen(),

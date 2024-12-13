@@ -22,19 +22,23 @@ class WaterTracker extends ChangeNotifier {
   List<WaterLog> logs = [];
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final String userId;
+  final String? userId;
 
-  WaterTracker({required this.userId}) {
+  WaterTracker({this.userId}) {
     loadWaterData();
   }
 
   void addLog(WaterLog log) async {
     logs.add(log);
-    await _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('waterLogs')
-        .add(log.toMap());
+    if (userId != null) {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('waterLogs')
+          .add(log.toMap());
+    } else {
+      saveWaterData();
+    }
     notifyListeners();
   }
 
@@ -72,18 +76,27 @@ class WaterTracker extends ChangeNotifier {
     }
   }
 
+  void setLogs(List<WaterLog> newLogs) {
+    logs = newLogs;
+    notifyListeners();
+  }
+
   Future<void> loadWaterData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     waterConsumed = prefs.getDouble('waterConsumed') ?? 0.0;
     waterGoal = prefs.getDouble('waterGoal') ?? 0.0;
     goalMetToday = prefs.getBool('goalMetToday') ?? false;
 
-    DocumentSnapshot userDoc =
-        await _firestore.collection('users').doc(userId).get();
-    if (userDoc.exists) {
-      _currentStreak = userDoc['currentStreak'] ?? 0;
+    if (userId != null) {
+      DocumentSnapshot userDoc =
+          await _firestore.collection('users').doc(userId).get();
+      if (userDoc.exists) {
+        _currentStreak = userDoc['currentStreak'] ?? 0;
+      } else {
+        _currentStreak = 0;
+      }
     } else {
-      _currentStreak = 0;
+      _currentStreak = prefs.getInt('currentStreak') ?? 0;
     }
 
     notifyListeners();
@@ -95,9 +108,13 @@ class WaterTracker extends ChangeNotifier {
     await prefs.setDouble('waterGoal', waterGoal);
     await prefs.setBool('goalMetToday', goalMetToday);
 
-    await _firestore.collection('users').doc(userId).set({
-      'currentStreak': _currentStreak,
-    }, SetOptions(merge: true));
+    if (userId != null) {
+      await _firestore.collection('users').doc(userId).set({
+        'currentStreak': _currentStreak,
+      }, SetOptions(merge: true));
+    } else {
+      await prefs.setInt('currentStreak', _currentStreak);
+    }
   }
 
   void resetWater() {
