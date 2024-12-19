@@ -11,7 +11,7 @@ class WaterTracker extends ChangeNotifier {
   int recordStreak = 0;
   int companionsCollected = 0;
   String? username;
-  String? profileImage; // Changed from _profileImage to profileImage
+  String? profileImage;
 
   double get getWaterConsumed => waterConsumed;
   double get getWaterGoal => waterGoal;
@@ -21,8 +21,7 @@ class WaterTracker extends ChangeNotifier {
   int get getRecordStreak => recordStreak;
   int get getCompanionsCollected => companionsCollected;
   String? get getUsername => username;
-  String? get getProfileImage =>
-      profileImage; // Changed from _profileImage to profileImage
+  String? get getProfileImage => profileImage;
 
   List<WaterLog> logs = [];
 
@@ -41,6 +40,24 @@ class WaterTracker extends ChangeNotifier {
           .doc(userId)
           .collection('waterLogs')
           .add(log.toMap());
+    } else {
+      saveWaterData();
+    }
+    notifyListeners();
+  }
+
+  void removeLog(WaterLog log) async {
+    logs.remove(log);
+    if (userId != null) {
+      QuerySnapshot snapshot = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('waterLogs')
+          .where('entryTime', isEqualTo: log.entryTime.toIso8601String())
+          .get();
+      for (DocumentSnapshot doc in snapshot.docs) {
+        await doc.reference.delete();
+      }
     } else {
       saveWaterData();
     }
@@ -95,6 +112,7 @@ class WaterTracker extends ChangeNotifier {
     waterGoal = prefs.getDouble('waterGoal') ?? 0.0;
     goalMetToday = prefs.getBool('goalMetToday') ?? false;
     username = prefs.getString('username');
+    profileImage = prefs.getString('profileImage');
 
     if (userId != null) {
       DocumentSnapshot userDoc =
@@ -105,6 +123,7 @@ class WaterTracker extends ChangeNotifier {
         completedChallenges = userDoc['completedChallenges'] ?? 0;
         companionsCollected = userDoc['companionsCollected'] ?? 0;
         username = userDoc['username'];
+        profileImage = userDoc['profileImage'];
 
         QuerySnapshot logSnapshot = await _firestore
             .collection('users')
@@ -142,6 +161,9 @@ class WaterTracker extends ChangeNotifier {
     if (username != null) {
       await prefs.setString('username', username!);
     }
+    if (profileImage != null) {
+      await prefs.setString('profileImage', profileImage!);
+    }
 
     if (userId != null) {
       await _firestore.collection('users').doc(userId).set({
@@ -150,6 +172,7 @@ class WaterTracker extends ChangeNotifier {
         'completedChallenges': completedChallenges,
         'companionsCollected': companionsCollected,
         'username': username,
+        'profileImage': profileImage,
       }, SetOptions(merge: true));
 
       for (WaterLog log in logs) {
@@ -162,19 +185,33 @@ class WaterTracker extends ChangeNotifier {
     }
   }
 
-  void resetWater() {
+  void subtractWater(double amount) {
+    waterConsumed -= amount;
+    if (waterConsumed < 0) {
+      waterConsumed = 0; // Ensure water consumed doesn't go below 0
+    }
+    if (waterConsumed < waterGoal) {
+      goalMetToday = false;
+    }
+    saveWaterData();
+    notifyListeners();
+  }
+
+  void resetWater() async {
     if (!goalMetToday) {
       _currentStreak = 0;
     }
     waterConsumed = 0.0;
     goalMetToday = false;
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('waterConsumed', waterConsumed);
     saveWaterData();
     notifyListeners();
   }
 
   Future<void> updateProfileImage(String path) async {
-    profileImage = path; // Changed from _profileImage to profileImage
-
+    profileImage = path;
+    saveWaterData();
     notifyListeners();
   }
 
@@ -187,21 +224,22 @@ bool isChallengeCompleted(int index) {
 
 class WaterLog {
   final String drinkName;
-  final double amount; // in ounces or cups
-  final double waterContent; // as a percentage
+  final double amount;
+  final double waterContent;
   final DateTime entryTime;
 
-  WaterLog(
-      {required this.drinkName,
-      required this.amount,
-      required this.waterContent,
-      required this.entryTime});
+  WaterLog({
+    required this.drinkName,
+    required this.amount,
+    required this.waterContent,
+    required this.entryTime,
+  });
 
   Map<String, dynamic> toMap() => {
         'drinkName': drinkName,
         'amount': amount,
         'waterContent': waterContent,
-        'entryTime': entryTime.toIso8601String(), // Convert for Firestore
+        'entryTime': entryTime.toIso8601String(),
       };
 
   factory WaterLog.fromMap(Map<String, dynamic> map) {

@@ -54,6 +54,8 @@ class ResultsScreen extends StatelessWidget {
             const SizedBox(height: 40),
             ElevatedButton(
               onPressed: () {
+                // run the resetWater method from the water tracker provider
+                waterTracker.resetWater();
                 Navigator.pushNamed(context, '/home');
               },
               style: ElevatedButton.styleFrom(

@@ -123,7 +123,7 @@ class _MainScreenState extends State<MainScreen>
                     index: 2,
                   ),
                   _buildBottomNavItem(
-                    icon: Icons.pets,
+                    icon: Icons.emoji_nature,
                     label: 'Ducks',
                     index: 3,
                   ),
@@ -181,6 +181,8 @@ class StreakScreen extends StatefulWidget {
 class _StreakScreenState extends State<StreakScreen> {
   Map<DateTime, bool> _loggedDays = {};
   int _currentStreak = 0;
+  DateTime _selectedDate = DateTime.now();
+
   int _calculateCurrentStreak() {
     int streak = 0;
     DateTime today = DateTime.now();
@@ -193,8 +195,6 @@ class _StreakScreenState extends State<StreakScreen> {
 
     return streak;
   }
-
-  DateTime _currentDate = DateTime.now();
 
   @override
   void initState() {
@@ -269,7 +269,7 @@ class _StreakScreenState extends State<StreakScreen> {
   }
 
   Widget _buildCalendar() {
-    var now = _currentDate;
+    var now = _selectedDate;
     final firstDayOfMonth = DateTime(now.year, now.month, 1);
     final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
     final firstDayWeekday = firstDayOfMonth.weekday;
@@ -289,7 +289,7 @@ class _StreakScreenState extends State<StreakScreen> {
                 onPressed: () {
                   setState(() {
                     final previousMonth = DateTime(now.year, now.month - 1, 1);
-                    _currentDate = previousMonth;
+                    _selectedDate = previousMonth;
                   });
                 },
               ),
@@ -307,7 +307,7 @@ class _StreakScreenState extends State<StreakScreen> {
                 onPressed: () {
                   setState(() {
                     final nextMonth = DateTime(now.year, now.month + 1, 1);
-                    _currentDate = nextMonth;
+                    _selectedDate = nextMonth;
                   });
                 },
               ),
@@ -359,15 +359,14 @@ class _StreakScreenState extends State<StreakScreen> {
             final isToday = day.year == DateTime.now().year &&
                 day.month == DateTime.now().month &&
                 day.day == DateTime.now().day;
-            final isSelected = day.year == _currentDate.year &&
-                day.month == _currentDate.month &&
-                day.day == _currentDate.day;
+            final isSelected = day.year == _selectedDate.year &&
+                day.month == _selectedDate.month &&
+                day.day == _selectedDate.day;
 
             return GestureDetector(
               onTap: () {
                 setState(() {
-                  _currentDate = day;
-                  _showWaterLog(context, day);
+                  _selectedDate = day;
                 });
               },
               child: AnimatedContainer(
@@ -417,113 +416,6 @@ class _StreakScreenState extends State<StreakScreen> {
     return true;
   }
 
-  void _showWaterLog(BuildContext context, DateTime day) {
-    final logs = context.read<WaterTracker>().getLogsForDay(day);
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(25.0)),
-      ),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(16.0),
-          height: 500,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(25.0)),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 10,
-                  spreadRadius: 5)
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 50,
-                  height: 5,
-                  decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(10)),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Center(
-                child: Text(
-                  '${_getMonthName(day.month)} ${day.day}, ${day.year}',
-                  style: const TextStyle(
-                      fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: logs.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'No entries for this day',
-                          style: TextStyle(fontSize: 18, color: Colors.grey),
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount: logs.length,
-                        itemBuilder: (context, index) {
-                          final log = logs[index];
-                          return Card(
-                            margin: const EdgeInsets.symmetric(vertical: 8.0),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15.0),
-                            ),
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.all(16.0),
-                              leading: CircleAvatar(
-                                backgroundColor: log.drinkName == 'Soda'
-                                    ? Colors.brown
-                                    : log.drinkName == 'Energy Drink'
-                                        ? Colors.red
-                                        : log.drinkName == 'Tea'
-                                            ? Colors.green
-                                            : log.drinkName == 'Smoothie'
-                                                ? Colors.purple
-                                                : log.drinkName == 'Milk'
-                                                    ? Colors.white
-                                                    : log.drinkName ==
-                                                            'Orange Juice'
-                                                        ? Colors.orange
-                                                        : log.drinkName ==
-                                                                'Water'
-                                                            ? Colors.blueAccent
-                                                            : Colors.grey,
-                                child: Icon(
-                                  Icons.local_drink,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              title: Text(log.drinkName,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold)),
-                              subtitle: Text(
-                                  'Amount: ${log.amount} oz\nWater Content: ${log.waterContent}%'),
-                              trailing: Text(
-                                _formatTime(log.entryTime),
-                                style: const TextStyle(
-                                    fontSize: 12, color: Colors.grey),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   String _formatTime(DateTime timestamp) {
     final hour = timestamp.hour;
     final minute = timestamp.minute;
@@ -533,8 +425,38 @@ class _StreakScreenState extends State<StreakScreen> {
     return '$formattedHour:$formattedMinute $period';
   }
 
+  void _deleteLog(BuildContext context, WaterLog log) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Delete Entry'),
+          content: const Text('Are you sure you want to delete this entry?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Go Back'),
+            ),
+            TextButton(
+              onPressed: () {
+                context.read<WaterTracker>().removeLog(log);
+                context.read<WaterTracker>().subtractWater(log.amount);
+                Navigator.pop(context);
+              },
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final logs = context.watch<WaterTracker>().getLogsForDay(_selectedDate);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Streaks'),
@@ -555,7 +477,84 @@ class _StreakScreenState extends State<StreakScreen> {
                   color: Colors.black87),
             ),
             const SizedBox(height: 16),
-            Expanded(child: _buildCalendar()),
+            _buildCalendar(),
+            const SizedBox(height: 16),
+            Text(
+              '${_getMonthName(_selectedDate.month)} ${_selectedDate.day}, ${_selectedDate.year}',
+              style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: logs.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No entries recorded!',
+                        style: TextStyle(fontSize: 18, color: Colors.grey),
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: logs.length,
+                      itemBuilder: (context, index) {
+                        final log = logs[index];
+                        return Card(
+                          margin: const EdgeInsets.symmetric(vertical: 8.0),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15.0),
+                          ),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.all(16.0),
+                            leading: CircleAvatar(
+                              backgroundColor: log.drinkName == 'Soda'
+                                  ? Colors.brown
+                                  : log.drinkName == 'Energy Drink'
+                                      ? Colors.red
+                                      : log.drinkName == 'Tea'
+                                          ? Colors.green
+                                          : log.drinkName == 'Smoothie'
+                                              ? Colors.purple
+                                              : log.drinkName == 'Milk'
+                                                  ? Colors.white
+                                                  : log.drinkName ==
+                                                          'Orange Juice'
+                                                      ? Colors.orange
+                                                      : log.drinkName == 'Water'
+                                                          ? Colors.blueAccent
+                                                          : Colors.grey,
+                              child: const Icon(
+                                Icons.local_drink,
+                                color: Colors.white,
+                              ),
+                            ),
+                            title: Text(log.drinkName,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold)),
+                            subtitle: Text(
+                                'Amount: ${log.amount} oz\nWater Content: ${log.waterContent}%'),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  _formatTime(log.entryTime),
+                                  style: const TextStyle(
+                                      fontSize: 12, color: Colors.grey),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.close,
+                                      color: Colors.red),
+                                  onPressed: () {
+                                    _deleteLog(context, log);
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
           ],
         ),
       ),
@@ -655,15 +654,15 @@ class ChallengesScreen extends StatelessWidget {
       case 0:
         return 'Nothing But Water';
       case 1:
-        return 'Tea Challenge';
+        return 'Tea Time';
       case 2:
-        return 'Caffeine Challenge';
+        return 'Caffine Cut';
       case 3:
-        return 'Sugar Challenge';
+        return 'Sugar-Free Sips';
       case 4:
-        return 'Lactose Challenge';
+        return 'Dairy-Free Refresh';
       case 5:
-        return 'Vitamin Challenge';
+        return 'Vitamin Vitality';
       default:
         return 'Challenge';
     }
