@@ -73,7 +73,7 @@ class _MainScreenState extends State<MainScreen>
                   StreakScreen(),
                   ChallengesScreen(),
                   HomeScreen(),
-                  CompanionScreen(),
+                  DuckScreen(),
                   ProfileScreen(),
                 ],
               ),
@@ -124,7 +124,7 @@ class _MainScreenState extends State<MainScreen>
                   ),
                   _buildBottomNavItem(
                     icon: Icons.pets,
-                    label: 'Companion',
+                    label: 'Ducks',
                     index: 3,
                   ),
                   _buildBottomNavItem(
@@ -575,22 +575,28 @@ class ChallengesScreen extends StatelessWidget {
         automaticallyImplyLeading: false,
       ),
       body: Padding(
-        padding: const EdgeInsets.all(8.0),
+        padding: const EdgeInsets.all(24),
         child: GridView.builder(
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
+            crossAxisCount: 1,
             crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
+            mainAxisSpacing: 15,
+            childAspectRatio: 2, // Make each box a rectangle
           ),
           itemCount: 6, // Number of challenge boxes
           itemBuilder: (context, index) {
             return GestureDetector(
               onTap: () {
-                _showChallengeDetails(context, index);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ChallengeDetailScreen(index: index),
+                  ),
+                );
               },
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.blueAccent,
+                  color: _getChallengeColor(index),
                   borderRadius: BorderRadius.circular(15),
                   boxShadow: [
                     BoxShadow(
@@ -600,14 +606,40 @@ class ChallengesScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: Center(
-                  child: Text(
-                    'Challenge ${index + 1}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '14 Day Challenge',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            getChallengeTitle(index),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Icon(
+                        _getChallengeIcon(index),
+                        size: 70,
+                        color: Colors.white,
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -618,49 +650,115 @@ class ChallengesScreen extends StatelessWidget {
     );
   }
 
-  void _showChallengeDetails(BuildContext context, int index) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(25.0)),
+  static String getChallengeTitle(int index) {
+    switch (index) {
+      case 0:
+        return 'Nothing But Water';
+      case 1:
+        return 'Tea Challenge';
+      case 2:
+        return 'Caffeine Challenge';
+      case 3:
+        return 'Sugar Challenge';
+      case 4:
+        return 'Lactose Challenge';
+      case 5:
+        return 'Vitamin Challenge';
+      default:
+        return 'Challenge';
+    }
+  }
+
+  Color _getChallengeColor(int index) {
+    switch (index) {
+      case 0:
+        return Colors.blue;
+      case 1:
+        return Colors.green;
+      case 2:
+        return Colors.brown;
+      case 3:
+        return Colors.red;
+      case 4:
+        return Colors.orange;
+      case 5:
+        return Colors.purple;
+      default:
+        return Colors.blueAccent;
+    }
+  }
+
+  IconData _getChallengeIcon(int index) {
+    switch (index) {
+      case 0:
+        return Icons.water;
+      case 1:
+        return Icons.emoji_food_beverage;
+      case 2:
+        return Icons.coffee;
+      case 3:
+        return Icons.cake;
+      case 4:
+        return Icons.local_drink;
+      case 5:
+        return Icons.local_hospital;
+      default:
+        return Icons.local_drink;
+    }
+  }
+}
+
+class ChallengeDetailScreen extends StatelessWidget {
+  final int index;
+
+  const ChallengeDetailScreen({super.key, required this.index});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(ChallengesScreen.getChallengeTitle(index)),
       ),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(16.0),
-          height: 300,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 50,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '14 Day Challenge',
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
               ),
-              const SizedBox(height: 16),
-              Center(
-                child: Text(
-                  'Challenge ${index + 1} Details',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Here are the details of the challenge. You can add more information about the challenge here.',
-                style: TextStyle(fontSize: 16),
-              ),
-            ],
-          ),
-        );
-      },
+            ),
+            const SizedBox(height: 10),
+            Text(
+              _getChallengeDescription(index),
+              style: const TextStyle(fontSize: 16),
+            ),
+          ],
+        ),
+      ),
     );
+  }
+
+  String _getChallengeDescription(int index) {
+    switch (index) {
+      case 0:
+        return 'The title says it all';
+      case 1:
+        return 'Drink up the unique benefits of tea you may have not known about';
+      case 2:
+        return 'Get better sleep, lessen anxiety, and balance your energy levels';
+      case 3:
+        return 'Ditch beverages that are generally not healthy';
+      case 4:
+        return 'Discover if dairy-based beverages are or aren\'t for you';
+      case 5:
+        return 'Enrich yourself with sources of vitamins and minerals';
+      default:
+        return 'Challenge details';
+    }
   }
 }
 
@@ -879,25 +977,25 @@ class CupClipper extends CustomClipper<Path> {
     double cupHeight = size.height;
 
     // Start from the left side at the bottom of the glass (a bit rounded)
-    path.moveTo(cupWidth * 0.05, cupHeight * 0.85);
+    path.moveTo(cupWidth * 0.1, cupHeight * 0.9);
 
-    // Create a curved bottom (a soft U-shape for the base)
+    // Create a curved rim at the bottom (like the rim of a drinking glass)
     path.quadraticBezierTo(
-      cupWidth * 0.5, cupHeight * 1.05, // Lowest point of the base (center)
-      cupWidth * 0.95, cupHeight * 0.85, // Right end of the base
+      cupWidth * 0.5, cupHeight, // Peak of the curve (center of the rim)
+      cupWidth * 0.9, cupHeight * 0.9, // Right end of the rim
     );
 
-    // Draw the right side of the glass (slightly inward at the top)
-    path.lineTo(cupWidth * 0.9, cupHeight * 0.1);
+    // Draw the right side of the glass (slightly outward at the top)
+    path.lineTo(cupWidth * 0.95, cupHeight * 0.15);
 
-    // Create a curved rim at the top (like the rim of a drinking glass)
+    // Create a curved top (a soft U-shape for the base)
     path.quadraticBezierTo(
-      cupWidth * 0.5, 0, // Peak of the curve (center of the rim)
-      cupWidth * 0.1, cupHeight * 0.1, // Left end of the rim
+      cupWidth * 0.5, cupHeight * -0.05, // Lowest point of the base (center)
+      cupWidth * 0.05, cupHeight * 0.15, // Left end of the base
     );
 
-    // Draw the left side of the glass (tapering down to the base)
-    path.lineTo(cupWidth * 0.05, cupHeight * 0.85);
+    // Draw the left side of the glass (tapering down to the rim)
+    path.lineTo(cupWidth * 0.1, cupHeight * 0.9);
 
     path.close(); // Complete the path
 
@@ -916,8 +1014,8 @@ class GlassBorderPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     // Create a paint object for the border
     Paint borderPaint = Paint()
-      ..color = const Color(0xFFB0BEC5) // Light grey color for glass border
-      ..style = PaintingStyle.stroke
+      ..color = Colors.black
+      ..style = PaintingStyle.fill
       ..strokeWidth = 3.0; // Thickness of the border
 
     // Use the CupClipper's path for the glass shape
@@ -935,6 +1033,8 @@ class GlassBorderPainter extends CustomPainter {
 
 // Use the CustomClipper and CustomPainter in your widget
 class GlassWidget extends StatelessWidget {
+  const GlassWidget({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -947,12 +1047,9 @@ class GlassWidget extends StatelessWidget {
             color: Colors.transparent, // No background color
           ),
         ),
-        CustomPaint(
-          painter: GlassBorderPainter(), // Paint the border of the glass
-          child: Container(
-            width: 200, // Width of the glass
-            height: 400, // Height of the glass
-            color: Colors.transparent, // No background color
+        Positioned.fill(
+          child: CustomPaint(
+            painter: GlassBorderPainter(), // Paint the border of the glass
           ),
         ),
       ],
@@ -973,7 +1070,7 @@ void logDrink(BuildContext context, String drinkName, double amount,
 
   // Send log to Firebase
   final user = context.read<User>(); // Assuming you have a User provider
-  final userId = user.uid;
+  final userID = user.uid;
   final logData = {
     'drinkName': drinkName,
     'amount': amount,
@@ -983,7 +1080,7 @@ void logDrink(BuildContext context, String drinkName, double amount,
 
   await FirebaseFirestore.instance
       .collection('users')
-      .doc(userId)
+      .doc(userID)
       .collection('waterLogs')
       .add(logData);
 }
@@ -1096,20 +1193,22 @@ class DrinkSelectionBottomSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16.0),
-      height: 400,
+      height: 475,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'What did you drink?',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          const Center(
+            child: Text(
+              'What did you drink?',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 6),
           Expanded(
             child: GridView.count(
               crossAxisCount: 3, // Number of columns
               crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
+              mainAxisSpacing: 2,
               children: _buildDrinkItems(context),
             ),
           ),
@@ -1120,16 +1219,53 @@ class DrinkSelectionBottomSheet extends StatelessWidget {
 
   List<Widget> _buildDrinkItems(BuildContext context) {
     final drinks = [
-      // Water
+      // Waters
       {
         'name': 'Water',
-        'icon': Icons.local_drink,
+        'icon': Icons.water,
         'ratio': 1.0,
         'color': Colors.blue
       },
+      {
+        'name': 'Sparkling Water',
+        'icon': Icons.bubble_chart,
+        'ratio': 1.0,
+        'color': Colors.lightBlue
+      },
+      {
+        'name': 'Coconut Water',
+        'icon': Icons.local_drink,
+        'ratio': 0.9,
+        'color': Colors.brown
+      },
+      // Teas
+      {
+        'name': 'Black Tea',
+        'icon': Icons.emoji_food_beverage,
+        'ratio': 0.9,
+        'color': Colors.black
+      },
+      {
+        'name': 'Green Tea',
+        'icon': Icons.emoji_food_beverage,
+        'ratio': 0.9,
+        'color': Colors.green
+      },
+      {
+        'name': 'Herbal Tea',
+        'icon': Icons.emoji_food_beverage,
+        'ratio': 0.9,
+        'color': Colors.lightGreen
+      },
+      {
+        'name': 'Matcha',
+        'icon': Icons.emoji_food_beverage,
+        'ratio': 0.9,
+        'color': Colors.greenAccent
+      },
       // Juices
       {
-        'name': 'Orange Juice',
+        'name': 'Juice',
         'icon': Icons.local_drink,
         'ratio': 0.8,
         'color': Colors.orange
@@ -1137,35 +1273,85 @@ class DrinkSelectionBottomSheet extends StatelessWidget {
       {
         'name': 'Lemonade',
         'icon': Icons.local_drink,
-        'ratio': 0.6,
+        'ratio': 0.8,
         'color': Colors.yellow
       },
-      // Dairy
+      // Milks
       {
         'name': 'Milk',
         'icon': Icons.local_drink,
         'ratio': 0.9,
         'color': Colors.white
       },
+      {
+        'name': 'Skim Milk',
+        'icon': Icons.local_drink,
+        'ratio': 0.9,
+        'color': Colors.white,
+      },
+      {
+        'name': 'Almond Milk',
+        'icon': Icons.local_drink,
+        'ratio': 0.9,
+        'color': Colors.white
+      },
+      {
+        'name': 'Oat Milk',
+        'icon': Icons.local_drink,
+        'ratio': 0.9,
+        'color': Colors.white
+      },
+      {
+        'name': 'Soy Milk',
+        'icon': Icons.local_drink,
+        'ratio': 0.9,
+        'color': Colors.white
+      },
+      // Yogurt
+      {
+        'name': 'Yogurt',
+        'icon': Icons.local_drink,
+        'ratio': 0.8,
+        'color': Colors.orangeAccent
+      },
+      // Milkshake
+      {
+        'name': 'Milkshake',
+        'icon': Icons.local_drink,
+        'ratio': 0.8,
+        'color': Colors.purple
+      },
       // Energy Drinks
       {
         'name': 'Energy Drink',
-        'icon': Icons.local_drink,
+        'icon': Icons.flash_on,
         'ratio': 0.6,
         'color': Colors.red
       },
-      // Coffee and Tea
+      // Coffee
       {
         'name': 'Coffee',
-        'icon': Icons.local_drink,
+        'icon': Icons.coffee,
         'ratio': 0.5,
         'color': Colors.brown
       },
       {
-        'name': 'Tea',
-        'icon': Icons.local_drink,
-        'ratio': 0.7,
-        'color': Colors.green
+        'name': 'Decaf Coffee',
+        'icon': Icons.coffee,
+        'ratio': 0.5,
+        'color': Colors.brown
+      },
+      {
+        'name': 'Latte',
+        'icon': Icons.local_cafe,
+        'ratio': 0.5,
+        'color': Colors.brown
+      },
+      {
+        'name': 'Hot Chocolate',
+        'icon': Icons.local_cafe,
+        'ratio': 0.5,
+        'color': Colors.brown
       },
       // Sodas
       {
@@ -1174,18 +1360,38 @@ class DrinkSelectionBottomSheet extends StatelessWidget {
         'ratio': 0.4,
         'color': Colors.brown
       },
+      {
+        'name': 'Diet Soda',
+        'icon': Icons.local_drink,
+        'ratio': 0.4,
+        'color': Colors.brown
+      },
       // Smoothies
       {
         'name': 'Smoothie',
-        'icon': Icons.local_drink,
-        'ratio': 0.7,
+        'icon': Icons.blender,
+        'ratio': 0.8,
         'color': Colors.purple
       },
+      // Sports Drinks
       {
         'name': 'Sports Drink',
-        'icon': Icons.local_drink,
-        'ratio': 0.5,
+        'icon': Icons.sports,
+        'ratio': 0.8,
         'color': Colors.blue
+      },
+      {
+        'name': 'Protein Shake',
+        'icon': Icons.fitness_center,
+        'ratio': 0.8,
+        'color': Colors.orangeAccent
+      },
+      // Soup
+      {
+        'name': 'Soup',
+        'icon': Icons.soup_kitchen,
+        'ratio': 0.6,
+        'color': Colors.redAccent
       },
     ];
 
@@ -1198,9 +1404,14 @@ class DrinkSelectionBottomSheet extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(drink['icon'] as IconData,
-                size: 40, color: drink['color'] as Color),
+                size: 55, color: drink['color'] as Color),
             const SizedBox(height: 5),
-            Text(drink['name'] as String),
+            Text(
+              drink['name'] as String,
+              style: const TextStyle(
+                fontSize: 16,
+              ),
+            ),
           ],
         ),
       );
@@ -1295,10 +1506,10 @@ class _DrinkAmountSliderState extends State<DrinkAmountSlider> {
   }
 }
 
-class CompanionScreen extends StatelessWidget {
-  CompanionScreen({super.key});
+class DuckScreen extends StatelessWidget {
+  DuckScreen({super.key});
 
-  void _showCreatureDetails(BuildContext context, int index) {
+  void _showDuckDetails(BuildContext context, int index) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -1324,7 +1535,7 @@ class CompanionScreen extends StatelessWidget {
               const SizedBox(height: 16),
               Center(
                 child: Text(
-                  'Creature ${index + 1} Details',
+                  '${_duckNames[index]} Details',
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -1333,7 +1544,7 @@ class CompanionScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                _creaturePrerequisites[index]!,
+                _duckPrerequisites[index]!,
                 style: const TextStyle(fontSize: 16),
               ),
             ],
@@ -1343,8 +1554,8 @@ class CompanionScreen extends StatelessWidget {
     );
   }
 
-  final Map<int, String> _creaturePrerequisites = {
-    0: 'Drink 100 oz of water',
+  final Map<int, String> _duckPrerequisites = {
+    0: 'Reach your goal for the first time',
     1: 'Complete 5 challenges',
     2: 'Log water for 7 consecutive days',
     3: 'Reach a 10-day streak',
@@ -1359,18 +1570,45 @@ class CompanionScreen extends StatelessWidget {
     12: 'Drink 400 oz of water',
     13: 'Complete 20 challenges',
     14: 'Log water for 28 consecutive days',
-    15: 'Reach a 40-day streak',
+    15: 'Reach a 60-day streak',
     16: 'Drink 500 oz of water',
     17: 'Complete 25 challenges',
     18: 'Log water for 35 consecutive days',
-    19: 'Reach a 50-day streak',
+    19: 'Reach a 120-day streak',
     20: 'Drink 600 oz of water',
     21: 'Complete 30 challenges',
     22: 'Log water for 42 consecutive days',
-    23: 'Reach a 60-day streak',
+    23: 'Reach a 365-day streak',
   };
 
-  bool _isCreatureUnlocked(BuildContext context, int index) {
+  final List<String> _duckNames = [
+    'Quack Attack',
+    'Feathered Friend',
+    'Splash Master',
+    'Puddle Jumper',
+    'Waddle Wizard',
+    'Beak Bandit',
+    'Feather Fury',
+    'Splashy',
+    'Waddle Wonder',
+    'Pond Hopper',
+    'Quackster',
+    'Duckling Dynamo',
+    'Aqua Quacker',
+    'Waddle Warrior',
+    'Pond Pal',
+    'Splashy Sidekick',
+    'Feathered Fury',
+    'Quack Commander',
+    'Waddle Whiz',
+    'Puddle Pal',
+    'Beak Boss',
+    'Feathered Flash',
+    'Splash Sprinter',
+    'Waddle Warden',
+  ];
+
+  bool _isDuckUnlocked(BuildContext context, int index) {
     final waterTracker = context.read<WaterTracker>();
     switch (index) {
       case 0:
@@ -1430,7 +1668,7 @@ class CompanionScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Companion'),
+        title: const Text('Duck'),
         centerTitle: true,
         automaticallyImplyLeading: false,
       ),
@@ -1442,13 +1680,12 @@ class CompanionScreen extends StatelessWidget {
             crossAxisSpacing: 10,
             mainAxisSpacing: 10,
           ),
-          itemCount: 24, // Number of creatures
+          itemCount: 24, // Number of ducks
           itemBuilder: (context, index) {
-            final isUnlocked = _isCreatureUnlocked(context, index);
+            final isUnlocked = _isDuckUnlocked(context, index);
             return GestureDetector(
               onTap: () {
-                _showCreatureDetails(
-                    context, index); // Trigger bottom sheet on tap
+                _showDuckDetails(context, index); // Trigger bottom sheet on tap
               },
               child: Container(
                 decoration: BoxDecoration(
@@ -1468,13 +1705,13 @@ class CompanionScreen extends StatelessWidget {
                     children: [
                       isUnlocked
                           ? Image.asset(
-                              'assets/creature_$index.png') // Display the creature's design
+                              'assets/duck_$index.png') // Display the duck's design
                           : const Icon(Icons.lock,
                               size: 40,
                               color: Colors.black), // Display a silhouette
                       const SizedBox(height: 8),
                       Text(
-                        'Creature ${index + 1}',
+                        _duckNames[index],
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
