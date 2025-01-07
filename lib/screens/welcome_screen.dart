@@ -70,27 +70,23 @@ class WelcomeScreenState extends State<WelcomeScreen>
       body: Stack(
         children: [
           // Top text section
-          const Positioned(
+          Positioned(
             top: 75,
             left: 0,
             right: 0,
             child: Column(
               children: [
-                // Icon for the app logo
-                Icon(
-                  Icons.local_drink,
-                  size: 100,
-                  color: Colors.blue,
-                ),
-                SizedBox(height: 10),
-                Text(
+                // wade_wave.png image
+                Image.asset('lib/assets/images/wade_wave.png', height: 175),
+                const SizedBox(height: 10),
+                const Text(
                   'Welcome to Waddle!',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   textAlign: TextAlign.center,
                 ),
-                SizedBox(height: 10),
-                Text(
-                  'This app will help you track your daily water intake.',
+                const SizedBox(height: 10),
+                const Text(
+                  "Let's help you keep track your daily water intake.",
                   style: TextStyle(fontSize: 16),
                   textAlign: TextAlign.center,
                 ),
@@ -100,11 +96,11 @@ class WelcomeScreenState extends State<WelcomeScreen>
 
           // Feature cards section
           Positioned(
-            top: 275,
+            top: 335,
             left: 0,
             right: 0,
             child: SizedBox(
-              height: 400,
+              height: 350,
               child: PageView.builder(
                 controller: _pageController,
                 itemCount: _features.length,
@@ -125,7 +121,7 @@ class WelcomeScreenState extends State<WelcomeScreen>
 
           // Dots indicator
           Positioned(
-            bottom: 180,
+            bottom: 170,
             left: 0,
             right: 0,
             child: Center(
@@ -135,7 +131,7 @@ class WelcomeScreenState extends State<WelcomeScreen>
                 effect: const WormEffect(
                   dotHeight: 8,
                   dotWidth: 8,
-                  activeDotColor: Colors.blue,
+                  activeDotColor: Color(0xFF36708B),
                 ),
               ),
             ),
@@ -177,7 +173,7 @@ Widget _buildFeatureCard(String title, IconData icon, String description) {
     child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(icon, size: 80, color: Colors.blue),
+        Icon(icon, size: 80, color: const Color(0xFF36708B)),
         const SizedBox(height: 10),
         Text(
           title,
@@ -188,7 +184,7 @@ Widget _buildFeatureCard(String title, IconData icon, String description) {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Text(
             description,
-            style: const TextStyle(fontSize: 14),
+            style: const TextStyle(fontSize: 16),
             textAlign: TextAlign.center,
           ),
         ),

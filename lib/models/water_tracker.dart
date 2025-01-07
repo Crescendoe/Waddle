@@ -93,11 +93,9 @@ class WaterTracker extends ChangeNotifier {
   }
 
   void incrementStreak() {
-    if (!goalMetToday) {
-      _currentStreak++;
-      if (_currentStreak > recordStreak) {
-        recordStreak = _currentStreak;
-      }
+    _currentStreak++;
+    if (_currentStreak > recordStreak) {
+      recordStreak = _currentStreak;
     }
   }
 

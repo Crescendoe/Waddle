@@ -171,6 +171,10 @@ class _MainScreenState extends State<MainScreen>
   }
 }
 
+void rebuildUI(BuildContext context) {
+  Navigator.pushReplacementNamed(context, '/home');
+}
+
 class StreakScreen extends StatefulWidget {
   const StreakScreen({super.key});
 
@@ -397,9 +401,10 @@ class _StreakScreenState extends State<StreakScreen> {
                       : Text(
                           '${day.day}',
                           style: TextStyle(
-                            color: isToday ? Colors.blueAccent : Colors.black,
+                            color: isToday ? Colors.blue : Colors.black,
                             fontWeight:
                                 isToday ? FontWeight.bold : FontWeight.normal,
+                            fontSize: isToday ? 18 : 14,
                           ),
                         ),
                 ),
@@ -412,7 +417,7 @@ class _StreakScreenState extends State<StreakScreen> {
   }
 
   bool _isGoalMet(DateTime day) {
-    // Placeholder logic
+    // TBD
     return true;
   }
 
@@ -463,32 +468,51 @@ class _StreakScreenState extends State<StreakScreen> {
         centerTitle: true,
         automaticallyImplyLeading: false,
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 16),
-            Text(
-              'Current Streak: $_currentStreak days',
-              style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87),
-            ),
-            const SizedBox(height: 16),
-            _buildCalendar(),
-            const SizedBox(height: 16),
-            Text(
-              '${_getMonthName(_selectedDate.month)} ${_selectedDate.day}, ${_selectedDate.year}',
-              style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: logs.isEmpty
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 16),
+              Center(
+                child: Column(
+                  children: [
+                    Text(
+                      '${context.watch<WaterTracker>().currentStreak}',
+                      style: const TextStyle(
+                        fontSize: 48,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    Text(
+                      context.watch<WaterTracker>().currentStreak == 1
+                          ? 'day'
+                          : 'days',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildCalendar(),
+              const SizedBox(height: 16),
+              Center(
+                child: Text(
+                  '${_getMonthName(_selectedDate.month)} ${_selectedDate.day}, ${_selectedDate.year}',
+                  style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87),
+                ),
+              ),
+              const SizedBox(height: 16),
+              logs.isEmpty
                   ? const Center(
                       child: Text(
                         'No entries recorded!',
@@ -496,6 +520,8 @@ class _StreakScreenState extends State<StreakScreen> {
                       ),
                     )
                   : ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
                       itemCount: logs.length,
                       itemBuilder: (context, index) {
                         final log = logs[index];
@@ -554,8 +580,8 @@ class _StreakScreenState extends State<StreakScreen> {
                         );
                       },
                     ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -574,12 +600,12 @@ class ChallengesScreen extends StatelessWidget {
         automaticallyImplyLeading: false,
       ),
       body: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
         child: GridView.builder(
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 1,
             crossAxisSpacing: 10,
-            mainAxisSpacing: 15,
+            mainAxisSpacing: 0,
             childAspectRatio: 2, // Make each box a rectangle
           ),
           itemCount: 6, // Number of challenge boxes
@@ -594,6 +620,7 @@ class ChallengesScreen extends StatelessWidget {
                 );
               },
               child: Container(
+                margin: const EdgeInsets.fromLTRB(0, 8, 0, 8),
                 decoration: BoxDecoration(
                   color: _getChallengeColor(index),
                   borderRadius: BorderRadius.circular(15),
@@ -812,8 +839,6 @@ class _HomeScreenState extends State<HomeScreen>
     final waterGoalCups = (waterTracker.waterGoal / 8).toInt();
 
     final waterConsumed = (waterTracker.waterConsumed).toInt();
-    final waterConsumedCups = (waterTracker.waterConsumed / 8).toInt();
-
     return Scaffold(
       body: Stack(
         children: [
@@ -824,7 +849,7 @@ class _HomeScreenState extends State<HomeScreen>
                 clipper: CupClipper(), // Custom cup shape
                 child: Container(
                   width: MediaQuery.of(context).size.width * 0.8,
-                  height: MediaQuery.of(context).size.height * 0.6,
+                  height: MediaQuery.of(context).size.height * 0.7,
                   color: Colors.transparent,
                   child: AnimatedWave(
                     controller: _controller,
@@ -835,6 +860,19 @@ class _HomeScreenState extends State<HomeScreen>
                         0.8, // Match width of cup
                   ),
                 ),
+              ),
+            ),
+          ),
+          // Overlay cup image
+          Positioned.fill(
+            child: Center(
+              child: Image.asset(
+                'lib/assets/images/cup.png', // Path to your cup image
+                fit: BoxFit
+                    .contain, // Ensure the image fits within the container
+                width: MediaQuery.of(context).size.width * 0.9,
+                height: MediaQuery.of(context).size.height * 0.7,
+                opacity: AlwaysStoppedAnimation(0.8), // Slightly transparent
               ),
             ),
           ),
@@ -879,7 +917,7 @@ class _HomeScreenState extends State<HomeScreen>
                     return Text(
                       // display the amount of ounces to go or cups to go when compared to the waterGoal value form WaterTracker provider
                       showCups
-                          ? '${(waterGoalCups - waterConsumedCups).toStringAsFixed(0)} cups to go!'
+                          ? '${(waterGoalCups - waterConsumedInCups).toStringAsFixed(0)} cups to go!'
                           : '${(waterGoal - waterConsumed).toStringAsFixed(0)} oz to go!',
                       style: const TextStyle(
                         fontSize: 16,
@@ -928,7 +966,7 @@ class _HomeScreenState extends State<HomeScreen>
           onConfirm: (double waterIntake) {
             _incrementWaterConsumed(waterIntake);
             logDrink(context, drinkName, waterIntake, drinkWaterRatio);
-            Navigator.pop(context); // Close the slider sheet after confirmation
+            Navigator.pop(context);
           },
         );
       },
@@ -957,6 +995,7 @@ class _HomeScreenState extends State<HomeScreen>
                 .read<WaterTracker>()
                 .setWater(context.read<WaterTracker>().waterGoal);
             context.read<WaterTracker>().incrementStreak();
+            context.read<WaterTracker>().goalMetToday = true;
             Navigator.pushReplacementNamed(context, '/congrats');
           }
         });
@@ -976,22 +1015,19 @@ class CupClipper extends CustomClipper<Path> {
     double cupHeight = size.height;
 
     // Start from the left side at the bottom of the glass (a bit rounded)
-    path.moveTo(cupWidth * 0.1, cupHeight * 0.9);
+    path.moveTo(cupWidth * 0.1, cupHeight * 0.95);
 
     // Create a curved rim at the bottom (like the rim of a drinking glass)
     path.quadraticBezierTo(
-      cupWidth * 0.5, cupHeight, // Peak of the curve (center of the rim)
-      cupWidth * 0.9, cupHeight * 0.9, // Right end of the rim
+      cupWidth * 0.5, cupHeight * 1.05, // Peak of the curve (center of the rim)
+      cupWidth * 0.9, cupHeight * 0.95, // Right end of the rim
     );
 
     // Draw the right side of the glass (slightly outward at the top)
-    path.lineTo(cupWidth * 0.95, cupHeight * 0.15);
+    path.lineTo(cupWidth * 1, cupHeight * 0.05);
 
-    // Create a curved top (a soft U-shape for the base)
-    path.quadraticBezierTo(
-      cupWidth * 0.5, cupHeight * -0.05, // Lowest point of the base (center)
-      cupWidth * 0.05, cupHeight * 0.15, // Left end of the base
-    );
+    // Flatten the top of the cup
+    path.lineTo(cupWidth * 0, cupHeight * 0.05);
 
     // Draw the left side of the glass (tapering down to the rim)
     path.lineTo(cupWidth * 0.1, cupHeight * 0.9);
@@ -1004,55 +1040,6 @@ class CupClipper extends CustomClipper<Path> {
   @override
   bool shouldReclip(covariant CustomClipper<Path> oldClipper) {
     return false; // No need to reclip unless the shape changes dynamically
-  }
-}
-
-// CustomPainter to draw the glass border
-class GlassBorderPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Create a paint object for the border
-    Paint borderPaint = Paint()
-      ..color = Colors.black
-      ..style = PaintingStyle.fill
-      ..strokeWidth = 3.0; // Thickness of the border
-
-    // Use the CupClipper's path for the glass shape
-    Path glassPath = CupClipper().getClip(size);
-
-    // Draw the path with the border paint
-    canvas.drawPath(glassPath, borderPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return false; // No need to repaint unless something changes
-  }
-}
-
-// Use the CustomClipper and CustomPainter in your widget
-class GlassWidget extends StatelessWidget {
-  const GlassWidget({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        ClipPath(
-          clipper: CupClipper(), // Clip the shape using CupClipper
-          child: Container(
-            width: 200, // Width of the glass
-            height: 400, // Height of the glass
-            color: Colors.transparent, // No background color
-          ),
-        ),
-        Positioned.fill(
-          child: CustomPaint(
-            painter: GlassBorderPainter(), // Paint the border of the glass
-          ),
-        ),
-      ],
-    );
   }
 }
 
@@ -1158,8 +1145,9 @@ class WavePainter extends CustomPainter {
       ).createShader(Rect.fromLTWH(0, 0, totalWidth, size.height));
 
     final path = Path();
-    const waveHeight = 20.0;
-    final baseHeight = size.height * (1 - height / 100);
+    const waveHeight = 15.0;
+    final baseHeight = size.height * (1 - height / 100) +
+        50; // Lower the base height by 40 pixels
 
     path.moveTo(0, baseHeight);
     for (double i = 0; i <= totalWidth; i++) {
@@ -1554,57 +1542,57 @@ class DuckScreen extends StatelessWidget {
   }
 
   final Map<int, String> _duckPrerequisites = {
-    0: 'Reach your goal for the first time',
-    1: 'Complete 5 challenges',
-    2: 'Log water for 7 consecutive days',
-    3: 'Reach a 10-day streak',
-    4: 'Drink 200 oz of water',
-    5: 'Complete 10 challenges',
-    6: 'Log water for 14 consecutive days',
-    7: 'Reach a 20-day streak',
-    8: 'Drink 300 oz of water',
-    9: 'Complete 15 challenges',
-    10: 'Log water for 21 consecutive days',
-    11: 'Reach a 30-day streak',
-    12: 'Drink 400 oz of water',
-    13: 'Complete 20 challenges',
-    14: 'Log water for 28 consecutive days',
-    15: 'Reach a 60-day streak',
-    16: 'Drink 500 oz of water',
-    17: 'Complete 25 challenges',
-    18: 'Log water for 35 consecutive days',
-    19: 'Reach a 120-day streak',
-    20: 'Drink 600 oz of water',
-    21: 'Complete 30 challenges',
-    22: 'Log water for 42 consecutive days',
-    23: 'Reach a 365-day streak',
+    0: 'Reach a 5-day streak',
+    1: 'Log entries for 7 consecutive days',
+    2: 'Reach a 10-day streak',
+    3: 'Complete the Nothing But Water challenge',
+    4: 'Log water for 14 consecutive days',
+    5: 'Reach a 20-day streak',
+    6: 'Complete the Tea Time challenge',
+    7: 'Log water for 21 consecutive days',
+    8: 'Reach a 30-day streak',
+    9: 'Complete the Caffine Cut challenge',
+    10: 'Log water for 28 consecutive days',
+    11: 'Reach a 60-day streak',
+    12: 'Complete the Sugar-Free Sips challenge',
+    13: 'Log water for 35 consecutive days',
+    14: 'Reach a 120-day streak',
+    15: 'Complete the Dairy-Free Refresh challenge',
+    16: 'Log water for 50 consecutive days',
+    17: 'Reach a 365-day streak',
+    18: 'Complete the Vitamin Vitality challenge',
+    19: 'Drink 100 oz of water',
+    20: 'Drink 300 oz of water',
+    21: 'Drink 1000 oz of water',
+    22: 'Drink 3000 oz of water',
+    23: 'Drink 10,000 oz of water',
   };
 
   final List<String> _duckNames = [
-    'Quack Attack',
-    'Feathered Friend',
-    'Splash Master',
-    'Puddle Jumper',
-    'Waddle Wizard',
-    'Beak Bandit',
-    'Feather Fury',
-    'Splashy',
-    'Waddle Wonder',
-    'Pond Hopper',
-    'Quackster',
-    'Duckling Dynamo',
-    'Aqua Quacker',
-    'Waddle Warrior',
-    'Pond Pal',
-    'Splashy Sidekick',
-    'Feathered Fury',
-    'Quack Commander',
-    'Waddle Whiz',
-    'Puddle Pal',
-    'Beak Boss',
-    'Feathered Flash',
-    'Splash Sprinter',
-    'Waddle Warden',
+    '5-Day Streaker', //
+    'Consecutive Logger',
+    '10-Day Streaker',
+    'Water Purist',
+    '2-Week Logger',
+    '20-Day Streaker',
+    'Tea Enthusiast',
+    '3-Week Logger',
+    '30-Day Streaker',
+    'Caffeine Cutter',
+    '4-Week Logger',
+    '60-Day Streaker',
+    'Sugar-Free Sipper',
+    '5-Week Logger',
+    '120-Day Streaker',
+    'Dairy-Free Drinker',
+    '50-Day Logger',
+    'Yearly Streaker',
+    'Vitamin Vitality',
+    '100 oz Drinker',
+    '300 oz Drinker',
+    '1000 oz Drinker',
+    '3000 oz Drinker',
+    '10,000 oz Drinker',
   ];
 
   bool _isDuckUnlocked(BuildContext context, int index) {
@@ -1787,6 +1775,7 @@ class ProfileScreen extends StatelessWidget {
                                       await context
                                           .read<WaterTracker>()
                                           .updateProfileImage(image.path);
+                                      rebuildUI(context);
                                     }
                                   },
                                   child: const Text('Yes'),
@@ -1804,8 +1793,7 @@ class ProfileScreen extends StatelessWidget {
                         backgroundColor: Colors.white,
                         foregroundColor: Colors.blue,
                         child: waterTracker.profileImage == null
-                            ? const Icon(Icons.person,
-                                size: 60, color: Colors.blue)
+                            ? Image.asset('lib/assets/images/wade_default.png')
                             : null,
                       ),
                     ),

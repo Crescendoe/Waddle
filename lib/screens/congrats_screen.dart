@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:waterly/models/water_tracker.dart';
 import 'package:confetti/confetti.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CongratsScreen extends StatefulWidget {
   const CongratsScreen({super.key});
@@ -53,7 +54,7 @@ class CongratsScreenState extends State<CongratsScreen>
               return const Text('Error fetching streak');
             } else if (snapshot.hasData) {
               int currentStreak = snapshot.data!;
-              int oldStreak = currentStreak - 1;
+              int oldStreak = currentStreak > 0 ? currentStreak - 1 : 0;
 
               _streakAnimation = IntTween(begin: oldStreak, end: currentStreak)
                   .animate(_controller)
