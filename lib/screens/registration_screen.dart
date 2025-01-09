@@ -6,10 +6,10 @@ class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
 
   @override
-  _RegistrationScreenState createState() => _RegistrationScreenState();
+  RegistrationScreenState createState() => RegistrationScreenState();
 }
 
-class _RegistrationScreenState extends State<RegistrationScreen> {
+class RegistrationScreenState extends State<RegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _usernameController = TextEditingController();
@@ -23,7 +23,23 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       await FirebaseFirestore.instance.collection('users').doc(userID).set({
         'email': email,
         'username': username,
-        'password': password,
+        'currentStreak': 0,
+        'recordStreak': 0,
+        'completedChallenges': 0,
+        'companionsCollected': 0,
+        'waterConsumed': 0.0,
+        'waterGoal': 0.0,
+        'goalMetToday': false,
+        'lastResetDate': DateTime.now().toIso8601String(),
+      });
+
+      // Create waterLogs collection for the user
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userID)
+          .collection('waterLogs')
+          .add({
+        'date': DateTime.now().toIso8601String(),
       });
     } catch (e) {
       if (mounted) {
@@ -46,7 +62,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           _usernameController.text,
           _passwordController.text);
       // Navigate to account created screen
-      Navigator.pushNamed(context, '/accountCreated');
+      if (mounted) {
+        Navigator.pushNamed(context, '/accountCreated');
+      }
     } on FirebaseAuthException catch (e) {
       String message;
       if (e.code == 'weak-password') {
@@ -54,13 +72,19 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       } else if (e.code == 'email-already-in-use') {
         message = 'The account already exists for that email.';
       } else {
-        message = 'An error occurred. Please try again.';
+        message = 'An unknown error occurred.';
       }
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(message)));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('An error occurred. Please try again.')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('An error occurred. Please try again.')),
+        );
+      }
     }
   }
 

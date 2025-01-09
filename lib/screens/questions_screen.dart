@@ -216,67 +216,108 @@ class QuestionsScreenState extends State<QuestionsScreen> {
             ),
             const SizedBox(height: 32),
             Center(
-              child: ElevatedButton(
-                onPressed: () async {
-                  setState(() {
-                    _isAgeValid = _validateInput(_ageController.text, 3, 100);
-                    _isFeetValid = _validateInput(_feetController.text, 2, 10);
-                    _isInchesValid =
-                        _validateInput(_inchesController.text, 0, 11);
-                    _isWeightValid = _validateInput(
-                        _weightController.text, 30, 1000,
-                        isDouble: true);
-                  });
+              child: Column(
+                children: [
+                  ElevatedButton(
+                    onPressed: () async {
+                      setState(() {
+                        _isAgeValid =
+                            _validateInput(_ageController.text, 3, 100);
+                        _isFeetValid =
+                            _validateInput(_feetController.text, 2, 10);
+                        _isInchesValid =
+                            _validateInput(_inchesController.text, 0, 11);
+                        _isWeightValid = _validateInput(
+                            _weightController.text, 30, 1000,
+                            isDouble: true);
+                      });
 
-                  if (!_isAgeValid ||
-                      !_isFeetValid ||
-                      !_isInchesValid ||
-                      !_isWeightValid) {
-                    ScaffoldMessenger.of(context).clearSnackBars();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('Please correct the errors in red.')),
-                    );
-                    return;
-                  }
+                      if (!_isAgeValid ||
+                          !_isFeetValid ||
+                          !_isInchesValid ||
+                          !_isWeightValid) {
+                        ScaffoldMessenger.of(context).clearSnackBars();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content:
+                                  Text('Please correct the errors in red.')),
+                        );
+                        return;
+                      }
 
-                  // Show loading screen
-                  showDialog(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (BuildContext context) {
-                      return const Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            CircularProgressIndicator(
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(Colors.blue),
+                      // Show loading screen
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (BuildContext context) {
+                          return const Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                CircularProgressIndicator(
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.blue),
+                                ),
+                                SizedBox(height: 16),
+                                Text(
+                                  'Calculating recommended daily water intake...',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.white,
+                                    decoration: TextDecoration.none,
+                                    fontFamily: 'Roboto',
+                                  ),
+                                ),
+                              ],
                             ),
-                            SizedBox(height: 16),
-                            Text(
-                              'Calculating recommended daily water intake...',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.white,
-                                decoration: TextDecoration.none,
-                                fontFamily: 'Roboto',
+                          );
+                        },
+                      );
+
+                      // Simulate a delay for loading
+                      await Future.delayed(const Duration(seconds: 3));
+
+                      if (!mounted) return;
+                      Navigator.of(context).pop();
+                      _submitData(context);
+                    },
+                    child: const Text('Calculate Water Intake'),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: const Text('Use Default Value'),
+                            content: const Text(
+                                'Would you like to use the default amount of 80 oz? This is a median value for the average of what both men and women should consume on a daily basis.'),
+                            actions: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                },
+                                child: const Text('Go Back'),
                               ),
-                            ),
-                          ],
-                        ),
+                              TextButton(
+                                onPressed: () {
+                                  Provider.of<WaterTracker>(context,
+                                          listen: false)
+                                      .setWaterGoal(80.0);
+                                  Navigator.of(context).pop();
+                                  Navigator.pushNamed(context, '/results');
+                                },
+                                child: const Text('Use Default Value'),
+                              ),
+                            ],
+                          );
+                        },
                       );
                     },
-                  );
-
-                  // Simulate a delay for loading
-                  await Future.delayed(const Duration(seconds: 3));
-
-                  if (!mounted) return;
-                  Navigator.of(context).pop();
-                  _submitData(context);
-                },
-                child: const Text('Calculate Water Intake'),
+                    child: const Text('Use Default Value'),
+                  ),
+                ],
               ),
             ),
           ],

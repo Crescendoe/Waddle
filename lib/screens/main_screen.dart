@@ -289,7 +289,7 @@ class _StreakScreenState extends State<StreakScreen> {
             if (now.year > 2024 || (now.year == 2024 && now.month > 1))
               IconButton(
                 icon:
-                    const Icon(Icons.arrow_back_ios, color: Colors.blueAccent),
+                    const Icon(Icons.arrow_back_ios, color: Color(0xFF36708B)),
                 onPressed: () {
                   setState(() {
                     final previousMonth = DateTime(now.year, now.month - 1, 1);
@@ -302,12 +302,12 @@ class _StreakScreenState extends State<StreakScreen> {
               style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: Colors.blueAccent),
+                  color: Color(0xFF36708B)),
             ),
             if (now.year < 2099 || (now.year == 2099 && now.month < 12))
               IconButton(
                 icon: const Icon(Icons.arrow_forward_ios,
-                    color: Colors.blueAccent),
+                    color: Color(0xFF36708B)),
                 onPressed: () {
                   setState(() {
                     final nextMonth = DateTime(now.year, now.month + 1, 1);
@@ -447,7 +447,11 @@ class _StreakScreenState extends State<StreakScreen> {
             TextButton(
               onPressed: () {
                 context.read<WaterTracker>().removeLog(log);
-                context.read<WaterTracker>().subtractWater(log.amount);
+                if (log.entryTime.year == DateTime.now().year &&
+                    log.entryTime.month == DateTime.now().month &&
+                    log.entryTime.day == DateTime.now().day) {
+                  context.read<WaterTracker>().subtractWater(log.amount);
+                }
                 Navigator.pop(context);
               },
               child: const Text('Delete'),
@@ -660,10 +664,13 @@ class ChallengesScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      Icon(
-                        _getChallengeIcon(index),
-                        size: 70,
-                        color: Colors.white,
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Image.asset(
+                          _getChallengeImage(index),
+                          width: 120,
+                          height: 200,
+                        ),
                       ),
                     ],
                   ),
@@ -714,22 +721,22 @@ class ChallengesScreen extends StatelessWidget {
     }
   }
 
-  IconData _getChallengeIcon(int index) {
+  String _getChallengeImage(int index) {
     switch (index) {
       case 0:
-        return Icons.water;
+        return 'lib/assets/images/wade_nothing_but_water.png';
       case 1:
-        return Icons.emoji_food_beverage;
+        return 'lib/assets/images/wade_tea_time.png';
       case 2:
-        return Icons.coffee;
+        return 'lib/assets/images/wade_caffeine_cut.png';
       case 3:
-        return Icons.cake;
+        return 'lib/assets/images/wade_sugar_free_sips.png';
       case 4:
-        return Icons.local_drink;
+        return 'lib/assets/images/wade_dairy_free_refresh.png';
       case 5:
-        return Icons.local_hospital;
+        return 'lib/assets/images/wade_vitamin_vitality.png';
       default:
-        return Icons.local_drink;
+        return 'lib/assets/images/wade_default.png';
     }
   }
 }
@@ -904,7 +911,9 @@ class _HomeScreenState extends State<HomeScreen>
                           style: TextStyle(
                             fontSize: 48,
                             fontWeight: FontWeight.bold,
-                            color: showCups ? Colors.green : Colors.blue[700],
+                            color: showCups
+                                ? Colors.green
+                                : const Color(0xFF36708B),
                           ),
                         ),
                       );
@@ -965,7 +974,7 @@ class _HomeScreenState extends State<HomeScreen>
           drinkWaterRatio: drinkWaterRatio,
           onConfirm: (double waterIntake) {
             _incrementWaterConsumed(waterIntake);
-            logDrink(context, drinkName, waterIntake, drinkWaterRatio);
+            logDrink(context, drinkName, waterIntake, drinkWaterRatio * 100);
             Navigator.pop(context);
           },
         );
@@ -1676,7 +1685,7 @@ class DuckScreen extends StatelessWidget {
               },
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.blueAccent,
+                  color: Color(0xFF4A90A4),
                   borderRadius: BorderRadius.circular(15),
                   boxShadow: [
                     BoxShadow(

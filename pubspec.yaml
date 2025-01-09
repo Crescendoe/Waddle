@@ -70,9 +70,19 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
+    - lib/assets/images/cup.png
     - lib/assets/images/wade_default.png
     - lib/assets/images/wade_wave.png
-    - lib/assets/images/cup.png
+    - lib/assets/images/wade_running.png
+    - lib/assets/images/wade_floating.png
+    - lib/assets/images/wade_flying.png
+    - lib/assets/images/wade_sitting_looking_up.png
+    - lib/assets/images/wade_nothing_but_water.png
+    - lib/assets/images/wade_tea_time.png
+    - lib/assets/images/wade_caffeine_cut.png
+    - lib/assets/images/wade_sugar_free_sips.png
+    - lib/assets/images/wade_dairy_free_refresh.png
+    - lib/assets/images/wade_vitamin_vitality.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

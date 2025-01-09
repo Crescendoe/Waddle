@@ -12,6 +12,7 @@ class WaterTracker extends ChangeNotifier {
   int companionsCollected = 0;
   String? username;
   String? profileImage;
+  DateTime? lastResetDate;
 
   double get getWaterConsumed => waterConsumed;
   double get getWaterGoal => waterGoal;
@@ -73,13 +74,18 @@ class WaterTracker extends ChangeNotifier {
         .toList();
   }
 
-  void setWaterGoal(double goal) {
+  void setWaterGoal(double goal) async {
     waterGoal = goal;
     saveWaterData();
+    if (userId != null) {
+      await _firestore.collection('users').doc(userId).update({
+        'waterGoal': waterGoal,
+      });
+    }
     notifyListeners();
   }
 
-  void addWater(double amount) {
+  void addWater(double amount) async {
     waterConsumed += amount;
     if (waterConsumed > waterGoal) {
       waterConsumed = waterGoal; // Cap water consumed at the goal
@@ -89,18 +95,54 @@ class WaterTracker extends ChangeNotifier {
       incrementStreak();
     }
     saveWaterData();
+    if (userId != null) {
+      await _firestore.collection('users').doc(userId).update({
+        'waterConsumed': waterConsumed,
+        'goalMetToday': goalMetToday,
+        'currentStreak': _currentStreak,
+        'recordStreak': recordStreak,
+      });
+    }
     notifyListeners();
   }
 
-  void incrementStreak() {
+  void incrementStreak() async {
     _currentStreak++;
     if (_currentStreak > recordStreak) {
       recordStreak = _currentStreak;
     }
+    saveWaterData();
+    if (userId != null) {
+      await _firestore.collection('users').doc(userId).update({
+        'currentStreak': _currentStreak,
+        'recordStreak': recordStreak,
+      });
+    }
+    notifyListeners();
   }
 
-  void setLogs(List<WaterLog> newLogs) {
+  void setLogs(List<WaterLog> newLogs) async {
     logs = newLogs;
+    if (userId != null) {
+      WriteBatch batch = _firestore.batch();
+      CollectionReference logCollection =
+          _firestore.collection('users').doc(userId).collection('waterLogs');
+
+      // Delete existing logs
+      QuerySnapshot snapshot = await logCollection.get();
+      for (DocumentSnapshot doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+
+      // Add new logs
+      for (WaterLog log in logs) {
+        batch.set(logCollection.doc(), log.toMap());
+      }
+
+      await batch.commit();
+    } else {
+      saveWaterData();
+    }
     notifyListeners();
   }
 
@@ -111,6 +153,7 @@ class WaterTracker extends ChangeNotifier {
     goalMetToday = prefs.getBool('goalMetToday') ?? false;
     username = prefs.getString('username');
     profileImage = prefs.getString('profileImage');
+    lastResetDate = DateTime.tryParse(prefs.getString('lastResetDate') ?? '');
 
     if (userId != null) {
       DocumentSnapshot userDoc =
@@ -144,6 +187,7 @@ class WaterTracker extends ChangeNotifier {
       companionsCollected = prefs.getInt('companionsCollected') ?? 0;
     }
 
+    resetDailyData();
     notifyListeners();
   }
 
@@ -156,6 +200,7 @@ class WaterTracker extends ChangeNotifier {
     await prefs.setInt('recordStreak', recordStreak);
     await prefs.setInt('completedChallenges', completedChallenges);
     await prefs.setInt('companionsCollected', companionsCollected);
+    await prefs.setString('lastResetDate', DateTime.now().toIso8601String());
     if (username != null) {
       await prefs.setString('username', username!);
     }
@@ -165,25 +210,38 @@ class WaterTracker extends ChangeNotifier {
 
     if (userId != null) {
       await _firestore.collection('users').doc(userId).set({
+        'waterConsumed': waterConsumed,
+        'waterGoal': waterGoal,
+        'goalMetToday': goalMetToday,
         'currentStreak': _currentStreak,
         'recordStreak': recordStreak,
         'completedChallenges': completedChallenges,
         'companionsCollected': companionsCollected,
         'username': username,
         'profileImage': profileImage,
+        'lastResetDate': lastResetDate?.toIso8601String(),
       }, SetOptions(merge: true));
 
-      for (WaterLog log in logs) {
-        await _firestore
-            .collection('users')
-            .doc(userId)
-            .collection('waterLogs')
-            .add(log.toMap());
+      WriteBatch batch = _firestore.batch();
+      CollectionReference logCollection =
+          _firestore.collection('users').doc(userId).collection('waterLogs');
+
+      // Delete existing logs
+      QuerySnapshot snapshot = await logCollection.get();
+      for (DocumentSnapshot doc in snapshot.docs) {
+        batch.delete(doc.reference);
       }
+
+      // Add new logs
+      for (WaterLog log in logs) {
+        batch.set(logCollection.doc(), log.toMap());
+      }
+
+      await batch.commit();
     }
   }
 
-  void subtractWater(double amount) {
+  void subtractWater(double amount) async {
     waterConsumed -= amount;
     if (waterConsumed < 0) {
       waterConsumed = 0; // Ensure water consumed doesn't go below 0
@@ -192,6 +250,12 @@ class WaterTracker extends ChangeNotifier {
       goalMetToday = false;
     }
     saveWaterData();
+    if (userId != null) {
+      await _firestore.collection('users').doc(userId).update({
+        'waterConsumed': waterConsumed,
+        'goalMetToday': goalMetToday,
+      });
+    }
     notifyListeners();
   }
 
@@ -204,20 +268,54 @@ class WaterTracker extends ChangeNotifier {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setDouble('waterConsumed', waterConsumed);
     saveWaterData();
+    if (userId != null) {
+      await _firestore.collection('users').doc(userId).update({
+        'waterConsumed': waterConsumed,
+        'goalMetToday': goalMetToday,
+        'currentStreak': _currentStreak,
+      });
+    }
     notifyListeners();
   }
 
   Future<void> updateProfileImage(String path) async {
     profileImage = path;
     saveWaterData();
+    if (userId != null) {
+      await _firestore.collection('users').doc(userId).update({
+        'profileImage': profileImage,
+      });
+    }
     notifyListeners();
   }
 
   void setWater(double target) {}
-}
 
-bool isChallengeCompleted(int index) {
-  return index == 0;
+  Future<void> resetDailyData() async {
+    DateTime now = DateTime.now();
+    if (lastResetDate == null || now.difference(lastResetDate!).inDays >= 1) {
+      waterConsumed = 0.0;
+      if (!goalMetToday) {
+        _currentStreak = 0;
+      }
+      goalMetToday = false;
+      lastResetDate = now;
+      saveWaterData();
+      if (userId != null) {
+        await _firestore.collection('users').doc(userId).update({
+          'waterConsumed': waterConsumed,
+          'goalMetToday': goalMetToday,
+          'currentStreak': _currentStreak,
+          'lastResetDate': lastResetDate?.toIso8601String(),
+        });
+      }
+      notifyListeners();
+    }
+  }
+
+  bool isChallengeCompleted(int index) {
+    return index == 0;
+  }
 }
 
 class WaterLog {
