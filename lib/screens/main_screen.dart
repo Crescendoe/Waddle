@@ -2305,58 +2305,69 @@ class DuckScreen extends StatelessWidget {
         centerTitle: true,
         automaticallyImplyLeading: false,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: GridView.builder(
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-          ),
-          itemCount: 24, // Number of ducks
-          itemBuilder: (context, index) {
-            final isUnlocked = _isDuckUnlocked(context, index);
-            return GestureDetector(
-              onTap: () {
-                _showDuckDetails(context, index); // Trigger bottom sheet on tap
-              },
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isUnlocked ? Colors.blueAccent : Colors.blue.shade400,
-                  borderRadius: BorderRadius.circular(15),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black26,
-                      blurRadius: 5,
-                      spreadRadius: 1,
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+            ),
+            itemCount: 24, // Number of ducks
+            itemBuilder: (context, index) {
+              final isUnlocked = _isDuckUnlocked(context, index);
+              return GestureDetector(
+                onTap: () {
+                  _showDuckDetails(
+                      context, index); // Trigger bottom sheet on tap
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: isUnlocked
+                          ? [Colors.blueAccent, Colors.lightBlueAccent]
+                          : [Colors.blue.shade400, Colors.blue.shade200],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                  ],
-                ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      isUnlocked
-                          ? Image.asset('assets/duck_$index.png')
-                          : const Icon(Icons.lock,
-                              size: 40,
-                              color: Colors.black), // Display a silhouette
-                      const SizedBox(height: 8),
-                      Text(
-                        _duckNames[index],
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
+                    borderRadius: BorderRadius.circular(15),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 5,
+                        spreadRadius: 1,
                       ),
                     ],
                   ),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        isUnlocked
+                            ? Image.asset('assets/duck_$index.png')
+                            : const Icon(Icons.lock,
+                                size: 40,
+                                color: Colors.black), // Display a silhouette
+                        const SizedBox(height: 8),
+                        Text(
+                          _duckNames[index],
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );
@@ -2391,9 +2402,11 @@ class ProfileScreen extends StatelessWidget {
                     Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [Colors.blueAccent, Colors.lightBlueAccent],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
+                          colors: waterTracker.profileImage != null
+                              ? [Colors.blueAccent, Colors.lightBlueAccent]
+                              : [Colors.blue.shade400, Colors.blue.shade200],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
                         borderRadius: BorderRadius.circular(15),
                       ),

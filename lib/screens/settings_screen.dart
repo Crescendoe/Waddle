@@ -79,6 +79,7 @@ class SettingsScreen extends StatelessWidget {
                           SizedBox(height: 10),
                           Text(
                               'Built for   BPA 24-25 PS WSAP Mobile Applications '),
+                          SizedBox(height: 10),
                           Text('Credits:'),
                           Text(' - Developer: William Wyler'),
                           Text(' - Art: Kaylin Steppe-Mize'),
