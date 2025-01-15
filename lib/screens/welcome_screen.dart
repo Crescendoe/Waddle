@@ -121,7 +121,7 @@ class WelcomeScreenState extends State<WelcomeScreen>
 
           // Dots indicator
           Positioned(
-            bottom: 170,
+            bottom: 140,
             left: 0,
             right: 0,
             child: Center(
@@ -139,7 +139,7 @@ class WelcomeScreenState extends State<WelcomeScreen>
 
           // Bottom buttons section
           Positioned(
-            bottom: 50,
+            bottom: 20,
             left: 0,
             right: 0,
             child: Column(

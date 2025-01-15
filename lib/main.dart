@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -6,6 +7,7 @@ import 'package:waterly/screens/accountCreated_screen.dart';
 import 'package:waterly/screens/congrats_screen.dart';
 import 'package:waterly/screens/login_screen.dart';
 import 'package:waterly/screens/main_screen.dart';
+import 'package:waterly/screens/notifications_screen.dart';
 import 'package:waterly/screens/questions_screen.dart';
 import 'package:waterly/screens/registration_screen.dart';
 import 'package:waterly/screens/results_screen.dart';
@@ -23,7 +25,9 @@ void main() async {
 
   runApp(
     ChangeNotifierProvider(
-      create: (_) => WaterTracker(userId: '')..loadWaterData(),
+      create: (_) =>
+          WaterTracker(username: FirebaseAuth.instance.currentUser?.uid ?? '')
+            ..loadWaterData(),
       child: MyApp(isFirstTime: isFirstTime, isLoggedIn: isLoggedIn),
     ),
   );
@@ -51,6 +55,7 @@ class MyApp extends StatelessWidget {
         '/results': (context) => const ResultsScreen(),
         '/login': (context) => const LoginScreen(),
         '/settings': (context) => SettingsScreen(),
+        '/notifications': (context) => const NotificationsScreen(),
       },
     );
   }

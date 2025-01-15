@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:waterly/models/water_tracker.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ResultsScreen extends StatelessWidget {
   const ResultsScreen({super.key});
@@ -12,8 +14,8 @@ class ResultsScreen extends StatelessWidget {
 
     debugPrint('Water Goal: ${waterTracker.waterGoal}');
     debugPrint('Water Consumed: ${waterTracker.waterConsumed}');
-    debugPrint('Water Consumed: ${waterTracker.waterConsumed}');
-    debugPrint('Water Consumed: ${waterTracker.waterConsumed}');
+    debugPrint(
+        'Username: ${waterTracker.username}'); // Add this line for debugging
 
     final waterIntake = (waterTracker.waterGoal).toInt();
 
@@ -53,10 +55,13 @@ class ResultsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 40),
             ElevatedButton(
-              onPressed: () {
-                // run the resetWater method from the water tracker provider
-                waterTracker.resetWater();
-                Navigator.pushNamed(context, '/home');
+              onPressed: () async {
+                final user = FirebaseAuth.instance.currentUser;
+                if (user != null) {
+                  // Run the resetWater method from the water tracker provider
+                  waterTracker.resetWater();
+                  Navigator.pushNamed(context, '/home');
+                }
               },
               style: ElevatedButton.styleFrom(
                 padding:

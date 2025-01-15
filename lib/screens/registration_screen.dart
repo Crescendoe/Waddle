@@ -17,53 +17,80 @@ class RegistrationScreenState extends State<RegistrationScreen> {
   final _confirmPasswordController = TextEditingController();
   bool _isPasswordVisible = false;
 
-  Future<void> _saveUserToFirestore(
-      String userID, String email, String username, String password) async {
+  Future<void> _saveUserToFirestore(String email, String username) async {
     try {
-      await FirebaseFirestore.instance.collection('users').doc(userID).set({
-        'email': email,
-        'username': username,
-        'currentStreak': 0,
-        'recordStreak': 0,
-        'completedChallenges': 0,
-        'companionsCollected': 0,
-        'waterConsumed': 0.0,
-        'waterGoal': 0.0,
-        'goalMetToday': false,
-        'lastResetDate': DateTime.now().toIso8601String(),
-      });
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final uid = user.uid;
 
-      // Create waterLogs collection for the user
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userID)
-          .collection('waterLogs')
-          .add({
-        'date': DateTime.now().toIso8601String(),
-      });
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Failed to save user data. Please try again.')));
+        // First, ensure the user document is created
+        await FirebaseFirestore.instance.collection('users').doc(uid).set({
+          'email': email,
+          'username': username,
+          'currentStreak': 0,
+          'recordStreak': 0,
+          'completedChallenges': 0,
+          'companionsCollected': 0,
+          'waterConsumed': 0.0,
+          'waterGoal': 0.0,
+          'goalMetToday': false,
+          'nextEntryTime': DateTime.now().toIso8601String(),
+          'lastResetDate': DateTime.now().toIso8601String(),
+          'notificationTime': null,
+          'notificationInterval': null,
+          'activeChallengeIndex': null,
+          'challenge1Active': false,
+          'challenge2Active': false,
+          'challenge3Active': false,
+          'challenge4Active': false,
+          'challenge5Active': false,
+          'challenge6Active': false,
+        });
+
+        // Then, create the waterLogs sub-collection for the user
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .collection('waterLogs')
+            .add({
+          'drinkName': 'Water',
+          'amount': 0.0,
+          'waterContent': 0.0,
+          'entryTime': DateTime.now().toIso8601String(),
+        });
+
+        // Show success message if required
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('User data saved successfully!'),
+          ));
+        }
       }
+    } catch (e) {
+      print('Error saving user data: $e'); // Log the error for debugging
+      throw e; // Re-throw the error to be caught in the _register method
     }
   }
 
   Future<void> _register() async {
     try {
-      UserCredential userCredential =
-          await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text,
         password: _passwordController.text,
       );
       await _saveUserToFirestore(
-          userCredential.user!.uid,
-          _emailController.text,
-          _usernameController.text,
-          _passwordController.text);
-      // Navigate to account created screen
+          _emailController.text, _usernameController.text);
+
+      // Automatically log in the user
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text,
+        password: _passwordController.text,
+      );
+
+      // Navigate to questions screen
       if (mounted) {
-        Navigator.pushNamed(context, '/accountCreated');
+        Navigator.pop(context);
+        Navigator.pushReplacementNamed(context, '/accountCreated');
       }
     } on FirebaseAuthException catch (e) {
       String message;
@@ -80,6 +107,7 @@ class RegistrationScreenState extends State<RegistrationScreen> {
         );
       }
     } catch (e) {
+      print('Error during registration: $e'); // Log the error for debugging
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('An error occurred. Please try again.')),

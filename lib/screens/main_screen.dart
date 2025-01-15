@@ -5,11 +5,10 @@ import 'package:provider/provider.dart';
 import 'package:waterly/models/water_tracker.dart';
 import 'dart:math';
 import 'dart:async';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:waterly/screens/questions_screen.dart';
 import 'package:waterly/screens/settings_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:waterly/screens/notifications_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -25,6 +24,7 @@ class _MainScreenState extends State<MainScreen>
       PageController(initialPage: 2); // Set initial page to 2
 
   late AnimationController _waveController;
+  bool _isLoading = true; // Add loading state
 
   @override
   void initState() {
@@ -33,6 +33,17 @@ class _MainScreenState extends State<MainScreen>
       duration: const Duration(seconds: 3),
       vsync: this,
     )..repeat(reverse: false);
+
+    // Print Firestore variables when the screen initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      context.read<WaterTracker>().printFirestoreVariables();
+      await context.read<WaterTracker>().loadWaterData(); // Load water data
+      if (mounted) {
+        setState(() {
+          _isLoading = false; // Set loading to false after data is loaded
+        });
+      }
+    });
   }
 
   @override
@@ -48,97 +59,89 @@ class _MainScreenState extends State<MainScreen>
         onWillPop: () async {
           return false;
         },
-        child: Scaffold(
-          body: Stack(
-            children: [
-              Positioned.fill(
-                child: AnimatedWave(
-                  controller: _waveController,
-                  height: // Get the water consumed percentage
-                      (context.watch<WaterTracker>().waterConsumed /
-                              context.watch<WaterTracker>().waterGoal) *
-                          100,
-                  totalWidth: MediaQuery.of(context).size.width * 5,
+        child: _isLoading
+            ? Center(
+                child: CircularProgressIndicator()) // Show loading indicator
+            : Scaffold(
+                body: Stack(
+                  children: [
+                    PageView(
+                      controller: _pageController,
+                      onPageChanged: (index) {
+                        setState(() {
+                          _selectedIndex = index;
+                        });
+                      },
+                      children: [
+                        StreakScreen(),
+                        ChallengesScreen(),
+                        HomeScreen(),
+                        DuckScreen(),
+                        ProfileScreen(),
+                      ],
+                    ),
+                  ],
+                ),
+                bottomNavigationBar: Container(
+                  decoration: BoxDecoration(
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 10,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(30),
+                      topRight: Radius.circular(30),
+                    ),
+                    child: BottomNavigationBar(
+                      currentIndex: _selectedIndex,
+                      onTap: (index) {
+                        setState(() {
+                          _selectedIndex = index;
+                        });
+                        _pageController.animateToPage(
+                          index,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                        );
+                      },
+                      items: [
+                        _buildBottomNavItem(
+                          icon: Icons.calendar_today,
+                          label: 'Streaks',
+                          index: 0,
+                        ),
+                        _buildBottomNavItem(
+                          icon: Icons.emoji_events,
+                          label: 'Challenges',
+                          index: 1,
+                        ),
+                        _buildBottomNavItem(
+                          icon: Icons.home,
+                          label: 'Home',
+                          index: 2,
+                        ),
+                        _buildBottomNavItem(
+                          icon: Icons.emoji_nature,
+                          label: 'Ducks',
+                          index: 3,
+                        ),
+                        _buildBottomNavItem(
+                          icon: Icons.person,
+                          label: 'Profile',
+                          index: 4,
+                        ),
+                      ],
+                      type: BottomNavigationBarType.fixed,
+                      showUnselectedLabels: false,
+                    ),
+                  ),
                 ),
               ),
-              // PageView in the foreground
-              PageView(
-                controller: _pageController,
-                onPageChanged: (index) {
-                  setState(() {
-                    _selectedIndex = index;
-                  });
-                },
-                children: [
-                  StreakScreen(),
-                  ChallengesScreen(),
-                  HomeScreen(),
-                  DuckScreen(),
-                  ProfileScreen(),
-                ],
-              ),
-            ],
-          ),
-          bottomNavigationBar: Container(
-            decoration: BoxDecoration(
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 10,
-                  spreadRadius: 1,
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(30),
-                topRight: Radius.circular(30),
-              ),
-              child: BottomNavigationBar(
-                currentIndex: _selectedIndex,
-                onTap: (index) {
-                  setState(() {
-                    _selectedIndex = index;
-                  });
-                  _pageController.animateToPage(
-                    index,
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                  );
-                },
-                items: [
-                  _buildBottomNavItem(
-                    icon: Icons.calendar_today,
-                    label: 'Streaks',
-                    index: 0,
-                  ),
-                  _buildBottomNavItem(
-                    icon: Icons.emoji_events,
-                    label: 'Challenges',
-                    index: 1,
-                  ),
-                  _buildBottomNavItem(
-                    icon: Icons.home,
-                    label: 'Home',
-                    index: 2,
-                  ),
-                  _buildBottomNavItem(
-                    icon: Icons.emoji_nature,
-                    label: 'Ducks',
-                    index: 3,
-                  ),
-                  _buildBottomNavItem(
-                    icon: Icons.person,
-                    label: 'Profile',
-                    index: 4,
-                  ),
-                ],
-                type: BottomNavigationBarType.fixed,
-                showUnselectedLabels: false,
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -208,50 +211,52 @@ class _StreakScreenState extends State<StreakScreen> {
   }
 
   Future<void> _loadLoggedDays() async {
-    final user = context.read<User>(); // Assuming you have a User provider
-    final userId = user.uid;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final uid = user.uid;
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('waterLogs')
+          .get();
 
-    final snapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('waterLogs')
-        .get();
+      final loggedDays = <DateTime, bool>{};
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        final entryTime = DateTime.parse(data['entryTime']);
+        loggedDays[DateTime(entryTime.year, entryTime.month, entryTime.day)] =
+            true;
+      }
 
-    final loggedDays = <DateTime, bool>{};
-    for (var doc in snapshot.docs) {
-      final data = doc.data();
-      final entryTime = DateTime.parse(data['entryTime']);
-      loggedDays[DateTime(entryTime.year, entryTime.month, entryTime.day)] =
-          true;
+      setState(() {
+        _loggedDays = loggedDays;
+        _currentStreak = _calculateCurrentStreak();
+      });
     }
-
-    setState(() {
-      _loggedDays = loggedDays;
-      _currentStreak = _calculateCurrentStreak();
-    });
   }
 
   Future<void> _loadWaterLogsFromFirebase() async {
-    final user = context.read<User>(); // Assuming you have a User provider
-    final userId = user.uid;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final uid = user.uid;
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('waterLogs')
+          .get();
 
-    final snapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('waterLogs')
-        .get();
+      final logs = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return WaterLog(
+          drinkName: data['drinkName'],
+          amount: data['amount'],
+          waterContent: data['waterContent'],
+          entryTime: DateTime.parse(data['entryTime']),
+        );
+      }).toList();
 
-    final logs = snapshot.docs.map((doc) {
-      final data = doc.data();
-      return WaterLog(
-        drinkName: data['drinkName'],
-        amount: data['amount'],
-        waterContent: data['waterContent'],
-        entryTime: DateTime.parse(data['entryTime']),
-      );
-    }).toList();
-
-    context.read<WaterTracker>().setLogs(logs);
+      context.read<WaterTracker>().setLogs(logs);
+    }
   }
 
   String _getMonthName(int month) {
@@ -417,8 +422,10 @@ class _StreakScreenState extends State<StreakScreen> {
   }
 
   bool _isGoalMet(DateTime day) {
-    // TBD
-    return true;
+    // Check if the goal is met for the given day
+    final logs = context.read<WaterTracker>().getLogsForDay(day);
+    double totalWaterIntake = logs.fold(0, (sum, log) => sum + log.amount);
+    return totalWaterIntake >= context.read<WaterTracker>().waterGoal;
   }
 
   String _formatTime(DateTime timestamp) {
@@ -445,7 +452,7 @@ class _StreakScreenState extends State<StreakScreen> {
               child: const Text('Go Back'),
             ),
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 context.read<WaterTracker>().removeLog(log);
                 if (log.entryTime.year == DateTime.now().year &&
                     log.entryTime.month == DateTime.now().month &&
@@ -453,6 +460,26 @@ class _StreakScreenState extends State<StreakScreen> {
                   context.read<WaterTracker>().subtractWater(log.amount);
                 }
                 Navigator.pop(context);
+                setState(() {
+                  _loggedDays.remove(log.entryTime);
+                });
+
+                // Delete the log from Firestore
+                final user = FirebaseAuth.instance.currentUser;
+                if (user != null) {
+                  final uid = user.uid;
+                  final snapshot = await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(uid)
+                      .collection('waterLogs')
+                      .where('entryTime',
+                          isEqualTo: log.entryTime.toIso8601String())
+                      .get();
+
+                  for (var doc in snapshot.docs) {
+                    await doc.reference.delete();
+                  }
+                }
               },
               child: const Text('Delete'),
             ),
@@ -482,23 +509,46 @@ class _StreakScreenState extends State<StreakScreen> {
               Center(
                 child: Column(
                   children: [
-                    Text(
-                      '${context.watch<WaterTracker>().currentStreak}',
-                      style: const TextStyle(
-                        fontSize: 48,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    Text(
-                      context.watch<WaterTracker>().currentStreak == 1
-                          ? 'day'
-                          : 'days',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Icon(
+                          Icons.opacity,
+                          size: 120 +
+                              (context.watch<WaterTracker>().currentStreak * 2)
+                                  .toDouble(),
+                          color: context.watch<WaterTracker>().currentStreak >=
+                                  30
+                              ? Colors.blue // Platinum
+                              : context.watch<WaterTracker>().currentStreak >=
+                                      20
+                                  ? Colors.amber // Gold
+                                  : context
+                                              .watch<WaterTracker>()
+                                              .currentStreak >=
+                                          15
+                                      ? Colors.grey // Silver
+                                      : context
+                                                  .watch<WaterTracker>()
+                                                  .currentStreak >=
+                                              10
+                                          ? Colors.brown // Bronze
+                                          : Colors.blueAccent
+                                              .withOpacity(0.3), // Grey
+                        ),
+                        Column(
+                          children: [
+                            Text(
+                              '${context.watch<WaterTracker>().currentStreak}',
+                              style: const TextStyle(
+                                fontSize: 60,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -518,9 +568,20 @@ class _StreakScreenState extends State<StreakScreen> {
               const SizedBox(height: 16),
               logs.isEmpty
                   ? const Center(
-                      child: Text(
-                        'No entries recorded!',
-                        style: TextStyle(fontSize: 18, color: Colors.grey),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'No entries recorded!',
+                            style: TextStyle(fontSize: 18, color: Colors.grey),
+                          ),
+                          SizedBox(height: 16),
+                          Image(
+                            image: AssetImage(
+                                'lib/assets/images/wade_running.png'),
+                            height: 100,
+                          ),
+                        ],
                       ),
                     )
                   : ListView.builder(
@@ -597,6 +658,13 @@ class ChallengesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final waterTracker = context.watch<WaterTracker>();
+    final activeChallengeIndex = waterTracker.activeChallengeIndex;
+
+    if (activeChallengeIndex != null && activeChallengeIndex >= 0) {
+      return _buildActiveChallengeScreen(context, activeChallengeIndex);
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Challenges'),
@@ -610,9 +678,9 @@ class ChallengesScreen extends StatelessWidget {
             crossAxisCount: 1,
             crossAxisSpacing: 10,
             mainAxisSpacing: 0,
-            childAspectRatio: 2, // Make each box a rectangle
+            childAspectRatio: 2.25,
           ),
-          itemCount: 6, // Number of challenge boxes
+          itemCount: 6,
           itemBuilder: (context, index) {
             return GestureDetector(
               onTap: () {
@@ -683,6 +751,199 @@ class ChallengesScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildActiveChallengeScreen(BuildContext context, int index) {
+    final waterTracker = context.watch<WaterTracker>();
+    final challengeCompletedToday = waterTracker.goalMetToday;
+    final daysLeft = 14 - waterTracker.currentStreak;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(getChallengeTitle(index)),
+        centerTitle: true,
+        automaticallyImplyLeading: false,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Image.asset(
+                _getChallengeImage(index),
+                width: 170,
+                height: 170,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Center(
+              child: Text(
+                getChallengeTitle(index),
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: _getChallengeColor(index),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(16.0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(15),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.3),
+                    spreadRadius: 2,
+                    blurRadius: 5,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Text(
+                getChallengeDescription(index),
+                style: const TextStyle(fontSize: 16),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Challenge Details',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(16.0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(15),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.3),
+                    spreadRadius: 2,
+                    blurRadius: 5,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Text(
+                getChallengeDetails(index),
+                style: const TextStyle(fontSize: 16),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16.0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(15),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.3),
+                    spreadRadius: 2,
+                    blurRadius: 5,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    challengeCompletedToday ? Icons.check_circle : Icons.cancel,
+                    color: challengeCompletedToday ? Colors.green : Colors.red,
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    challengeCompletedToday
+                        ? 'Completed Today!'
+                        : 'Not Completed Today',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color:
+                          challengeCompletedToday ? Colors.green : Colors.red,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16.0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(15),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.3),
+                    spreadRadius: 2,
+                    blurRadius: 5,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.calendar_today,
+                    color: _getChallengeColor(index),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Days Left: $daysLeft',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: _getChallengeColor(index),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: ElevatedButton(
+                onPressed: () async {
+                  bool? confirm = await showDialog(
+                    context: context,
+                    builder: (context) {
+                      return AlertDialog(
+                        title: const Text('Give Up Challenge'),
+                        content: const Text(
+                            'Are you sure you want to give up this challenge?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context, false);
+                            },
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () async {
+                              Navigator.pop(context, true);
+                            },
+                            child: const Text('Give Up'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+
+                  if (confirm == true) {
+                    await context.read<WaterTracker>().resetChallenge();
+                    Navigator.pushReplacementNamed(context, '/home');
+                  }
+                },
+                child: const Text('Give Up Challenge'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   static String getChallengeTitle(int index) {
     switch (index) {
       case 0:
@@ -705,19 +966,19 @@ class ChallengesScreen extends StatelessWidget {
   Color _getChallengeColor(int index) {
     switch (index) {
       case 0:
-        return Colors.blue;
+        return Colors.blue[400]!;
       case 1:
-        return Colors.green;
+        return Colors.green[400]!;
       case 2:
-        return Colors.brown;
+        return Colors.brown[400]!;
       case 3:
-        return Colors.red;
+        return Colors.red[400]!;
       case 4:
-        return Colors.orange;
+        return Colors.orange[400]!;
       case 5:
-        return Colors.purple;
+        return Colors.purple[400]!;
       default:
-        return Colors.blueAccent;
+        return Colors.blueAccent[400]!;
     }
   }
 
@@ -739,6 +1000,44 @@ class ChallengesScreen extends StatelessWidget {
         return 'lib/assets/images/wade_default.png';
     }
   }
+
+  String getChallengeDescription(int index) {
+    switch (index) {
+      case 0:
+        return 'For 14 days, drink only water. No sugary drinks, teas, or coffee. Just pure, refreshing H2O!';
+      case 1:
+        return 'Enjoy at least 12 oz of tea daily for 14 days. Embrace tea\'s calming and health-boosting properties!';
+      case 2:
+        return 'Limit your caffeine intake to no more than 55mg a day for 14 days. Say goodbye to the jitters!';
+      case 3:
+        return 'Eliminate sugary drinks for 14 days. Embrace cleaner, healthier hydration options!';
+      case 4:
+        return 'Replace all dairy-based drinks with dairy-free alternatives for 14 days. Explore delicious, plant-based options!';
+      case 5:
+        return 'Drink at least 12 oz of a vitamin- or mineral-rich beverage daily for 14 days. Nourish your body!';
+      default:
+        return 'Challenge details';
+    }
+  }
+
+  String getChallengeDetails(int index) {
+    switch (index) {
+      case 0:
+        return 'Challenge yourself to drink only water for 14 days straight. No sugary drinks, no teas, no coffee—just pure, refreshing H2O!';
+      case 1:
+        return 'Enjoy at least 12 oz of tea every day for 14 days. Whether it’s herbal, green, or black tea, the choice is yours!';
+      case 2:
+        return 'Limit your caffeine intake to no more than 55mg a day for 14 days. Say goodbye to the jitters and hello to better energy balance!';
+      case 3:
+        return 'Eliminate sugary drinks for 14 days and embrace cleaner, healthier hydration options. Reach for water, unsweetened tea, or naturally flavored sparkling water!';
+      case 4:
+        return 'Replace all dairy-based drinks with a dairy-free alternative for 14 days. Think oat milk lattes, almond milk smoothies, and coconut milk in your favorite recipes!';
+      case 5:
+        return 'Drink at least 12 oz of a vitamin- or mineral-rich beverage daily for 14 days. Whether it’s a smoothie, fortified drink, or juice, this challenge is all about nourishing your body!';
+      default:
+        return 'Challenge details';
+    }
+  }
 }
 
 class ChallengeDetailScreen extends StatelessWidget {
@@ -751,47 +1050,185 @@ class ChallengeDetailScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(ChallengesScreen.getChallengeTitle(index)),
+        backgroundColor: _getChallengeColor(index),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '14 Day Challenge',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Image.asset(
+                  ChallengesScreen()._getChallengeImage(index),
+                  width: 200,
+                  height: 200,
+                ),
               ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              _getChallengeDescription(index),
-              style: const TextStyle(fontSize: 16),
-            ),
-          ],
+              const SizedBox(height: 20),
+              Center(
+                child: Text(
+                  ChallengesScreen.getChallengeTitle(index),
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blueAccent,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                getChallengeDescription(index),
+                style: const TextStyle(fontSize: 18, color: Colors.black87),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Challenge Details',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blueAccent,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                getChallengeDetails(index),
+                style: const TextStyle(fontSize: 16, color: Colors.black87),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Health Factoids',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blueAccent,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                getHealthFactoids(index),
+                style: const TextStyle(fontSize: 16, color: Colors.black87),
+              ),
+              const SizedBox(height: 90),
+            ],
+          ),
         ),
       ),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 16.0),
+        child: FloatingActionButton.extended(
+          onPressed: () {
+            showDialog(
+              context: context,
+              builder: (context) {
+                return AlertDialog(
+                  title: Text('Begin Challenge'),
+                  content: Text(
+                      'Are you ready to begin the "${ChallengesScreen.getChallengeTitle(index)}" challenge?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        await context
+                            .read<WaterTracker>()
+                            .startChallenge(index);
+                        Navigator.pushReplacementNamed(context, '/home');
+                      },
+                      child: const Text('Begin'),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+          label: const Text('Begin Challenge!'),
+          icon: const Icon(Icons.flag),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
+}
 
-  String _getChallengeDescription(int index) {
-    switch (index) {
-      case 0:
-        return 'The title says it all';
-      case 1:
-        return 'Drink up the unique benefits of tea you may have not known about';
-      case 2:
-        return 'Get better sleep, lessen anxiety, and balance your energy levels';
-      case 3:
-        return 'Ditch beverages that are generally not healthy';
-      case 4:
-        return 'Discover if dairy-based beverages are or aren\'t for you';
-      case 5:
-        return 'Enrich yourself with sources of vitamins and minerals';
-      default:
-        return 'Challenge details';
-    }
+String getChallengeDescription(int index) {
+  switch (index) {
+    case 0:
+      return 'Ready to dive into the ultimate refreshment? For 14 days, it\'s all about going back to basics: pure, crisp, hydrating water. Whether you prefer still water, sparkling, or coconut water, this challenge will keep you feeling revitalized as you fuel your body with the essential element it craves. Think you’re up for it? Let\'s see if you can drink only water for two weeks straight—no sugary drinks, no teas, no coffee. Just clean, delicious H2O!';
+    case 1:
+      return 'Tea lovers, unite! It\'s time to steep your way to hydration and wellness. For the next 14 days, your mission is simple: enjoy at least 12 oz of tea every day. Whether it’s a cozy mug of herbal tea to wind down at night or an invigorating green tea to kickstart your morning, this challenge will help you embrace tea\'s calming and health-boosting properties. Let’s brew up some healthy habits—one cup at a time!';
+    case 2:
+      return 'Think you can cut the buzz? For the next 14 days, challenge yourself to reduce your caffeine intake and feel the difference! Whether you\'re a coffee connoisseur or a soda sipper, this challenge will have you sipping smart by limiting your caffeine to no more than 55mg a day. Say goodbye to the jitters and hello to better energy balance. Ready to kick the habit and take control of your caffeine intake?';
+    case 3:
+      return 'Ready to sweeten your health by cutting out the sugar? The Sugar-Free Sips Challenge will put your willpower to the test by eliminating sugary drinks for 14 days. From sodas and milkshakes to sports drinks and energy drinks, it\'s time to ditch the sugar and embrace cleaner, healthier hydration options. Whether you’re reaching for water, unsweetened tea, or naturally flavored sparkling water, this challenge will have you sipping smart and sugar-free!';
+    case 4:
+      return 'Ready to switch things up? For the next 14 days, we’re shaking things up with the Dairy-Free Refresh Challenge! Whether it’s your morning coffee, smoothie, or a simple glass of milk, the goal is to replace all dairy-based drinks with a dairy-free alternative. Think creamy oat milk lattes, refreshing almond milk smoothies, or coconut milk in your favorite recipes. This challenge is all about exploring delicious, plant-based options while reaping the benefits of a dairy-free diet. Ready to refresh your routine?';
+    case 5:
+      return 'Time to boost your beverage game with a burst of essential nutrients! For the next 14 days, the Vitamin Vitality Challenge invites you to nourish your body by drinking at least 12 oz of a vitamin- or mineral-rich beverage daily. Whether it\'s a refreshing smoothie packed with fruits and veggies, a vitamin-enhanced drink, or a freshly made juice, this challenge is all about getting your daily dose of vitamins and minerals in a delicious way. Get ready to drink to your health and vitality!';
+    default:
+      return 'Challenge details';
+  }
+}
+
+String getChallengeDetails(int index) {
+  switch (index) {
+    case 0:
+      return 'Your mission, should you choose to accept it, is to drink nothing but water (including regular, sparkling, and coconut water) for 14 days. Say goodbye to sodas, teas, coffee, and anything else that’s not pure water. Stay hydrated and keep your goals in sight! Track your daily progress as you sip your way to healthier habits. At the end of each day, log your water intake and celebrate staying on track. Complete this challenge, and you\'ll not only feel a sense of accomplishment but also see some noticeable benefits to your body and mind.';
+    case 1:
+      return 'For 14 days, drink at least 12 oz of tea each day. You can mix and match different types of tea, like green tea, black tea, or herbal teas—just keep it simple and healthy! Experiment with loose leaf or bagged teas, hot or iced, as long as you hit your 12 oz goal. Track your progress daily and explore the unique flavors and benefits each tea has to offer. Avoid sugary additives to keep this challenge focused on wellness. Whether you sip in the morning or throughout the day, make it a mindful moment to boost your hydration.';
+    case 2:
+      return 'For the next 14 days, the goal is to keep your caffeine consumption under 55mg per day. That’s about half a cup of coffee or one small cup of tea! You’ll need to skip the energy drinks, cut down on coffee, and be mindful of sneaky sources of caffeine like chocolate or certain sodas. Track your progress every day as you wean off the caffeine and discover the benefits of low-caffeine living. Stay hydrated with caffeine-free alternatives like herbal teas or water, and see how your energy levels naturally adjust.';
+    case 3:
+      return 'For 14 days, avoid all sugary beverages. That means no milkshakes, sodas, energy drinks, or sports drinks! Your mission is to keep your drinks healthy and sugar-free, opting for water, tea, or other unsweetened alternatives. You’ll be surprised at how much sugar can sneak into your favorite beverages, so keep an eye on labels and log your progress every day. The goal is to cut down on empty calories and reduce sugar intake, all while staying refreshed and hydrated with cleaner choices.';
+    case 4:
+      return 'For 14 days, drink at least 12 oz of a dairy-free milk alternative every day. Whether you\'re using oat milk in your coffee, almond milk in your smoothie, or coconut milk for a post-workout shake, the idea is to explore and enjoy non-dairy beverages. Your daily drink can be a replacement for any milk-based drink, from lattes to milkshakes. Track your daily intake and discover how easy and delicious it is to go dairy-free with your favorite drinks!';
+    case 5:
+      return 'For 14 days, make it a goal to drink at least 12 oz of a vitamin- or mineral-rich beverage every day. Whether it\'s a refreshing smoothie packed with spinach and kale, a vitamin-enhanced drink, or a freshly made juice rich in Vitamin C, the choice is yours! Track your progress daily and experiment with nutrient-packed drink options that help you stay hydrated while boosting your health. Focus on beverages that are naturally rich in vitamins and minerals, and be mindful of added sugars to keep things clean and wholesome.';
+    default:
+      return 'Challenge details';
+  }
+}
+
+String getHealthFactoids(int index) {
+  switch (index) {
+    case 0:
+      return '• Drinking only water helps flush out toxins, keeping your kidneys happy and functioning efficiently (Harvard T.H. Chan School of Public Health, 2020).\n• Studies show that water plays a key role in boosting metabolism, aiding digestion, and even promoting healthy skin (Mayo Clinic, 2021).\n• Hydration with just water can help improve focus and reduce fatigue, especially when you\'re avoiding caffeinated beverages (Cleveland Clinic, 2022).';
+    case 1:
+      return '• Green tea contains catechins, a type of antioxidant that may help with fat burning and improving brain function (Healthline, 2023).\n• Regular tea consumption, especially of black and green tea, is associated with a reduced risk of heart disease and stroke (American Heart Association, 2022).\n• Herbal teas like chamomile can promote relaxation and help reduce anxiety and stress levels (National Institutes of Health, 2021).';
+    case 2:
+      return '• Cutting back on caffeine can help improve your sleep quality, making it easier to fall asleep and stay asleep throughout the night (Mayo Clinic, 2023).\n• Reducing caffeine may lower your risk of anxiety, as high caffeine intake can contribute to nervousness, restlessness, and increased heart rate (Cleveland Clinic, 2021).\n• Lowering caffeine intake can also help stabilize energy levels throughout the day, avoiding the highs and crashes often associated with caffeine consumption (National Institutes of Health, 2022).';
+    case 3:
+      return '• Drinking sugary beverages regularly has been linked to an increased risk of weight gain and obesity, as well as type 2 diabetes (Harvard T.H. Chan School of Public Health, 2021).\n• Cutting sugary drinks from your diet can help improve heart health by lowering your risk of high blood pressure and reducing bad cholesterol levels (American Heart Association, 2022).\n• Replacing sugary drinks with water or unsweetened options can help stabilize your blood sugar levels and improve overall energy throughout the day (Centers for Disease Control and Prevention, 2022).';
+    case 4:
+      return '• Dairy-free milk alternatives like almond, oat, and coconut milk are often lower in calories and fat than traditional dairy, making them a lighter, healthier option (Harvard Medical School, 2020).\n• Many plant-based milks are fortified with calcium, vitamin D, and vitamin B12, offering similar nutritional benefits to dairy milk without lactose or cholesterol (National Institutes of Health, 2021).\n• For those who are lactose intolerant, dairy-free alternatives can help prevent digestive issues like bloating, gas, or discomfort, while still providing hydration and nutrients (Mayo Clinic, 2022).';
+    case 5:
+      return '• Vitamin C, found in juices like orange or grapefruit, supports immune function and helps the body absorb iron from plant-based foods (National Institutes of Health, 2022).\n• Smoothies that incorporate leafy greens like spinach or kale are a great source of essential vitamins like Vitamin A, which supports eye health, and Vitamin K, which helps with blood clotting (Harvard T.H. Chan School of Public Health, 2021).\n• Drinking vitamin- and mineral-rich beverages can help bridge nutrient gaps in your diet, especially for nutrients like potassium and magnesium, which are essential for heart health and muscle function (Cleveland Clinic, 2022).';
+    default:
+      return 'Health factoids';
+  }
+}
+
+Color _getChallengeColor(int index) {
+  switch (index) {
+    case 0:
+      return Colors.blue[400]!;
+    case 1:
+      return Colors.green[400]!;
+    case 2:
+      return Colors.brown[400]!;
+    case 3:
+      return Colors.red[400]!;
+    case 4:
+      return Colors.orange[400]!;
+    case 5:
+      return Colors.purple[400]!;
+    default:
+      return Colors.blueAccent[400]!;
   }
 }
 
@@ -806,6 +1243,8 @@ class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   bool showCups = false; // Toggle between oz and cups
   late AnimationController _controller;
+  Timer? _entryTimer;
+  int _remainingTime = 0;
 
   @override
   void initState() {
@@ -818,6 +1257,7 @@ class _HomeScreenState extends State<HomeScreen>
     // Load water data when the screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await context.read<WaterTracker>().loadWaterData();
+      _initializeEntryTimer();
       setState(() {});
     });
   }
@@ -825,6 +1265,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void dispose() {
     _controller.dispose();
+    _entryTimer?.cancel();
     super.dispose();
   }
 
@@ -923,29 +1364,54 @@ class _HomeScreenState extends State<HomeScreen>
                 const SizedBox(height: 10),
                 Consumer<WaterTracker>(
                   builder: (context, tracker, child) {
-                    return Text(
-                      // display the amount of ounces to go or cups to go when compared to the waterGoal value form WaterTracker provider
-                      showCups
-                          ? '${(waterGoalCups - waterConsumedInCups).toStringAsFixed(0)} cups to go!'
-                          : '${(waterGoal - waterConsumed).toStringAsFixed(0)} oz to go!',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: Colors.black87,
-                      ),
-                    );
+                    return waterTracker.goalMetToday
+                        ? const SizedBox.shrink()
+                        : Text(
+                            // display the amount of ounces to go or cups to go when compared to the waterGoal value form WaterTracker provider
+                            showCups
+                                ? '${(waterGoalCups - waterConsumedInCups).toStringAsFixed(0)} cups to go!'
+                                : '${(waterGoal - waterConsumed).toStringAsFixed(0)} oz to go!',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: Colors.black87,
+                            ),
+                          );
                   },
                 ),
+                if (_remainingTime > 0)
+                  Column(
+                    children: [
+                      const SizedBox(height: 20),
+                      Text(
+                        'Next entry available in:',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.red[800],
+                        ),
+                      ),
+                      Text(
+                        '${_remainingTime ~/ 60}:${(_remainingTime % 60).toString().padLeft(2, '0')}',
+                        style: TextStyle(
+                          fontSize: 24,
+                          color: Colors.red[800],
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _showDrinkSelectionSheet(context);
-        },
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: _remainingTime == 0
+          ? FloatingActionButton(
+              onPressed: () {
+                _showDrinkSelectionSheet(context);
+              },
+              child: const Icon(Icons.add),
+            )
+          : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
@@ -976,42 +1442,62 @@ class _HomeScreenState extends State<HomeScreen>
             _incrementWaterConsumed(waterIntake);
             logDrink(context, drinkName, waterIntake, drinkWaterRatio * 100);
             Navigator.pop(context);
+            _startEntryTimer();
           },
         );
       },
     );
   }
 
-  void _incrementWaterConsumed(double amount) {
-    double target = context.read<WaterTracker>().waterConsumed + amount;
-    int duration = 50;
+  void _startEntryTimer() async {
+    final nextEntryTime = DateTime.now().add(const Duration(minutes: 15));
+    context.read<WaterTracker>().nextEntryTime = nextEntryTime;
+    await context.read<WaterTracker>().saveWaterData();
 
-    void incrementWater() {
-      Timer(Duration(milliseconds: duration), () {
+    setState(() {
+      _remainingTime = 15 * 60; // 15 minutes in seconds
+    });
+
+    _entryTimer?.cancel();
+    _entryTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
         setState(() {
-          if (context.read<WaterTracker>().waterConsumed < target &&
-              context.read<WaterTracker>().waterConsumed <
-                  context.read<WaterTracker>().waterGoal) {
-            context.read<WaterTracker>().addWater(1);
-            if (context.read<WaterTracker>().waterConsumed > target) {
-              context.read<WaterTracker>().setWater(target);
-            }
-            duration = max((duration * 1.05).toInt(), 20);
-            incrementWater();
-          } else if (context.read<WaterTracker>().waterConsumed >=
-              context.read<WaterTracker>().waterGoal) {
-            context
-                .read<WaterTracker>()
-                .setWater(context.read<WaterTracker>().waterGoal);
-            context.read<WaterTracker>().incrementStreak();
-            context.read<WaterTracker>().goalMetToday = true;
-            Navigator.pushReplacementNamed(context, '/congrats');
+          if (_remainingTime > 0) {
+            _remainingTime--;
+          } else {
+            timer.cancel();
           }
         });
-      });
-    }
+      }
+    });
+  }
 
-    incrementWater();
+  void _initializeEntryTimer() {
+    final nextEntryTime = context.read<WaterTracker>().nextEntryTime;
+    if (nextEntryTime != null) {
+      final remainingDuration =
+          nextEntryTime.difference(DateTime.now()).inSeconds;
+      if (remainingDuration > 0) {
+        setState(() {
+          _remainingTime = remainingDuration;
+        });
+
+        _entryTimer?.cancel();
+        _entryTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+          setState(() {
+            if (_remainingTime > 0) {
+              _remainingTime--;
+            } else {
+              timer.cancel();
+            }
+          });
+        });
+      }
+    }
+  }
+
+  void _incrementWaterConsumed(double amount) {
+    context.read<WaterTracker>().incrementWaterConsumed(amount);
   }
 }
 
@@ -1064,20 +1550,25 @@ void logDrink(BuildContext context, String drinkName, double amount,
   context.read<WaterTracker>().addLog(log);
 
   // Send log to Firebase
-  final user = context.read<User>(); // Assuming you have a User provider
-  final userID = user.uid;
-  final logData = {
-    'drinkName': drinkName,
-    'amount': amount,
-    'waterContent': waterContent,
-    'entryTime': log.entryTime.toIso8601String(),
-  };
+  final user = FirebaseAuth.instance.currentUser;
+  if (user != null) {
+    final uid = user.uid;
+    final logData = {
+      'drinkName': drinkName,
+      'amount': amount,
+      'waterContent': waterContent,
+      'entryTime': log.entryTime.toIso8601String(),
+    };
 
-  await FirebaseFirestore.instance
-      .collection('users')
-      .doc(userID)
-      .collection('waterLogs')
-      .add(logData);
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('waterLogs')
+        .add(logData);
+
+    // Update Firestore with the new water consumption
+    await context.read<WaterTracker>().updateFirestore();
+  }
 }
 
 class AnimatedWave extends StatefulWidget {
@@ -1283,25 +1774,25 @@ class DrinkSelectionBottomSheet extends StatelessWidget {
         'name': 'Skim Milk',
         'icon': Icons.local_drink,
         'ratio': 0.9,
-        'color': Colors.white,
+        'color': Colors.grey[300],
       },
       {
         'name': 'Almond Milk',
         'icon': Icons.local_drink,
         'ratio': 0.9,
-        'color': Colors.white
+        'color': Colors.pink[100]
       },
       {
         'name': 'Oat Milk',
         'icon': Icons.local_drink,
         'ratio': 0.9,
-        'color': Colors.white
+        'color': Colors.brown[100]
       },
       {
         'name': 'Soy Milk',
         'icon': Icons.local_drink,
         'ratio': 0.9,
-        'color': Colors.white
+        'color': Colors.grey[200]
       },
       // Yogurt
       {
@@ -1578,24 +2069,24 @@ class DuckScreen extends StatelessWidget {
   };
 
   final List<String> _duckNames = [
-    '5-Day Streaker', //
+    '5-Day Streak', //
     'Consecutive Logger',
-    '10-Day Streaker',
+    '10-Day Streak',
     'Water Purist',
     '2-Week Logger',
-    '20-Day Streaker',
+    '20-Day Streak',
     'Tea Enthusiast',
     '3-Week Logger',
-    '30-Day Streaker',
+    '30-Day Streak',
     'Caffeine Cutter',
     '4-Week Logger',
-    '60-Day Streaker',
+    '60-Day Streak',
     'Sugar-Free Sipper',
     '5-Week Logger',
-    '120-Day Streaker',
+    '120-Day Streak',
     'Dairy-Free Drinker',
     '50-Day Logger',
-    'Yearly Streaker',
+    'Yearly Streak',
     'Vitamin Vitality',
     '100 oz Drinker',
     '300 oz Drinker',
@@ -1685,7 +2176,7 @@ class DuckScreen extends StatelessWidget {
               },
               child: Container(
                 decoration: BoxDecoration(
-                  color: Color(0xFF4A90A4),
+                  color: isUnlocked ? Colors.blueAccent : Colors.blue.shade400,
                   borderRadius: BorderRadius.circular(15),
                   boxShadow: [
                     BoxShadow(
@@ -1700,8 +2191,7 @@ class DuckScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       isUnlocked
-                          ? Image.asset(
-                              'assets/duck_$index.png') // Display the duck's design
+                          ? Image.asset('assets/duck_$index.png')
                           : const Icon(Icons.lock,
                               size: 40,
                               color: Colors.black), // Display a silhouette
@@ -1713,6 +2203,7 @@ class DuckScreen extends StatelessWidget {
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
+                        textAlign: TextAlign.center,
                       ),
                     ],
                   ),
@@ -1781,10 +2272,24 @@ class ProfileScreen extends StatelessWidget {
                                         source: ImageSource.gallery);
                                     if (image != null) {
                                       // Assuming you have a method to upload and save the image
-                                      await context
-                                          .read<WaterTracker>()
-                                          .updateProfileImage(image.path);
-                                      rebuildUI(context);
+                                      final user =
+                                          FirebaseAuth.instance.currentUser;
+                                      if (user != null) {
+                                        final uid = user.uid;
+                                        final imagePath = image.path;
+                                        await context
+                                            .read<WaterTracker>()
+                                            .updateProfileImage(imagePath);
+
+                                        // Save the image path to Firestore
+                                        await FirebaseFirestore.instance
+                                            .collection('users')
+                                            .doc(uid)
+                                            .update(
+                                                {'profileImage': imagePath});
+
+                                        rebuildUI(context);
+                                      }
                                     }
                                   },
                                   child: const Text('Yes'),
@@ -1802,18 +2307,59 @@ class ProfileScreen extends StatelessWidget {
                         backgroundColor: Colors.white,
                         foregroundColor: Colors.blue,
                         child: waterTracker.profileImage == null
-                            ? Image.asset('lib/assets/images/wade_default.png')
+                            ? Image.asset(
+                                'lib/assets/images/wade_sitting_looking_up.png')
                             : null,
                       ),
                     ),
                     const SizedBox(height: 10),
-                    Text(
-                      waterTracker.username ?? 'Guest',
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                    Consumer<WaterTracker>(
+                      builder: (context, tracker, child) {
+                        return FutureBuilder<DocumentSnapshot>(
+                          future: FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(FirebaseAuth.instance.currentUser?.uid)
+                              .get(),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const CircularProgressIndicator();
+                            }
+                            if (snapshot.hasError) {
+                              return const Text(
+                                'Error loading username',
+                                style: TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              );
+                            }
+                            if (!snapshot.hasData || !snapshot.data!.exists) {
+                              return const Text(
+                                'No username found',
+                                style: TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              );
+                            }
+                            final data =
+                                snapshot.data!.data() as Map<String, dynamic>;
+                            final username = data['username'] ?? 'Guest';
+                            final fontSize = username.length > 10 ? 20.0 : 28.0;
+                            return Text(
+                              username,
+                              style: TextStyle(
+                                fontSize: fontSize,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            );
+                          },
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -1827,10 +2373,10 @@ class ProfileScreen extends StatelessWidget {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 18.0),
                       child: _buildStatisticCard(
-                        icon: Icons.local_fire_department,
+                        icon: Icons.opacity,
                         label: 'Current Streak',
                         value: '${waterTracker.currentStreak}',
-                        color: Colors.orangeAccent,
+                        color: Colors.lightBlueAccent,
                       ),
                     ),
                   ),
@@ -1866,8 +2412,8 @@ class ProfileScreen extends StatelessWidget {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 18.0),
                       child: _buildStatisticCard(
-                        icon: Icons.people,
-                        label: 'Companions',
+                        icon: Icons.emoji_nature,
+                        label: 'Ducks',
                         value: '${waterTracker.companionsCollected}',
                         color: Colors.purpleAccent,
                       ),
@@ -1936,7 +2482,13 @@ class ProfileScreen extends StatelessWidget {
                       icon: Icons.notifications,
                       label: 'Goal Reminders/Notifications',
                       onTap: () {
-                        // Implement goal reminders/notifications functionality
+                        // take to the notifications screen
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const NotificationsScreen(),
+                          ),
+                        );
                       },
                     ),
                     _buildOptionTile(
