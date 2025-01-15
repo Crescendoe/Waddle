@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:logger/logger.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:social_sharing_plus/social_sharing_plus.dart';
 
 class WaterTracker extends ChangeNotifier {
   double waterConsumed = 0;
@@ -22,7 +23,7 @@ class WaterTracker extends ChangeNotifier {
   DateTime? nextEntryTime;
   TimeOfDay? notificationTime;
   int? notificationInterval;
-  int? activeChallengeIndex = null; // Ensure default state is null
+  int? activeChallengeIndex; // Ensure default state is null
   bool challenge1Active = false;
   bool challenge2Active = false;
   bool challenge3Active = false;
@@ -30,6 +31,9 @@ class WaterTracker extends ChangeNotifier {
   bool challenge5Active = false;
   bool challenge6Active = false;
   DateTime? _lastLogTime; // Add a variable to track the last log time
+  bool challengeFailed = false;
+  bool challengeCompleted = false;
+  int daysLeft = 14;
 
   double get getWaterConsumed => waterConsumed;
   double get getWaterGoal => waterGoal;
@@ -49,6 +53,13 @@ class WaterTracker extends ChangeNotifier {
   bool get getChallenge5Active => challenge5Active;
   bool get getChallenge6Active => challenge6Active;
 
+  set setActiveChallengeIndex(int? index) {
+    activeChallengeIndex = index;
+    notifyListeners();
+    saveWaterData();
+    updateFirestore();
+  }
+
   List<WaterLog> logs = [];
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -60,6 +71,7 @@ class WaterTracker extends ChangeNotifier {
     loadWaterData();
     printFirestoreVariables();
     loadNotificationSettings();
+    scheduleDailyReset(); // Schedule the daily reset
   }
 
   Future<void> updateFirestore() async {
@@ -90,11 +102,7 @@ class WaterTracker extends ChangeNotifier {
               'notificationInterval': notificationInterval,
               'activeChallengeIndex': activeChallengeIndex,
               'challenge1Active': challenge1Active,
-              'challenge2Active': challenge2Active,
-              'challenge3Active': challenge3Active,
-              'challenge4Active': challenge4Active,
-              'challenge5Active': challenge5Active,
-              'challenge6Active': challenge6Active,
+              'daysLeft': daysLeft,
             },
             SetOptions(merge: true));
 
@@ -125,7 +133,6 @@ class WaterTracker extends ChangeNotifier {
     _lastLogTime = DateTime.now(); // Update the last log time
 
     logs.add(log);
-    nextEntryTime = DateTime.now().add(Duration(minutes: 15));
     await updateFirestore();
     saveWaterData();
     notifyListeners();
@@ -145,7 +152,7 @@ class WaterTracker extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addWater(double amount) async {
+  void addWater(BuildContext context, double amount) async {
     waterConsumed += amount;
     if (waterConsumed > waterGoal) {
       waterConsumed = waterGoal;
@@ -154,6 +161,8 @@ class WaterTracker extends ChangeNotifier {
       goalMetToday = true;
       incrementStreak();
       await flutterLocalNotificationsPlugin.cancelAll(); // Cancel notifications
+      checkGoalMet(
+          context); // Check if goal is met and navigate to congrats screen
     }
     await updateFirestore(); // Update Firestore
     saveWaterData();
@@ -161,6 +170,9 @@ class WaterTracker extends ChangeNotifier {
   }
 
   void incrementWaterConsumed(double amount) {
+    if (goalMetToday) {
+      return; // Prevent incrementing water if goal is already met
+    }
     double target = waterConsumed + amount;
     int duration = 50;
 
@@ -274,15 +286,16 @@ class WaterTracker extends ChangeNotifier {
     notificationInterval = prefs.getInt('notificationInterval');
     activeChallengeIndex = prefs.getInt('activeChallengeIndex');
     // Ensure activeChallengeIndex is null by default
-    if (activeChallengeIndex == null) {
-      activeChallengeIndex = null;
-    }
+    activeChallengeIndex ??= null;
     challenge1Active = prefs.getBool('challenge1Active') ?? false;
     challenge2Active = prefs.getBool('challenge2Active') ?? false;
     challenge3Active = prefs.getBool('challenge3Active') ?? false;
     challenge4Active = prefs.getBool('challenge4Active') ?? false;
     challenge5Active = prefs.getBool('challenge5Active') ?? false;
     challenge6Active = prefs.getBool('challenge6Active') ?? false;
+    challengeFailed = prefs.getBool('challengeFailed') ?? false;
+    challengeCompleted = prefs.getBool('challengeCompleted') ?? false;
+    daysLeft = prefs.getInt('daysLeft') ?? 14;
 
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
@@ -372,6 +385,9 @@ class WaterTracker extends ChangeNotifier {
     await prefs.setBool('challenge4Active', challenge4Active);
     await prefs.setBool('challenge5Active', challenge5Active);
     await prefs.setBool('challenge6Active', challenge6Active);
+    await prefs.setBool('challengeFailed', challengeFailed);
+    await prefs.setBool('challengeCompleted', challengeCompleted);
+    await prefs.setInt('daysLeft', daysLeft);
 
     await updateFirestore();
   }
@@ -522,6 +538,83 @@ class WaterTracker extends ChangeNotifier {
 
     await saveWaterData();
     notifyListeners();
+  }
+
+  Future<void> checkChallengeState() async {
+    if (activeChallengeIndex != null) {
+      if (!goalMetToday) {
+        challengeFailed = true;
+        await resetChallenge();
+      } else {
+        daysLeft--;
+        if (daysLeft <= 0) {
+          challengeCompleted = true;
+          await completeChallenge();
+        }
+      }
+      await updateFirestore();
+      saveWaterData();
+      notifyListeners();
+    }
+  }
+
+  Future<void> completeChallenge() async {
+    switch (activeChallengeIndex) {
+      case 0:
+        challenge1Active = false;
+        break;
+      case 1:
+        challenge2Active = false;
+        break;
+      case 2:
+        challenge3Active = false;
+        break;
+      case 3:
+        challenge4Active = false;
+        break;
+      case 4:
+        challenge5Active = false;
+        break;
+      case 5:
+        challenge6Active = false;
+        break;
+    }
+    activeChallengeIndex = null;
+    challengeCompleted = false;
+    daysLeft = 14;
+    await updateFirestore();
+    saveWaterData();
+    notifyListeners();
+  }
+
+  void scheduleDailyReset() {
+    Timer.periodic(Duration(days: 1), (timer) {
+      DateTime now = DateTime.now();
+      DateTime nextMidnight = DateTime(now.year, now.month, now.day + 1);
+      Duration timeUntilMidnight = nextMidnight.difference(now);
+
+      Timer(timeUntilMidnight, () async {
+        await resetDailyData();
+        scheduleDailyReset(); // Reschedule the next reset
+      });
+    });
+  }
+
+  void checkGoalMet(BuildContext context) {
+    if (waterConsumed >= waterGoal) {
+      Navigator.pushNamed(context, '/congrats');
+    }
+  }
+
+  static const SocialPlatform platform = SocialPlatform.facebook;
+
+  Future<void> shareProfileScreenshot(String imagePath) async {
+    await SocialSharingPlus.shareToSocialMedia(
+      platform,
+      'Check out my profile on WWaddle!',
+      media: imagePath,
+      isOpenBrowser: true,
+    );
   }
 }
 

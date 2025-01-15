@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +11,9 @@ import 'package:waterly/screens/settings_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:waterly/screens/notifications_screen.dart';
+import 'package:social_sharing_plus/social_sharing_plus.dart';
+import 'package:screenshot/screenshot.dart';
+import 'package:path_provider/path_provider.dart' as path_provider;
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -25,6 +30,7 @@ class _MainScreenState extends State<MainScreen>
 
   late AnimationController _waveController;
   bool _isLoading = true; // Add loading state
+  final ScreenshotController _screenshotController = ScreenshotController();
 
   @override
   void initState() {
@@ -44,12 +50,46 @@ class _MainScreenState extends State<MainScreen>
         });
       }
     });
+
+    // Check challenge state on initialization
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await context.read<WaterTracker>().checkChallengeState();
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
     _waveController.dispose();
+    _screenshotController.dispose();
     super.dispose();
+  }
+
+  void _shareProfile() async {
+    final image = await _screenshotController.capture();
+    if (image != null && mounted) {
+      final directory = await path_provider.getApplicationDocumentsDirectory();
+      final imagePath = '${directory.path}/screenshot.png';
+      final imageFile = File(imagePath);
+      await imageFile.writeAsBytes(image);
+      await SocialSharingPlus.shareToSocialMedia(
+        SocialPlatform.facebook,
+        'Check out my profile on Waterly!',
+        media: imagePath,
+        isOpenBrowser: false,
+        onAppNotInstalled: () {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(SnackBar(
+              content: Text('Facebook is not installed.'),
+            ));
+        },
+      );
+    }
   }
 
   @override
@@ -60,88 +100,146 @@ class _MainScreenState extends State<MainScreen>
           return false;
         },
         child: _isLoading
-            ? Center(
-                child: CircularProgressIndicator()) // Show loading indicator
-            : Scaffold(
-                body: Stack(
-                  children: [
-                    PageView(
-                      controller: _pageController,
-                      onPageChanged: (index) {
-                        setState(() {
-                          _selectedIndex = index;
-                        });
-                      },
-                      children: [
-                        StreakScreen(),
-                        ChallengesScreen(),
-                        HomeScreen(),
-                        DuckScreen(),
-                        ProfileScreen(),
-                      ],
-                    ),
-                  ],
-                ),
-                bottomNavigationBar: Container(
-                  decoration: BoxDecoration(
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black26,
-                        blurRadius: 10,
-                        spreadRadius: 1,
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(30),
-                      topRight: Radius.circular(30),
-                    ),
-                    child: BottomNavigationBar(
-                      currentIndex: _selectedIndex,
-                      onTap: (index) {
-                        setState(() {
-                          _selectedIndex = index;
-                        });
-                        _pageController.animateToPage(
-                          index,
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                        );
-                      },
-                      items: [
-                        _buildBottomNavItem(
-                          icon: Icons.calendar_today,
-                          label: 'Streaks',
-                          index: 0,
-                        ),
-                        _buildBottomNavItem(
-                          icon: Icons.emoji_events,
-                          label: 'Challenges',
-                          index: 1,
-                        ),
-                        _buildBottomNavItem(
-                          icon: Icons.home,
-                          label: 'Home',
-                          index: 2,
-                        ),
-                        _buildBottomNavItem(
-                          icon: Icons.emoji_nature,
-                          label: 'Ducks',
-                          index: 3,
-                        ),
-                        _buildBottomNavItem(
-                          icon: Icons.person,
-                          label: 'Profile',
-                          index: 4,
-                        ),
-                      ],
-                      type: BottomNavigationBarType.fixed,
-                      showUnselectedLabels: false,
-                    ),
-                  ),
-                ),
+            ? Center(child: CircularProgressIndicator())
+            : context.watch<WaterTracker>().challengeFailed
+                ? _buildFailureState()
+                : context.watch<WaterTracker>().challengeCompleted
+                    ? _buildSuccessState()
+                    : _buildMainContent(),
+      ),
+    );
+  }
+
+  Widget _buildFailureState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'Challenge Failed',
+            style: TextStyle(
+                fontSize: 24, fontWeight: FontWeight.bold, color: Colors.red),
+          ),
+          SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: () {
+              context.read<WaterTracker>().resetChallenge();
+              setState(() {});
+            },
+            child: Text('Try Again'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSuccessState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'Congratulations!',
+            style: TextStyle(
+                fontSize: 24, fontWeight: FontWeight.bold, color: Colors.green),
+          ),
+          SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: () {
+              context.read<WaterTracker>().completeChallenge();
+              setState(() {});
+            },
+            child: Text('Continue'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMainContent() {
+    return Scaffold(
+      body: Stack(
+        children: [
+          PageView(
+            controller: _pageController,
+            onPageChanged: (index) {
+              setState(() {
+                _selectedIndex = index;
+              });
+            },
+            children: [
+              StreakScreen(),
+              ChallengesScreen(),
+              Screenshot(
+                controller: _screenshotController,
+                child: HomeScreen(),
               ),
+              DuckScreen(),
+              ProfileScreen(
+                screenshotController: _screenshotController,
+              ),
+            ],
+          ),
+        ],
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 10,
+              spreadRadius: 1,
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(30),
+            topRight: Radius.circular(30),
+          ),
+          child: BottomNavigationBar(
+            currentIndex: _selectedIndex,
+            onTap: (index) {
+              setState(() {
+                _selectedIndex = index;
+              });
+              _pageController.animateToPage(
+                index,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+              );
+            },
+            items: [
+              _buildBottomNavItem(
+                icon: Icons.calendar_today,
+                label: 'Streaks',
+                index: 0,
+              ),
+              _buildBottomNavItem(
+                icon: Icons.emoji_events,
+                label: 'Challenges',
+                index: 1,
+              ),
+              _buildBottomNavItem(
+                icon: Icons.home,
+                label: 'Home',
+                index: 2,
+              ),
+              _buildBottomNavItem(
+                icon: Icons.emoji_nature,
+                label: 'Ducks',
+                index: 3,
+              ),
+              _buildBottomNavItem(
+                icon: Icons.person,
+                label: 'Profile',
+                index: 4,
+              ),
+            ],
+            type: BottomNavigationBarType.fixed,
+            showUnselectedLabels: false,
+          ),
+        ),
       ),
     );
   }
@@ -172,6 +270,10 @@ class _MainScreenState extends State<MainScreen>
       label: isSelected ? label : '',
     );
   }
+}
+
+extension on ScreenshotController {
+  void dispose() {}
 }
 
 void rebuildUI(BuildContext context) {
@@ -538,12 +640,15 @@ class _StreakScreenState extends State<StreakScreen> {
                         ),
                         Column(
                           children: [
-                            Text(
-                              '${context.watch<WaterTracker>().currentStreak}',
-                              style: const TextStyle(
-                                fontSize: 60,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
+                            Padding(
+                              padding: const EdgeInsets.only(top: 16.0),
+                              child: Text(
+                                '${context.watch<WaterTracker>().currentStreak}',
+                                style: const TextStyle(
+                                  fontSize: 60,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
                               ),
                             ),
                           ],
@@ -1417,14 +1522,51 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _showDrinkSelectionSheet(BuildContext context) {
+    final waterTracker = context.read<WaterTracker>();
     showModalBottomSheet(
       context: context,
       builder: (context) {
         return DrinkSelectionBottomSheet(
           onDrinkSelected: (String drinkName, double drinkWaterRatio) {
             Navigator.pop(context); // Close the bottom sheet after selection
-            _showDrinkAmountSlider(context, drinkName, drinkWaterRatio);
+            if (waterTracker.activeChallengeIndex == 2 &&
+                drinkName.contains('Caffeine')) {
+              _showCaffeineConfirmation(context, drinkName, drinkWaterRatio);
+            } else {
+              _showDrinkAmountSlider(context, drinkName, drinkWaterRatio);
+            }
           },
+          activeChallengeIndex: waterTracker.activeChallengeIndex,
+        );
+      },
+    );
+  }
+
+  void _showCaffeineConfirmation(
+      BuildContext context, String drinkName, double drinkWaterRatio) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Caffeine Intake'),
+          content: Text(
+              'Will this beverage keep you under 55mg of caffeine for the day?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _showDrinkAmountSlider(context, drinkName, drinkWaterRatio);
+              },
+              child: Text('Yes'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _showDrinkSelectionSheet(context);
+              },
+              child: Text('No'),
+            ),
+          ],
         );
       },
     );
@@ -1497,6 +1639,9 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _incrementWaterConsumed(double amount) {
+    if (context.read<WaterTracker>().goalMetToday) {
+      return; // Prevent incrementing water if goal is already met
+    }
     context.read<WaterTracker>().incrementWaterConsumed(amount);
   }
 }
@@ -1674,7 +1819,8 @@ class WavePainter extends CustomPainter {
 class DrinkSelectionBottomSheet extends StatelessWidget {
   final Function(String, double) onDrinkSelected;
 
-  const DrinkSelectionBottomSheet({super.key, required this.onDrinkSelected});
+  const DrinkSelectionBottomSheet(
+      {super.key, required this.onDrinkSelected, int? activeChallengeIndex});
 
   @override
   Widget build(BuildContext context) {
@@ -2155,7 +2301,7 @@ class DuckScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Duck'),
+        title: const Text('Ducks'),
         centerTitle: true,
         automaticallyImplyLeading: false,
       ),
@@ -2218,7 +2364,9 @@ class DuckScreen extends StatelessWidget {
 }
 
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+  final ScreenshotController screenshotController;
+
+  const ProfileScreen({super.key, required this.screenshotController});
 
   @override
   Widget build(BuildContext context) {
@@ -2235,193 +2383,209 @@ class ProfileScreen extends StatelessWidget {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              // Profile image and username with gradient background
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.blueAccent, Colors.lightBlueAccent],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                padding: const EdgeInsets.all(16.0),
+              Screenshot(
+                controller: screenshotController,
                 child: Column(
                   children: [
-                    GestureDetector(
-                      onTap: () {
-                        showDialog(
-                          context: context,
-                          builder: (context) {
-                            return AlertDialog(
-                              title: const Text('Change Profile Avatar'),
-                              content: const Text(
-                                  'Would you like to change your profile avatar image?'),
-                              actions: [
-                                TextButton(
-                                  onPressed: () {
-                                    Navigator.pop(context);
-                                  },
-                                  child: const Text('No'),
-                                ),
-                                TextButton(
-                                  onPressed: () async {
-                                    Navigator.pop(context);
-                                    final ImagePicker picker = ImagePicker();
-                                    final XFile? image = await picker.pickImage(
-                                        source: ImageSource.gallery);
-                                    if (image != null) {
-                                      // Assuming you have a method to upload and save the image
-                                      final user =
-                                          FirebaseAuth.instance.currentUser;
-                                      if (user != null) {
-                                        final uid = user.uid;
-                                        final imagePath = image.path;
-                                        await context
-                                            .read<WaterTracker>()
-                                            .updateProfileImage(imagePath);
+                    // Profile image and username with gradient background
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.blueAccent, Colors.lightBlueAccent],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) {
+                                  return AlertDialog(
+                                    title: const Text('Change Profile Avatar'),
+                                    content: const Text(
+                                        'Would you like to change your profile avatar image?'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () {
+                                          Navigator.pop(context);
+                                        },
+                                        child: const Text('No'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () async {
+                                          Navigator.pop(context);
+                                          final ImagePicker picker =
+                                              ImagePicker();
+                                          final XFile? image =
+                                              await picker.pickImage(
+                                                  source: ImageSource.gallery);
+                                          if (image != null) {
+                                            // Assuming you have a method to upload and save the image
+                                            final user = FirebaseAuth
+                                                .instance.currentUser;
+                                            if (user != null) {
+                                              final uid = user.uid;
+                                              final imagePath = image.path;
+                                              await context
+                                                  .read<WaterTracker>()
+                                                  .updateProfileImage(
+                                                      imagePath);
 
-                                        // Save the image path to Firestore
-                                        await FirebaseFirestore.instance
-                                            .collection('users')
-                                            .doc(uid)
-                                            .update(
-                                                {'profileImage': imagePath});
+                                              // Save the image path to Firestore
+                                              await FirebaseFirestore.instance
+                                                  .collection('users')
+                                                  .doc(uid)
+                                                  .update({
+                                                'profileImage': imagePath
+                                              });
 
-                                        rebuildUI(context);
-                                      }
-                                    }
-                                  },
-                                  child: const Text('Yes'),
-                                ),
-                              ],
-                            );
-                          },
-                        );
-                      },
-                      child: CircleAvatar(
-                        radius: 60,
-                        backgroundImage: waterTracker.profileImage != null
-                            ? FileImage(File(waterTracker.profileImage!))
-                            : null,
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.blue,
-                        child: waterTracker.profileImage == null
-                            ? Image.asset(
-                                'lib/assets/images/wade_sitting_looking_up.png')
-                            : null,
+                                              rebuildUI(context);
+                                            }
+                                          }
+                                        },
+                                        child: const Text('Yes'),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            },
+                            child: CircleAvatar(
+                              radius: 60,
+                              backgroundImage: waterTracker.profileImage != null
+                                  ? FileImage(File(waterTracker.profileImage!))
+                                  : null,
+                              backgroundColor: Colors.white,
+                              foregroundColor: Colors.blue,
+                              child: waterTracker.profileImage == null
+                                  ? Image.asset(
+                                      'lib/assets/images/wade_sitting_looking_up.png')
+                                  : null,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Consumer<WaterTracker>(
+                            builder: (context, tracker, child) {
+                              return FutureBuilder<DocumentSnapshot>(
+                                future: FirebaseFirestore.instance
+                                    .collection('users')
+                                    .doc(FirebaseAuth.instance.currentUser?.uid)
+                                    .get(),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState ==
+                                      ConnectionState.waiting) {
+                                    return const CircularProgressIndicator();
+                                  }
+                                  if (snapshot.hasError) {
+                                    return const Text(
+                                      'Error loading username',
+                                      style: TextStyle(
+                                        fontSize: 28,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    );
+                                  }
+                                  if (!snapshot.hasData ||
+                                      !snapshot.data!.exists) {
+                                    return const Text(
+                                      'No username found',
+                                      style: TextStyle(
+                                        fontSize: 28,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    );
+                                  }
+                                  final data = snapshot.data!.data()
+                                      as Map<String, dynamic>;
+                                  final username = data['username'] ?? 'Guest';
+                                  final fontSize =
+                                      username.length > 10 ? 20.0 : 28.0;
+                                  return Text(
+                                    username,
+                                    style: TextStyle(
+                                      fontSize: fontSize,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    Consumer<WaterTracker>(
-                      builder: (context, tracker, child) {
-                        return FutureBuilder<DocumentSnapshot>(
-                          future: FirebaseFirestore.instance
-                              .collection('users')
-                              .doc(FirebaseAuth.instance.currentUser?.uid)
-                              .get(),
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return const CircularProgressIndicator();
-                            }
-                            if (snapshot.hasError) {
-                              return const Text(
-                                'Error loading username',
-                                style: TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              );
-                            }
-                            if (!snapshot.hasData || !snapshot.data!.exists) {
-                              return const Text(
-                                'No username found',
-                                style: TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              );
-                            }
-                            final data =
-                                snapshot.data!.data() as Map<String, dynamic>;
-                            final username = data['username'] ?? 'Guest';
-                            final fontSize = username.length > 10 ? 20.0 : 28.0;
-                            return Text(
-                              username,
-                              style: TextStyle(
-                                fontSize: fontSize,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            );
-                          },
-                        );
-                      },
+                    const SizedBox(height: 30),
+                    // User's current streak, record streak, challenges, companions
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        Expanded(
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 18.0),
+                            child: _buildStatisticCard(
+                              icon: Icons.opacity,
+                              label: 'Current Streak',
+                              value: '${waterTracker.currentStreak}',
+                              color: Colors.lightBlueAccent,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 18.0),
+                            child: _buildStatisticCard(
+                              icon: Icons.star,
+                              label: 'Record Streak',
+                              value: '${waterTracker.recordStreak}',
+                              color: Colors.yellowAccent,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        Expanded(
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 18.0),
+                            child: _buildStatisticCard(
+                              icon: Icons.check_circle,
+                              label: 'Challenges',
+                              value: '${waterTracker.completedChallenges}',
+                              color: Colors.greenAccent,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 18.0),
+                            child: _buildStatisticCard(
+                              icon: Icons.emoji_nature,
+                              label: 'Ducks',
+                              value: '${waterTracker.companionsCollected}',
+                              color: Colors.purpleAccent,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 30),
-              // User's current streak, record streak, challenges, companions
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 18.0),
-                      child: _buildStatisticCard(
-                        icon: Icons.opacity,
-                        label: 'Current Streak',
-                        value: '${waterTracker.currentStreak}',
-                        color: Colors.lightBlueAccent,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 18.0),
-                      child: _buildStatisticCard(
-                        icon: Icons.star,
-                        label: 'Record Streak',
-                        value: '${waterTracker.recordStreak}',
-                        color: Colors.yellowAccent,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 18.0),
-                      child: _buildStatisticCard(
-                        icon: Icons.check_circle,
-                        label: 'Challenges',
-                        value: '${waterTracker.completedChallenges}',
-                        color: Colors.greenAccent,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 18.0),
-                      child: _buildStatisticCard(
-                        icon: Icons.emoji_nature,
-                        label: 'Ducks',
-                        value: '${waterTracker.companionsCollected}',
-                        color: Colors.purpleAccent,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
               const SizedBox(height: 30),
               // List of options with trailing icons
               Container(
@@ -2442,8 +2606,17 @@ class ProfileScreen extends StatelessWidget {
                     _buildOptionTile(
                       icon: Icons.share,
                       label: 'Share Profile',
-                      onTap: () {
-                        // Implement share profile functionality
+                      onTap: () async {
+                        final image = await screenshotController.capture();
+                        if (image != null) {
+                          final directory = await path_provider
+                              .getApplicationDocumentsDirectory();
+                          final imagePath =
+                              '${directory.path}/profile_screenshot.png';
+                          final imageFile = File(imagePath);
+                          await imageFile.writeAsBytes(image);
+                          await waterTracker.shareProfileScreenshot(imagePath);
+                        }
                       },
                     ),
                     _buildOptionTile(
@@ -2563,4 +2736,8 @@ class ProfileScreen extends StatelessWidget {
       onTap: onTap,
     );
   }
+}
+
+extension on Uint8List {
+  Null get path => null;
 }

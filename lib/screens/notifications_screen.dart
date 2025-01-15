@@ -8,7 +8,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/services.dart'; // Add this import
 
 class NotificationsScreen extends StatefulWidget {
-  const NotificationsScreen({Key? key}) : super(key: key);
+  const NotificationsScreen({super.key});
 
   @override
   NotificationsScreenState createState() => NotificationsScreenState();
@@ -25,7 +25,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
     super.initState();
     _initializeNotifications();
     tz.initializeTimeZones(); // Initialize timezone
-    final waterTracker = Provider.of<WaterTracker>(context, listen: false);
+    final waterTracker = context.read<WaterTracker>();
     selectedTime = waterTracker.notificationTime;
     selectedInterval = waterTracker.notificationInterval;
   }
@@ -42,12 +42,22 @@ class NotificationsScreenState extends State<NotificationsScreen> {
     try {
       final status = await Permission.notification.request();
       if (status.isGranted) {
-        print("Notification permissions granted");
+        debugPrint("Notification permissions granted");
       } else {
-        print("Notification permissions denied");
+        debugPrint("Notification permissions denied");
+      }
+
+      // Request exact alarm permission for Android 12 and above
+      if (await Permission.scheduleExactAlarm.isDenied) {
+        final exactAlarmStatus = await Permission.scheduleExactAlarm.request();
+        if (exactAlarmStatus.isGranted) {
+          debugPrint("Exact alarm permissions granted");
+        } else {
+          debugPrint("Exact alarm permissions denied");
+        }
       }
     } on PlatformException catch (e) {
-      print("Error requesting notification permissions: $e");
+      debugPrint("Error requesting notification permissions: $e");
     }
   }
 
@@ -56,11 +66,12 @@ class NotificationsScreenState extends State<NotificationsScreen> {
     if (!status.isGranted) {
       final newStatus = await Permission.notification.request();
       if (!newStatus.isGranted) {
-        print("Notification permissions denied");
+        debugPrint("Notification permissions denied");
         return;
       }
     }
 
+    if (!mounted) return;
     final waterTracker = Provider.of<WaterTracker>(context, listen: false);
     waterTracker.notificationTime = time;
     await waterTracker.saveWaterData();
@@ -79,8 +90,9 @@ class NotificationsScreenState extends State<NotificationsScreen> {
     );
     const NotificationDetails platformChannelSpecifics =
         NotificationDetails(android: androidPlatformChannelSpecifics);
-
-    print("Scheduling daily notification at ${time.format(context)}");
+    if (!mounted) return;
+    debugPrint("Scheduling daily notification at ${time.format(context)}");
+    debugPrint("Scheduling daily notification at ${time.format(context)}");
     await flutterLocalNotificationsPlugin.zonedSchedule(
       0,
       'Water Reminder',
@@ -92,7 +104,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
           UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.time, // Schedule daily
     );
-    print("Daily notification scheduled");
+    debugPrint("Daily notification scheduled");
   }
 
   Future<void> _scheduleIntervalNotification(int interval) async {
@@ -121,17 +133,36 @@ class NotificationsScreenState extends State<NotificationsScreen> {
         NotificationDetails(android: androidPlatformChannelSpecifics);
 
     // Schedule the periodic notification
-    print("Scheduling interval notification every $interval minutes");
-    await flutterLocalNotificationsPlugin.periodicallyShow(
-      1,
-      'Water Reminder',
-      'Time to drink water!',
-      _convertToRepeatInterval(
-          interval), // Convert the interval to RepeatInterval
-      platformChannelSpecifics,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-    );
-    print("Interval notification scheduled");
+    debugPrint("Scheduling interval notification every $interval minutes");
+    try {
+      await flutterLocalNotificationsPlugin.periodicallyShow(
+        1,
+        'Water Reminder',
+        'Time to drink water!',
+        _convertToRepeatInterval(
+            interval), // Convert the interval to RepeatInterval
+        platformChannelSpecifics,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      );
+      debugPrint("Interval notification scheduled");
+    } on PlatformException catch (e) {
+      if (e.code == 'exact_alarms_not_permitted') {
+        debugPrint(
+            "Exact alarms not permitted, falling back to inexact alarms");
+        await flutterLocalNotificationsPlugin.periodicallyShow(
+          1,
+          'Water Reminder',
+          platformChannelSpecifics as String?,
+          _convertToRepeatInterval(
+              interval), // Convert the interval to RepeatInterval
+          platformChannelSpecifics,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        );
+        debugPrint("Inexact interval notification scheduled");
+      } else {
+        debugPrint("Error scheduling interval notification: $e");
+      }
+    }
   }
 
   RepeatInterval _convertToRepeatInterval(int interval) {
@@ -156,9 +187,9 @@ class NotificationsScreenState extends State<NotificationsScreen> {
     waterTracker.notificationTime = null;
     waterTracker.notificationInterval = null;
     await waterTracker.saveWaterData();
-    print("Cancelling all notifications");
+    debugPrint("Cancelling all notifications");
     await flutterLocalNotificationsPlugin.cancelAll();
-    print("All notifications cancelled");
+    debugPrint("All notifications cancelled");
   }
 
   @override

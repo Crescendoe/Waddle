@@ -45,6 +45,10 @@ class RegistrationScreenState extends State<RegistrationScreen> {
           'challenge4Active': false,
           'challenge5Active': false,
           'challenge6Active': false,
+          'rememberMe': false,
+          'challengeFailed': false,
+          'challengeCompleted': false,
+          'daysLeft': 14,
         });
 
         // Then, create the waterLogs sub-collection for the user

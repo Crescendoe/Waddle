@@ -96,7 +96,7 @@ class WelcomeScreenState extends State<WelcomeScreen>
 
           // Feature cards section
           Positioned(
-            top: 335,
+            top: 340,
             left: 0,
             right: 0,
             child: SizedBox(
@@ -121,7 +121,7 @@ class WelcomeScreenState extends State<WelcomeScreen>
 
           // Dots indicator
           Positioned(
-            bottom: 140,
+            bottom: 160,
             left: 0,
             right: 0,
             child: Center(
@@ -139,7 +139,7 @@ class WelcomeScreenState extends State<WelcomeScreen>
 
           // Bottom buttons section
           Positioned(
-            bottom: 20,
+            bottom: 30,
             left: 0,
             right: 0,
             child: Column(

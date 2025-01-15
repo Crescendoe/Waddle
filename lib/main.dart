@@ -14,6 +14,8 @@ import 'package:waterly/screens/results_screen.dart';
 import 'package:waterly/screens/settings_screen.dart';
 import 'package:waterly/screens/welcome_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:waterly/screens/forgot_password_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,12 +25,24 @@ void main() async {
   bool isFirstTime = prefs.getBool('isFirstTime') ?? true;
   bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
 
+  bool rememberMe = false;
+  final user = FirebaseAuth.instance.currentUser;
+  if (user != null) {
+    final uid = user.uid;
+    final userDoc =
+        await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    rememberMe = userDoc['rememberMe'] ?? false;
+  }
+
   runApp(
     ChangeNotifierProvider(
-      create: (_) =>
+      create: (context) =>
           WaterTracker(username: FirebaseAuth.instance.currentUser?.uid ?? '')
             ..loadWaterData(),
-      child: MyApp(isFirstTime: isFirstTime, isLoggedIn: isLoggedIn),
+      child: MyApp(
+          isFirstTime: isFirstTime,
+          isLoggedIn: isLoggedIn,
+          rememberMe: rememberMe),
     ),
   );
 }
@@ -36,15 +50,21 @@ void main() async {
 class MyApp extends StatelessWidget {
   final bool isFirstTime;
   final bool isLoggedIn;
+  final bool rememberMe;
 
-  const MyApp({super.key, required this.isFirstTime, required this.isLoggedIn});
+  const MyApp(
+      {super.key,
+      required this.isFirstTime,
+      required this.isLoggedIn,
+      required this.rememberMe});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Waterly',
+      title: 'Waddle',
       debugShowCheckedModeBanner: false,
-      initialRoute: isFirstTime || !isLoggedIn ? '/' : '/login',
+      initialRoute:
+          isFirstTime || !isLoggedIn ? '/' : (rememberMe ? '/home' : '/login'),
       routes: {
         '/': (context) => const WelcomeScreen(),
         '/registration': (context) => const RegistrationScreen(),
@@ -56,6 +76,7 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/settings': (context) => SettingsScreen(),
         '/notifications': (context) => const NotificationsScreen(),
+        '/forgotPassword': (context) => const ForgotPasswordScreen(),
       },
     );
   }
