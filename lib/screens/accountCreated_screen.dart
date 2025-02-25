@@ -61,7 +61,7 @@ class _AccountCreatedScreenState extends State<AccountCreatedScreen>
                 FadeTransition(
                   opacity: _fadeAnimation,
                   child: const Text(
-                    'Your account has been created successfully!',
+                    'Your account has been created, Welcome to Waddle!',
                     style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                     textAlign: TextAlign.center,
                   ),

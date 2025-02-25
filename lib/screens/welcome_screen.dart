@@ -86,8 +86,8 @@ class WelcomeScreenState extends State<WelcomeScreen>
                 ),
                 const SizedBox(height: 10),
                 const Text(
-                  "Let's help you keep track your daily water intake.",
-                  style: TextStyle(fontSize: 16),
+                  "Let's help you keep track of your daily water intake.",
+                  style: TextStyle(fontSize: 15),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -146,13 +146,21 @@ class WelcomeScreenState extends State<WelcomeScreen>
               children: [
                 ElevatedButton(
                   onPressed: () {
-                    Navigator.pushNamed(context, '/registration');
+                    try {
+                      Navigator.pushNamed(context, '/registration');
+                    } catch (e) {
+                      print('Error navigating to registration: $e');
+                    }
                   },
                   child: const Text('Sign Up'),
                 ),
                 TextButton(
                   onPressed: () {
-                    Navigator.pushNamed(context, '/login');
+                    try {
+                      Navigator.pushNamed(context, '/login');
+                    } catch (e) {
+                      print('Error navigating to login: $e');
+                    }
                   },
                   child: const Text('Log In'),
                 ),

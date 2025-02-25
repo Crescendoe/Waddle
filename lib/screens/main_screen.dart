@@ -1,5 +1,4 @@
 import 'dart:typed_data';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -60,6 +59,33 @@ class _MainScreenState extends State<MainScreen>
         });
       }
     });
+
+    // Schedule daily reset at midnight
+    scheduleDailyReset();
+    // check if the checkAndResetDailyData function needs to be called
+    final now = DateTime.now();
+    final nextMidnight = DateTime(now.year, now.month, now.day + 1);
+    final durationUntilMidnight = nextMidnight.difference(now);
+    Timer(durationUntilMidnight, () async {
+      await context.read<WaterTracker>().checkAndResetDailyData();
+    });
+  }
+
+  void scheduleDailyReset() {
+    final now = DateTime.now();
+    final nextMidnight = DateTime(now.year, now.month, now.day + 1);
+    final durationUntilMidnight = nextMidnight.difference(now);
+
+    Timer(durationUntilMidnight, () async {
+      await context.read<WaterTracker>().resetDailyData();
+      scheduleDailyReset(); // Reschedule the next reset
+    });
+  }
+
+  void _resetEntryTimer() {
+    setState(() {
+      context.read<WaterTracker>().nextEntryTime = null;
+    });
   }
 
   @override
@@ -78,7 +104,7 @@ class _MainScreenState extends State<MainScreen>
       await imageFile.writeAsBytes(image);
       await SocialSharingPlus.shareToSocialMedia(
         SocialPlatform.facebook,
-        'Check out my profile on Waterly!',
+        'Check out my profile on Waddle!',
         media: imagePath,
         isOpenBrowser: false,
         onAppNotInstalled: () {
@@ -277,7 +303,11 @@ extension on ScreenshotController {
 }
 
 void rebuildUI(BuildContext context) {
-  Navigator.pushReplacementNamed(context, '/home');
+  try {
+    Navigator.pushReplacementNamed(context, '/home');
+  } catch (e) {
+    print('Error navigating to home: $e');
+  }
 }
 
 class StreakScreen extends StatefulWidget {
@@ -1585,6 +1615,9 @@ class _HomeScreenState extends State<HomeScreen>
             logDrink(context, drinkName, waterIntake, drinkWaterRatio * 100);
             Navigator.pop(context);
             _startEntryTimer();
+            if (!context.read<WaterTracker>().goalMetToday) {
+              context.read<WaterTracker>().checkGoalMet(context);
+            }
           },
         );
       },
@@ -1638,11 +1671,51 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  void _resetEntryTimer() {
+    setState(() {
+      _remainingTime = 0;
+      context.read<WaterTracker>().nextEntryTime = null;
+    });
+  }
+
   void _incrementWaterConsumed(double amount) {
-    if (context.read<WaterTracker>().goalMetToday) {
-      return; // Prevent incrementing water if goal is already met
-    }
     context.read<WaterTracker>().incrementWaterConsumed(amount);
+    context.read<WaterTracker>().checkGoalMet(
+        context); // Check if goal is met and navigate to congrats screen
+  }
+
+  void logDrink(BuildContext context, String drinkName, double amount,
+      double waterContent) async {
+    final log = WaterLog(
+      drinkName: drinkName,
+      amount: amount,
+      waterContent: waterContent,
+      entryTime: DateTime.now(),
+    );
+
+    context.read<WaterTracker>().addLog(
+        log); // Use addLog method to ensure waterConsumed is updated correctly
+
+    // Send log to Firebase
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final uid = user.uid;
+      final logData = {
+        'drinkName': drinkName,
+        'amount': amount,
+        'waterContent': waterContent,
+        'entryTime': log.entryTime.toIso8601String(),
+      };
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('waterLogs')
+          .add(logData);
+
+      // Update Firestore with the new water consumption
+      await context.read<WaterTracker>().updateFirestore();
+    }
   }
 }
 
@@ -1680,39 +1753,6 @@ class CupClipper extends CustomClipper<Path> {
   @override
   bool shouldReclip(covariant CustomClipper<Path> oldClipper) {
     return false; // No need to reclip unless the shape changes dynamically
-  }
-}
-
-void logDrink(BuildContext context, String drinkName, double amount,
-    double waterContent) async {
-  final log = WaterLog(
-    drinkName: drinkName,
-    amount: amount,
-    waterContent: waterContent,
-    entryTime: DateTime.now(),
-  );
-
-  context.read<WaterTracker>().addLog(log);
-
-  // Send log to Firebase
-  final user = FirebaseAuth.instance.currentUser;
-  if (user != null) {
-    final uid = user.uid;
-    final logData = {
-      'drinkName': drinkName,
-      'amount': amount,
-      'waterContent': waterContent,
-      'entryTime': log.entryTime.toIso8601String(),
-    };
-
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('waterLogs')
-        .add(logData);
-
-    // Update Firestore with the new water consumption
-    await context.read<WaterTracker>().updateFirestore();
   }
 }
 
@@ -2653,6 +2693,13 @@ class ProfileScreen extends StatelessWidget {
                                 TextButton(
                                   onPressed: () {
                                     Navigator.pop(context);
+
+                                    context
+                                        .read<WaterTracker>()
+                                        .resetWater(); // Reset water consumed to 0
+                                    context
+                                        .read<WaterTracker>()
+                                        .resetEntryTimer(); // Reset entry timer
                                     Navigator.pushReplacementNamed(
                                         context, '/questions');
                                   },

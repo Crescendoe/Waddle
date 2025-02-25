@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/water_tracker.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class QuestionsScreen extends StatefulWidget {
   final dynamic calculateWaterIntake;
@@ -271,7 +270,7 @@ class QuestionsScreenState extends State<QuestionsScreen> {
                     );
 
                     // Simulate a delay for loading
-                    await Future.delayed(const Duration(seconds: 3));
+                    await Future.delayed(const Duration(seconds: 2));
 
                     if (!mounted) return;
                     Navigator.of(context).pop();
@@ -339,12 +338,7 @@ class QuestionsScreenState extends State<QuestionsScreen> {
     // Update the water goal in WaterTracker to be the returned waterIntake variable from the calculateWaterIntake function
     final waterTracker = Provider.of<WaterTracker>(context, listen: false);
     waterTracker.setWaterGoal(waterGoal);
-
-    // Ensure username is set correctly
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      waterTracker.username = user.displayName ?? user.email;
-    }
+    waterTracker.resetWater(); // Reset water consumed to 0oz
 
     // Navigate to the results screen
     Navigator.pushNamed(context, '/results');
