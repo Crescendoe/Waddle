@@ -5,7 +5,7 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:provider/provider.dart';
 import 'package:waterly/models/water_tracker.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:flutter/services.dart'; // Add this import
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -17,6 +17,7 @@ class NotificationsScreen extends StatefulWidget {
 class NotificationsScreenState extends State<NotificationsScreen> {
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
+  bool notificationsEnabled = false;
   TimeOfDay? selectedTime;
   int? selectedInterval;
 
@@ -24,58 +25,40 @@ class NotificationsScreenState extends State<NotificationsScreen> {
   void initState() {
     super.initState();
     _initializeNotifications();
-    tz.initializeTimeZones(); // Initialize timezone
+    tz.initializeTimeZones();
     final waterTracker = context.read<WaterTracker>();
+    notificationsEnabled = waterTracker.notificationsEnabled;
     selectedTime = waterTracker.notificationTime;
     selectedInterval = waterTracker.notificationInterval;
   }
 
   Future<void> _initializeNotifications() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings(
-            'app_icon'); // Ensure 'app_icon' is correct
+        AndroidInitializationSettings('app_icon');
     final InitializationSettings initializationSettings =
         InitializationSettings(android: initializationSettingsAndroid);
-    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+    final bool? initialized = await flutterLocalNotificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        debugPrint('Notification clicked: ${response.payload}');
+      },
+    );
 
-    // Request notification permissions
+    if (initialized == null || !initialized) {
+      debugPrint("Failed to initialize notifications");
+    }
+
     try {
       final status = await Permission.notification.request();
       if (status.isGranted) {
         debugPrint("Notification permissions granted");
-      } else {
-        debugPrint("Notification permissions denied");
       }
-
-      // Request exact alarm permission for Android 12 and above
-      if (await Permission.scheduleExactAlarm.isDenied) {
-        final exactAlarmStatus = await Permission.scheduleExactAlarm.request();
-        if (exactAlarmStatus.isGranted) {
-          debugPrint("Exact alarm permissions granted");
-        } else {
-          debugPrint("Exact alarm permissions denied");
-        }
-      }
-    } on PlatformException catch (e) {
+    } catch (e) {
       debugPrint("Error requesting notification permissions: $e");
     }
   }
 
   Future<void> _scheduleDailyNotification(TimeOfDay time) async {
-    final status = await Permission.notification.status;
-    if (!status.isGranted) {
-      final newStatus = await Permission.notification.request();
-      if (!newStatus.isGranted) {
-        debugPrint("Notification permissions denied");
-        return;
-      }
-    }
-
-    if (!mounted) return;
-    final waterTracker = Provider.of<WaterTracker>(context, listen: false);
-    waterTracker.notificationTime = time;
-    await waterTracker.saveWaterData();
-
     final now = TimeOfDay.now();
     final scheduledDate = tz.TZDateTime.now(tz.local).add(Duration(
         hours: time.hour - now.hour, minutes: time.minute - now.minute));
@@ -90,172 +73,113 @@ class NotificationsScreenState extends State<NotificationsScreen> {
     );
     const NotificationDetails platformChannelSpecifics =
         NotificationDetails(android: androidPlatformChannelSpecifics);
-    if (!mounted) return;
-    debugPrint("Scheduling daily notification at ${time.format(context)}");
-    debugPrint("Scheduling daily notification at ${time.format(context)}");
+
     await flutterLocalNotificationsPlugin.zonedSchedule(
       0,
       'Water Reminder',
-      'Time to drink water!',
-      scheduledDate, // Correctly passing the scheduled time with timezone
+      'Time to drink water and log your intake!',
+      scheduledDate,
       platformChannelSpecifics,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time, // Schedule daily
+      matchDateTimeComponents: DateTimeComponents.time,
     );
-    debugPrint("Daily notification scheduled");
   }
 
-  Future<void> _scheduleIntervalNotification(int interval) async {
-    final status = await Permission.notification.status;
-    if (!status.isGranted) {
-      final newStatus = await Permission.notification.request();
-      if (!newStatus.isGranted) {
-        print("Notification permissions denied");
-        return;
-      }
-    }
-
+  Future<void> _saveSettingsToFirestore() async {
     final waterTracker = Provider.of<WaterTracker>(context, listen: false);
-    waterTracker.notificationInterval = interval;
-    await waterTracker.saveWaterData();
+    waterTracker.notificationsEnabled = notificationsEnabled;
+    waterTracker.notificationTime = selectedTime;
+    waterTracker.notificationInterval = selectedInterval;
 
-    const AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
-      'interval_reminder_channel', // Correct ID
-      'Interval Reminder',
-      channelDescription: 'Channel for interval water reminder',
-      importance: Importance.max,
-      priority: Priority.high,
-    );
-    const NotificationDetails platformChannelSpecifics =
-        NotificationDetails(android: androidPlatformChannelSpecifics);
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(waterTracker.userId)
+        .update({
+      'notificationsEnabled': notificationsEnabled,
+      'notificationTime': selectedTime != null
+          ? {'hour': selectedTime!.hour, 'minute': selectedTime!.minute}
+          : null,
+      'notificationInterval': selectedInterval,
+    });
 
-    // Schedule the periodic notification
-    debugPrint("Scheduling interval notification every $interval minutes");
-    try {
-      await flutterLocalNotificationsPlugin.periodicallyShow(
-        1,
-        'Water Reminder',
-        'Time to drink water!',
-        _convertToRepeatInterval(
-            interval), // Convert the interval to RepeatInterval
-        platformChannelSpecifics,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      );
-      debugPrint("Interval notification scheduled");
-    } on PlatformException catch (e) {
-      if (e.code == 'exact_alarms_not_permitted') {
-        debugPrint(
-            "Exact alarms not permitted, falling back to inexact alarms");
-        await flutterLocalNotificationsPlugin.periodicallyShow(
-          1,
-          'Water Reminder',
-          platformChannelSpecifics as String?,
-          _convertToRepeatInterval(
-              interval), // Convert the interval to RepeatInterval
-          platformChannelSpecifics,
-          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-        );
-        debugPrint("Inexact interval notification scheduled");
-      } else {
-        debugPrint("Error scheduling interval notification: $e");
-      }
+    if (notificationsEnabled && selectedTime != null) {
+      await _scheduleDailyNotification(selectedTime!);
+    } else {
+      await flutterLocalNotificationsPlugin.cancelAll();
     }
-  }
-
-  RepeatInterval _convertToRepeatInterval(int interval) {
-    // Convert custom minutes into RepeatInterval
-    switch (interval) {
-      case 15:
-        return RepeatInterval
-            .everyMinute; // Note: Flutter has limited intervals
-      case 30:
-        return RepeatInterval.everyMinute; // No native 30-minute interval
-      case 60:
-        return RepeatInterval.hourly;
-      case 120:
-        return RepeatInterval.hourly; // No native 2-hour interval
-      default:
-        return RepeatInterval.hourly;
-    }
-  }
-
-  Future<void> _cancelNotifications() async {
-    final waterTracker = Provider.of<WaterTracker>(context, listen: false);
-    waterTracker.notificationTime = null;
-    waterTracker.notificationInterval = null;
-    await waterTracker.saveWaterData();
-    debugPrint("Cancelling all notifications");
-    await flutterLocalNotificationsPlugin.cancelAll();
-    debugPrint("All notifications cancelled");
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Notifications'),
+        title: const Text('Notification Settings'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ListTile(
-              title: const Text('Daily Reminder'),
-              subtitle: Text(selectedTime != null
-                  ? 'Scheduled at ${selectedTime!.format(context)}'
-                  : 'Not set'),
-              trailing: IconButton(
-                icon: const Icon(Icons.access_time),
-                onPressed: () async {
-                  final time = await showTimePicker(
-                    context: context,
-                    initialTime: TimeOfDay.now(),
-                  );
-                  if (time != null) {
-                    setState(() {
-                      selectedTime = time;
-                    });
-                    await _scheduleDailyNotification(time);
-                  }
-                },
-              ),
-            ),
-            ListTile(
-              title: const Text('Interval Reminder'),
-              subtitle: Text(selectedInterval != null
-                  ? 'Every $selectedInterval minutes'
-                  : 'Not set'),
-              trailing: DropdownButton<int>(
-                value: selectedInterval,
-                items: [15, 30, 60, 120]
-                    .map((interval) => DropdownMenuItem<int>(
-                          value: interval,
-                          child: Text('$interval minutes'),
-                        ))
-                    .toList(),
-                onChanged: (value) async {
-                  if (value != null) {
-                    setState(() {
-                      selectedInterval = value;
-                    });
-                    await _scheduleIntervalNotification(value);
-                  }
-                },
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                await _cancelNotifications();
+            SwitchListTile(
+              title: const Text('Enable Notifications'),
+              value: notificationsEnabled,
+              onChanged: (value) async {
                 setState(() {
-                  selectedTime = null;
-                  selectedInterval = null;
+                  notificationsEnabled = value;
                 });
+                await _saveSettingsToFirestore();
               },
-              child: const Text('Cancel All Notifications'),
             ),
+            if (notificationsEnabled) ...[
+              const SizedBox(height: 20.0),
+              ListTile(
+                title: const Text('Daily Reminder Time'),
+                subtitle: Text(selectedTime != null
+                    ? 'Scheduled at ${selectedTime!.format(context)}'
+                    : 'Not set'),
+                trailing: IconButton(
+                  icon: const Icon(Icons.access_time),
+                  onPressed: () async {
+                    final time = await showTimePicker(
+                      context: context,
+                      initialTime: TimeOfDay.now(),
+                    );
+                    if (time != null) {
+                      setState(() {
+                        selectedTime = time;
+                      });
+                      await _saveSettingsToFirestore();
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(height: 16.0),
+              ListTile(
+                title: const Text('Interval Reminder'),
+                subtitle: Text(selectedInterval != null
+                    ? 'Every $selectedInterval minutes'
+                    : 'Not set'),
+                trailing: DropdownButton<int>(
+                  value: selectedInterval,
+                  items: [15, 30, 60, 120]
+                      .map((interval) => DropdownMenuItem<int>(
+                            value: interval,
+                            child: Text('$interval minutes'),
+                          ))
+                      .toList(),
+                  onChanged: (value) async {
+                    if (value != null) {
+                      setState(() {
+                        selectedInterval = value;
+                      });
+                      await _saveSettingsToFirestore();
+                    }
+                  },
+                ),
+              ),
+            ],
           ],
         ),
       ),

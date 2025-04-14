@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:waterly/screens/forgot_password_screen.dart';
+import 'package:flutter/foundation.dart'; // Add this import for logging
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -31,6 +32,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (email != null && password != null) {
       _emailController.text = email;
       _passwordController.text = password;
+      debugPrint('Attempting to log in with remembered credentials');
       _login();
     }
   }
@@ -62,6 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       try {
+        debugPrint('Logging in with email: ${_emailController.text}');
         await FirebaseAuth.instance.signInWithEmailAndPassword(
           email: _emailController.text,
           password: _passwordController.text,
@@ -74,8 +77,15 @@ class _LoginScreenState extends State<LoginScreen> {
         Navigator.pushNamed(context, '/home');
       } on FirebaseAuthException catch (e) {
         Navigator.of(context).pop();
+        debugPrint('Login failed: ${e.message}');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.message ?? 'Login failed')),
+        );
+      } catch (e) {
+        Navigator.of(context).pop();
+        debugPrint('Unexpected error: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('An unexpected error occurred')),
         );
       }
     }

@@ -9,8 +9,8 @@ plugins {
 }
 
 android {
-    namespace = "com.example.waterly"
-    compileSdk = flutter.compileSdkVersion
+    namespace = "com.waterly.app"
+    compileSdk = 35 // Updated to 35
     ndkVersion = "25.1.8937393"
 
     compileOptions {
@@ -22,28 +22,24 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = jvmTarget = 17
+        jvmTarget = "17"
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.waterly"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        applicationId = "com.waterly.app"
         minSdkVersion 23
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 35 // Ensure this matches the compileSdk version
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.debug
         }
     }
 }
+
 
 flutter {
     source = "../.."

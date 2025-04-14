@@ -67,7 +67,7 @@ class DefaultFirebaseOptions {
     projectId: 'waterly-3ad4f',
     databaseURL: 'https://waterly-3ad4f-default-rtdb.firebaseio.com',
     storageBucket: 'waterly-3ad4f.firebasestorage.app',
-    iosBundleId: 'com.example.waterly',
+    iosBundleId: 'com.waterly.app',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
@@ -77,7 +77,7 @@ class DefaultFirebaseOptions {
     projectId: 'waterly-3ad4f',
     databaseURL: 'https://waterly-3ad4f-default-rtdb.firebaseio.com',
     storageBucket: 'waterly-3ad4f.firebasestorage.app',
-    iosBundleId: 'com.example.waterly',
+    iosBundleId: 'com.waterly.app',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(

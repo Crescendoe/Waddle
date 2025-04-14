@@ -57,7 +57,8 @@ class ResultsScreen extends StatelessWidget {
               onPressed: () async {
                 final user = FirebaseAuth.instance.currentUser;
                 if (user != null) {
-                  waterTracker.username = user.displayName ?? user.email;
+                  waterTracker.username =
+                      user.displayName ?? waterTracker.username;
                   // Run the resetWater method from the water tracker provider
                   waterTracker.resetWater();
                   Navigator.pushNamed(context, '/home');

@@ -34,6 +34,8 @@ class WaterTracker extends ChangeNotifier {
   bool challengeFailed = false;
   bool challengeCompleted = false;
   int daysLeft = 14;
+  bool notificationsEnabled = false;
+  String userId = '';
 
   double get getWaterConsumed => waterConsumed;
   double get getWaterGoal => waterGoal;
@@ -75,55 +77,72 @@ class WaterTracker extends ChangeNotifier {
     checkAndResetDailyData(); // Check and reset daily data on initialization
   }
 
+  WaterTracker.withNotifications({
+    required this.notificationsEnabled,
+    this.notificationTime,
+    this.notificationInterval,
+    required this.userId,
+  }) {
+    loadWaterData();
+    printFirestoreVariables();
+    loadNotificationSettings();
+    scheduleDailyReset(); // Schedule the daily reset
+    checkAndResetDailyData(); // Check and reset daily data on initialization
+  }
+
+  Future<void> handleFirebaseAuthError(FirebaseAuthException e) async {
+    _logger.e('FirebaseAuth Error: ${e.message}');
+    // Handle specific error codes if needed
+    switch (e.code) {
+      case 'user-not-found':
+        _logger.e('No user found for that email.');
+        break;
+      case 'wrong-password':
+        _logger.e('Wrong password provided.');
+        break;
+      // Add more cases as needed
+      default:
+        _logger.e('An undefined Error happened.');
+    }
+  }
+
   Future<void> updateFirestore() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       final uid = user.uid;
       try {
-        WriteBatch batch = _firestore.batch();
         DocumentReference userDocRef = _firestore.collection('users').doc(uid);
 
-        batch.set(
-            userDocRef,
-            {
-              'waterConsumed': waterConsumed,
-              'waterGoal': waterGoal,
-              'goalMetToday': goalMetToday,
-              'currentStreak': _currentStreak,
-              'recordStreak': recordStreak,
-              'completedChallenges': completedChallenges,
-              'companionsCollected': companionsCollected,
-              'username': username ?? user.displayName ?? user.email,
-              'profileImage': profileImage,
-              'lastResetDate': lastResetDate?.toIso8601String(),
-              'nextEntryTime': nextEntryTime?.toIso8601String(),
-              'notificationTime': notificationTime != null
-                  ? '${notificationTime!.hour}:${notificationTime!.minute}'
-                  : null,
-              'notificationInterval': notificationInterval,
-              'activeChallengeIndex': activeChallengeIndex,
-              'challenge1Active': challenge1Active,
-              'challenge2Active': challenge2Active,
-              'challenge3Active': challenge3Active,
-              'challenge4Active': challenge4Active,
-              'challenge5Active': challenge5Active,
-              'challenge6Active': challenge6Active,
-              'daysLeft': daysLeft,
-            },
-            SetOptions(merge: true));
-
-        // Update water logs in Firestore
-        CollectionReference logCollection = userDocRef.collection('waterLogs');
-        QuerySnapshot snapshot = await logCollection.get();
-        for (DocumentSnapshot doc in snapshot.docs) {
-          batch.delete(doc.reference);
-        }
-
-        for (WaterLog log in logs) {
-          batch.set(logCollection.doc(), log.toMap());
-        }
-
-        await batch.commit();
+        // Update only the user's main document without affecting the waterLogs collection
+        await userDocRef.set(
+          {
+            'waterConsumed': waterConsumed,
+            'waterGoal': waterGoal,
+            'goalMetToday': goalMetToday,
+            'currentStreak': _currentStreak,
+            'recordStreak': recordStreak,
+            'completedChallenges': completedChallenges,
+            'companionsCollected': companionsCollected,
+            'username': username,
+            'profileImage': profileImage,
+            'lastResetDate': lastResetDate?.toIso8601String(),
+            'nextEntryTime': nextEntryTime?.toIso8601String(),
+            'notificationTime': notificationTime != null
+                ? '${notificationTime!.hour}:${notificationTime!.minute}'
+                : null,
+            'notificationInterval': notificationInterval,
+            'activeChallengeIndex': activeChallengeIndex,
+            'challenge1Active': challenge1Active,
+            'challenge2Active': challenge2Active,
+            'challenge3Active': challenge3Active,
+            'challenge4Active': challenge4Active,
+            'challenge5Active': challenge5Active,
+            'challenge6Active': challenge6Active,
+            'daysLeft': daysLeft,
+          },
+          SetOptions(
+              merge: true), // Use merge to avoid overwriting the document
+        );
       } catch (e) {
         _logger.e('Error updating Firestore: $e');
       }
@@ -147,6 +166,13 @@ class WaterTracker extends ChangeNotifier {
 
   void logDrink(BuildContext context, String drinkName, double amount,
       double waterContent) async {
+    // Prevent duplicate entries by checking the last log time
+    if (_lastLogTime != null &&
+        DateTime.now().difference(_lastLogTime!).inSeconds < 60) {
+      _logger.w('Duplicate log prevented: $drinkName, $amount');
+      return;
+    }
+
     final log = WaterLog(
       drinkName: drinkName,
       amount: amount,
@@ -177,6 +203,8 @@ class WaterTracker extends ChangeNotifier {
       // Update Firestore with the new water consumption
       await updateFirestore();
     }
+
+    _lastLogTime = DateTime.now(); // Update the last log time
   }
 
   void removeLog(WaterLog log) async {
@@ -193,7 +221,7 @@ class WaterTracker extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setWaterGoal(double goal) async {
+  Future<void> setWaterGoal(double goal) async {
     waterGoal = goal;
     resetEntryTimer(); // Reset entry timer when water goal is changed
     await updateFirestore();
@@ -317,15 +345,7 @@ class WaterTracker extends ChangeNotifier {
   Future<void> checkAndResetDailyData() async {
     DateTime now = DateTime.now();
     if (lastResetDate == null || now.difference(lastResetDate!).inDays >= 1) {
-      if (!goalMetToday) {
-        _currentStreak = 0;
-      }
-      waterConsumed = 0.0;
-      goalMetToday = false;
-      lastResetDate = now;
-      await updateFirestore();
-      saveWaterData();
-      notifyListeners();
+      await resetDailyData();
     }
   }
 
@@ -376,7 +396,9 @@ class WaterTracker extends ChangeNotifier {
               userDoc['companionsCollected'] ?? companionsCollected;
           username = userDoc['username'] ?? username;
           profileImage = userDoc['profileImage'] ?? profileImage;
-          nextEntryTime = userDoc['nextEntryTime']?.toDate() ?? nextEntryTime;
+          nextEntryTime = userDoc['nextEntryTime'] != null
+              ? DateTime.parse(userDoc['nextEntryTime'])
+              : nextEntryTime;
           activeChallengeIndex = userDoc['activeChallengeIndex'];
           challenge1Active = userDoc['challenge1Active'] ?? false;
           challenge2Active = userDoc['challenge2Active'] ?? false;
@@ -396,7 +418,11 @@ class WaterTracker extends ChangeNotifier {
               .toList();
         }
       } catch (e) {
-        _logger.e('Error loading data from Firestore: $e');
+        if (e is FirebaseAuthException) {
+          await handleFirebaseAuthError(e);
+        } else {
+          _logger.e('Error loading data from Firestore: $e');
+        }
       }
     } else {
       _currentStreak = prefs.getInt('currentStreak') ?? 0;
@@ -409,7 +435,7 @@ class WaterTracker extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> saveWaterData() async {
+  Future<void> saveWaterData({bool updateLastResetDate = true}) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setDouble('waterConsumed', waterConsumed);
     await prefs.setDouble('waterGoal', waterGoal);
@@ -418,7 +444,9 @@ class WaterTracker extends ChangeNotifier {
     await prefs.setInt('recordStreak', recordStreak);
     await prefs.setInt('completedChallenges', completedChallenges);
     await prefs.setInt('companionsCollected', companionsCollected);
-    await prefs.setString('lastResetDate', DateTime.now().toIso8601String());
+    if (updateLastResetDate) {
+      await prefs.setString('lastResetDate', DateTime.now().toIso8601String());
+    }
     if (username != null) {
       await prefs.setString('username', username!);
     }
@@ -468,21 +496,23 @@ class WaterTracker extends ChangeNotifier {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       final uid = user.uid;
-      WriteBatch batch = _firestore.batch();
       CollectionReference logCollection =
           _firestore.collection('users').doc(uid).collection('waterLogs');
 
       try {
-        QuerySnapshot snapshot = await logCollection.get();
-        for (DocumentSnapshot doc in snapshot.docs) {
-          batch.delete(doc.reference);
-        }
-
         for (WaterLog log in logs) {
-          batch.set(logCollection.doc(), log.toMap());
-        }
+          QuerySnapshot snapshot = await logCollection
+              .where('entryTime', isEqualTo: log.entryTime.toIso8601String())
+              .get();
 
-        await batch.commit();
+          if (snapshot.docs.isNotEmpty) {
+            // Update existing log
+            await logCollection.doc(snapshot.docs.first.id).update(log.toMap());
+          } else {
+            // Add new log
+            await logCollection.add(log.toMap());
+          }
+        }
       } catch (e) {
         _logger.e('Error setting logs in Firestore: $e');
       }

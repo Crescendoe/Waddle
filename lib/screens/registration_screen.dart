@@ -110,9 +110,29 @@ class RegistrationScreenState extends State<RegistrationScreen> {
     } catch (e) {
       print('Error during registration: $e'); // Log the error for debugging
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('An error occurred. Please try again.')),
-        );
+        if (e.toString().contains('network-request-failed')) {
+          // Show a popup dialog for connection issues
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Account Creation Failed'),
+              content: const Text(
+                  'Unable to connect to the server. Please check your internet connection and try again.'),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(); // Close the dialog
+                  },
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('An error occurred. Please try again.')),
+          );
+        }
       }
     } finally {
       if (mounted) {

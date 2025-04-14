@@ -1,4 +1,4 @@
-package com.example.waterly
+package com.waterly.app
 
 import io.flutter.embedding.android.FlutterActivity
 

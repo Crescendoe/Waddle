@@ -43,6 +43,9 @@ class _MainScreenState extends State<MainScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       context.read<WaterTracker>().printFirestoreVariables();
       await context.read<WaterTracker>().loadWaterData(); // Load water data
+      await context
+          .read<WaterTracker>()
+          .checkAndResetDailyData(); // Check and reset daily data
       if (mounted) {
         setState(() {
           _isLoading = false; // Set loading to false after data is loaded
@@ -343,7 +346,7 @@ class _StreakScreenState extends State<StreakScreen> {
   }
 
   Future<void> _loadLoggedDays() async {
-    final user = FirebaseAuth.instance.currentUser;
+    final user = FirebaseAuth.instance.currentUser as User?;
     if (user != null) {
       final uid = user.uid;
       final snapshot = await FirebaseFirestore.instance
@@ -364,6 +367,14 @@ class _StreakScreenState extends State<StreakScreen> {
         _loggedDays = loggedDays;
         _currentStreak = _calculateCurrentStreak();
       });
+
+      // Ensure lastResetDate is not unintentionally updated
+      final waterTracker = context.read<WaterTracker>();
+      if (waterTracker.lastResetDate == null ||
+          waterTracker.lastResetDate!
+              .isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
+        await waterTracker.checkAndResetDailyData();
+      }
     }
   }
 
@@ -387,6 +398,7 @@ class _StreakScreenState extends State<StreakScreen> {
         );
       }).toList();
 
+      // Set logs without overwriting existing data
       context.read<WaterTracker>().setLogs(logs);
     }
   }
@@ -1168,7 +1180,7 @@ class ChallengesScreen extends StatelessWidget {
       case 4:
         return 'Replace all dairy-based drinks with a dairy-free alternative for 14 days. Think oat milk lattes, almond milk smoothies, and coconut milk in your favorite recipes!';
       case 5:
-        return 'Drink at least 12 oz of a vitamin- or mineral-rich beverage daily for 14 days. Whether it’s a smoothie, fortified drink, or juice, this challenge is all about nourishing your body!';
+        return 'Drink at least 12 oz of a vitamin- or mineral-rich beverage daily for 14 days. Whether it’s a smoothie, fortified drink, or juice, this challenge is all about getting your daily dose of vitamins and minerals in a delicious way!';
       default:
         return 'Challenge details';
     }
@@ -1415,9 +1427,6 @@ class _HomeScreenState extends State<HomeScreen>
     // Pull the water tracker data from the provider
     final waterTracker = Provider.of<WaterTracker>(context);
 
-    debugPrint('Water Goal: ${waterTracker.waterGoal}');
-    debugPrint('Water Consumed: ${waterTracker.waterConsumed}');
-
     final waterGoal = (waterTracker.waterGoal).toInt();
     final waterGoalCups = (waterTracker.waterGoal / 8).toInt();
 
@@ -1521,14 +1530,14 @@ class _HomeScreenState extends State<HomeScreen>
                         'Next entry available in:',
                         style: TextStyle(
                           fontSize: 16,
-                          color: Colors.red[800],
+                          color: Colors.blueGrey.shade800,
                         ),
                       ),
                       Text(
                         '${_remainingTime ~/ 60}:${(_remainingTime % 60).toString().padLeft(2, '0')}',
                         style: TextStyle(
                           fontSize: 24,
-                          color: Colors.red[800],
+                          color: Colors.blueGrey[800],
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -1908,45 +1917,45 @@ class DrinkSelectionBottomSheet extends StatelessWidget {
       {
         'name': 'Coconut Water',
         'icon': Icons.local_drink,
-        'ratio': 0.9,
+        'ratio': 0.95,
         'color': Colors.brown
       },
       // Teas
       {
         'name': 'Black Tea',
         'icon': Icons.emoji_food_beverage,
-        'ratio': 0.9,
+        'ratio': 0.95,
         'color': Colors.black
       },
       {
         'name': 'Green Tea',
         'icon': Icons.emoji_food_beverage,
-        'ratio': 0.9,
+        'ratio': 0.95,
         'color': Colors.green
       },
       {
         'name': 'Herbal Tea',
         'icon': Icons.emoji_food_beverage,
-        'ratio': 0.9,
+        'ratio': 0.95,
         'color': Colors.lightGreen
       },
       {
         'name': 'Matcha',
         'icon': Icons.emoji_food_beverage,
-        'ratio': 0.9,
+        'ratio': 0.95,
         'color': Colors.greenAccent
       },
       // Juices
       {
         'name': 'Juice',
         'icon': Icons.local_drink,
-        'ratio': 0.8,
+        'ratio': 0.9,
         'color': Colors.orange
       },
       {
         'name': 'Lemonade',
         'icon': Icons.local_drink,
-        'ratio': 0.8,
+        'ratio': 0.9,
         'color': Colors.yellow
       },
       // Milks
@@ -1984,14 +1993,14 @@ class DrinkSelectionBottomSheet extends StatelessWidget {
       {
         'name': 'Yogurt',
         'icon': Icons.local_drink,
-        'ratio': 0.8,
+        'ratio': 0.7,
         'color': Colors.orangeAccent
       },
       // Milkshake
       {
         'name': 'Milkshake',
         'icon': Icons.local_drink,
-        'ratio': 0.8,
+        'ratio': 0.7,
         'color': Colors.purple
       },
       // Energy Drinks
@@ -2005,52 +2014,52 @@ class DrinkSelectionBottomSheet extends StatelessWidget {
       {
         'name': 'Coffee',
         'icon': Icons.coffee,
-        'ratio': 0.5,
+        'ratio': 0.8,
         'color': Colors.brown
       },
       {
         'name': 'Decaf Coffee',
         'icon': Icons.coffee,
-        'ratio': 0.5,
+        'ratio': 0.9,
         'color': Colors.brown
       },
       {
         'name': 'Latte',
         'icon': Icons.local_cafe,
-        'ratio': 0.5,
+        'ratio': 0.8,
         'color': Colors.brown
       },
       {
         'name': 'Hot Chocolate',
         'icon': Icons.local_cafe,
-        'ratio': 0.5,
+        'ratio': 0.8,
         'color': Colors.brown
       },
       // Sodas
       {
         'name': 'Soda',
         'icon': Icons.local_drink,
-        'ratio': 0.4,
+        'ratio': 0.8,
         'color': Colors.brown
       },
       {
         'name': 'Diet Soda',
         'icon': Icons.local_drink,
-        'ratio': 0.4,
+        'ratio': 0.8,
         'color': Colors.brown
       },
       // Smoothies
       {
         'name': 'Smoothie',
         'icon': Icons.blender,
-        'ratio': 0.8,
+        'ratio': 0.9,
         'color': Colors.purple
       },
       // Sports Drinks
       {
         'name': 'Sports Drink',
         'icon': Icons.sports,
-        'ratio': 0.8,
+        'ratio': 0.9,
         'color': Colors.blue
       },
       {
@@ -2063,7 +2072,7 @@ class DrinkSelectionBottomSheet extends StatelessWidget {
       {
         'name': 'Soup',
         'icon': Icons.soup_kitchen,
-        'ratio': 0.6,
+        'ratio': 0.7,
         'color': Colors.redAccent
       },
     ];
@@ -2289,7 +2298,7 @@ class DuckScreen extends StatelessWidget {
       case 1:
         return waterTracker.completedChallenges >= 5;
       case 2:
-        return waterTracker.currentStreak >= 7;
+        return waterTracker.recordStreak >= 7;
       case 3:
         return waterTracker.currentStreak >= 10;
       case 4:
@@ -2387,7 +2396,11 @@ class DuckScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         isUnlocked
-                            ? Image.asset('assets/duck_$index.png')
+                            ? Image.asset(
+                                'lib/assets/images/wade_flying.png',
+                                width: 80,
+                                height: 80,
+                              )
                             : const Icon(Icons.lock,
                                 size: 40,
                                 color: Colors.black), // Display a silhouette
