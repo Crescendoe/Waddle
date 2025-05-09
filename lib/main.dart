@@ -22,49 +22,57 @@ void main() async {
   await Firebase.initializeApp();
 
   SharedPreferences prefs = await SharedPreferences.getInstance();
-  bool isFirstTime = prefs.getBool('isFirstTime') ?? true;
-  bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+  bool rememberMe =
+      prefs.getBool('rememberMe') ?? false; // Retrieve rememberMe state
+  String? savedUid = prefs.getString('savedUid'); // Retrieve saved UID
 
-  bool rememberMe = false;
-  final user = FirebaseAuth.instance.currentUser;
-  if (user != null) {
-    final uid = user.uid;
-    final userDoc =
-        await FirebaseFirestore.instance.collection('users').doc(uid).get();
-    rememberMe = userDoc['rememberMe'] ?? false;
+  User? user;
+  if (rememberMe && savedUid != null) {
+    // Automatically log in the user if rememberMe is true and UID is saved
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(savedUid)
+        .get();
+
+    if (userDoc.exists) {
+      final data = userDoc.data()!;
+      user = FirebaseAuth.instance.currentUser;
+    }
+  } else {
+    user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final uid = user.uid;
+      final userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+      if (userDoc.exists) {
+        // Save rememberMe and UID locally
+        await prefs.setBool('rememberMe', rememberMe);
+        await prefs.setString('savedUid', uid);
+      }
+    }
   }
 
   runApp(
     ChangeNotifierProvider(
-      create: (context) =>
-          WaterTracker(username: FirebaseAuth.instance.currentUser?.uid ?? '')
-            ..loadWaterData(),
-      child: MyApp(
-          isFirstTime: isFirstTime,
-          isLoggedIn: isLoggedIn,
-          rememberMe: rememberMe),
+      create: (context) => WaterTracker(username: savedUid ?? user?.uid ?? '')
+        ..loadWaterData(), // Ensure data is loaded after initialization
+      child: MyApp(rememberMe: rememberMe),
     ),
   );
 }
 
 class MyApp extends StatelessWidget {
-  final bool isFirstTime;
-  final bool isLoggedIn;
   final bool rememberMe;
 
-  const MyApp(
-      {super.key,
-      required this.isFirstTime,
-      required this.isLoggedIn,
-      required this.rememberMe});
+  const MyApp({super.key, required this.rememberMe});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Waddle',
       debugShowCheckedModeBanner: false,
-      initialRoute:
-          isFirstTime || !isLoggedIn ? '/' : (rememberMe ? '/home' : '/login'),
+      initialRoute: !rememberMe ? '/' : '/home', // Adjust initial route
       routes: {
         '/': (context) => const WelcomeScreen(),
         '/registration': (context) => const RegistrationScreen(),

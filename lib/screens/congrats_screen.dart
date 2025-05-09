@@ -45,114 +45,168 @@ class CongratsScreenState extends State<CongratsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: FutureBuilder<int>(
-          future: _getCurrentStreak(),
-          builder: (context, snapshot) {
-            if (snapshot.hasError) {
-              return const Text('Error fetching streak');
-            } else if (snapshot.hasData) {
-              int currentStreak = snapshot.data!;
-              int oldStreak = currentStreak > 0 ? currentStreak - 1 : 0;
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF4facfe), Color(0xFF00f2fe)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: Center(
+          child: FutureBuilder<int>(
+            future: _getCurrentStreak(),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return const Text(
+                  'Error fetching streak',
+                  style: TextStyle(color: Colors.white),
+                );
+              } else if (snapshot.hasData) {
+                int currentStreak = snapshot.data!;
+                int oldStreak = currentStreak > 0 ? currentStreak - 1 : 0;
 
-              _streakAnimation = IntTween(begin: oldStreak, end: currentStreak)
-                  .animate(_controller)
-                ..addListener(() {
-                  setState(() {});
-                  if (_streakAnimation.value == currentStreak &&
-                      !_confettiPlayed) {
-                    _confettiController.play();
-                    _confettiPlayed = true;
-                  }
-                });
+                _streakAnimation =
+                    IntTween(begin: oldStreak, end: currentStreak)
+                        .animate(_controller)
+                      ..addListener(() {
+                        setState(() {});
+                        if (_streakAnimation.value == currentStreak &&
+                            !_confettiPlayed) {
+                          _confettiController.play();
+                          _confettiPlayed = true;
+                        }
+                      });
 
-              _scaleAnimation =
-                  Tween<double>(begin: 1, end: 1.5).animate(CurvedAnimation(
-                parent: _controller,
-                curve: Curves.elasticInOut,
-              ));
+                _scaleAnimation =
+                    Tween<double>(begin: 1, end: 1.5).animate(CurvedAnimation(
+                  parent: _controller,
+                  curve: Curves.elasticInOut,
+                ));
 
-              _controller.forward();
+                _controller.forward();
 
-              return Stack(
-                alignment: Alignment.center,
-                children: [
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: <Widget>[
-                      const Text(
-                        'Congratulations!',
-                        style: TextStyle(
-                            fontSize: 32,
+                return Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        const Text(
+                          '🎉 Congratulations! 🎉',
+                          style: TextStyle(
+                            fontSize: 36,
                             fontWeight: FontWeight.bold,
-                            color: Colors.blue),
-                      ),
-                      const SizedBox(height: 20),
-                      const Icon(
-                        Icons.emoji_events,
-                        color: Colors.amber,
-                        size: 100,
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        'You have met your goal for the day!',
-                        style:
-                            TextStyle(fontSize: 24, color: Colors.green[700]),
-                      ),
-                      const SizedBox(height: 20),
-                      const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Current Streak: ',
-                            style: TextStyle(
-                                fontSize: 24, fontWeight: FontWeight.bold),
+                            color: Colors.white,
+                            shadows: [
+                              Shadow(
+                                blurRadius: 10.0,
+                                color: Colors.black26,
+                                offset: Offset(2, 2),
+                              ),
+                            ],
                           ),
+                        ),
+                        const SizedBox(height: 20),
+                        const Icon(
+                          Icons.emoji_events,
+                          color: Colors.amber,
+                          size: 120,
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          'You have met your goal for the day!',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 24,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w500,
+                            shadows: [
+                              Shadow(
+                                blurRadius: 5.0,
+                                color: Colors.black26,
+                                offset: Offset(1, 1),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 30),
+                        AnimatedBuilder(
+                          animation: _streakAnimation,
+                          builder: (context, child) {
+                            return ScaleTransition(
+                              scale: _scaleAnimation,
+                              child: Text(
+                                '${_streakAnimation.value}',
+                                style: const TextStyle(
+                                  fontSize: 60,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  shadows: [
+                                    Shadow(
+                                      blurRadius: 10.0,
+                                      color: Colors.black26,
+                                      offset: Offset(2, 2),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 30),
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.pushNamed(context, '/home');
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.blue,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 40, vertical: 15),
+                          ),
+                          child: const Text(
+                            'Go to Home',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Positioned(
+                      bottom: 350,
+                      child: ConfettiWidget(
+                        confettiController: _confettiController,
+                        blastDirectionality: BlastDirectionality.explosive,
+                        shouldLoop: false,
+                        numberOfParticles: 30,
+                        gravity: 0.2,
+                        emissionFrequency: 0.1,
+                        maxBlastForce: 20,
+                        minBlastForce: 10,
+                        colors: [
+                          Colors.red,
+                          Colors.blue,
+                          Colors.green,
+                          Colors.yellow,
+                          Colors.purple,
                         ],
                       ),
-                      const SizedBox(height: 10),
-                      AnimatedBuilder(
-                        animation: _streakAnimation,
-                        builder: (context, child) {
-                          return ScaleTransition(
-                            scale: _scaleAnimation,
-                            child: Text(
-                              '${_streakAnimation.value}',
-                              style: const TextStyle(
-                                  fontSize: 40, fontWeight: FontWeight.bold),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 30),
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.pushNamed(context, '/home');
-                        },
-                        child: const Text('Go to Home'),
-                      ),
-                    ],
-                  ),
-                  Positioned(
-                    bottom: 350,
-                    child: ConfettiWidget(
-                      confettiController: _confettiController,
-                      blastDirectionality: BlastDirectionality.explosive,
-                      shouldLoop: false,
-                      numberOfParticles: 20,
-                      gravity: 0.1,
-                      emissionFrequency: 0.05,
-                      maxBlastForce: 15,
-                      minBlastForce: 8,
-                      strokeColor: Colors.purple,
                     ),
-                  ),
-                ],
-              );
-            } else {
-              return const Text('Loading...');
-            }
-          },
+                  ],
+                );
+              } else {
+                return const CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                );
+              }
+            },
+          ),
         ),
       ),
     );

@@ -13,6 +13,7 @@ import 'package:waterly/screens/notifications_screen.dart';
 import 'package:social_sharing_plus/social_sharing_plus.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:path_provider/path_provider.dart' as path_provider;
+import 'package:google_fonts/google_fonts.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -39,16 +40,32 @@ class _MainScreenState extends State<MainScreen>
       vsync: this,
     )..repeat(reverse: false);
 
-    // Print Firestore variables when the screen initializes
+    // Load Firestore variables and ensure no overwrites
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      context.read<WaterTracker>().printFirestoreVariables();
-      await context.read<WaterTracker>().loadWaterData(); // Load water data
-      await context
-          .read<WaterTracker>()
-          .checkAndResetDailyData(); // Check and reset daily data
+      final waterTracker = context.read<WaterTracker>();
+
+      // Fetch waterConsumed and waterGoal from Firestore
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final uid = user.uid;
+        final snapshot =
+            await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+        if (snapshot.exists) {
+          final data = snapshot.data();
+          if (data != null) {
+            waterTracker.waterConsumed = data['waterConsumed'] ?? 0.0;
+            waterTracker.waterGoal =
+                data['waterGoal'] ?? 64.0; // Default to 64 oz
+          }
+        }
+      }
+
+      await waterTracker.loadWaterData();
+      await waterTracker.checkAndResetDailyData();
       if (mounted) {
         setState(() {
-          _isLoading = false; // Set loading to false after data is loaded
+          _isLoading = false;
         });
       }
     });
@@ -240,27 +257,27 @@ class _MainScreenState extends State<MainScreen>
             },
             items: [
               _buildBottomNavItem(
-                icon: Icons.calendar_today,
+                icon: Icons.calendar_today_rounded,
                 label: 'Streaks',
                 index: 0,
               ),
               _buildBottomNavItem(
-                icon: Icons.emoji_events,
+                icon: Icons.emoji_events_rounded,
                 label: 'Challenges',
                 index: 1,
               ),
               _buildBottomNavItem(
-                icon: Icons.home,
+                icon: Icons.home_rounded,
                 label: 'Home',
                 index: 2,
               ),
               _buildBottomNavItem(
-                icon: Icons.emoji_nature,
+                icon: Icons.water_rounded,
                 label: 'Ducks',
                 index: 3,
               ),
               _buildBottomNavItem(
-                icon: Icons.person,
+                icon: Icons.person_rounded,
                 label: 'Profile',
                 index: 4,
               ),
@@ -448,10 +465,8 @@ class _StreakScreenState extends State<StreakScreen> {
               ),
             Text(
               '${_getMonthName(now.month)} ${now.year}',
-              style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF36708B)),
+              style: GoogleFonts.cherryBombOne(
+                  fontSize: 24, color: Color(0xFF36708B)),
             ),
             if (now.year < 2099 || (now.year == 2099 && now.month < 12))
               IconButton(
@@ -639,160 +654,304 @@ class _StreakScreenState extends State<StreakScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Streaks'),
+        title: Text(
+          'Streaks',
+          style: GoogleFonts.cherryBombOne(),
+        ),
         centerTitle: true,
         automaticallyImplyLeading: false,
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 16),
-              Center(
-                child: Column(
-                  children: [
-                    Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Icon(
-                          Icons.opacity,
-                          size: 120 +
-                              (context.watch<WaterTracker>().currentStreak * 2)
-                                  .toDouble(),
-                          color: context.watch<WaterTracker>().currentStreak >=
-                                  30
-                              ? Colors.blue // Platinum
-                              : context.watch<WaterTracker>().currentStreak >=
-                                      20
-                                  ? Colors.amber // Gold
-                                  : context
-                                              .watch<WaterTracker>()
-                                              .currentStreak >=
-                                          15
-                                      ? Colors.grey // Silver
-                                      : context
-                                                  .watch<WaterTracker>()
-                                                  .currentStreak >=
-                                              10
-                                          ? Colors.brown // Bronze
-                                          : Colors.blueAccent
-                                              .withOpacity(0.3), // Grey
-                        ),
-                        Column(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(top: 16.0),
-                              child: Text(
-                                '${context.watch<WaterTracker>().currentStreak}',
-                                style: const TextStyle(
-                                  fontSize: 60,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
+      body: Scrollbar(
+        thumbVisibility: true, // Makes the scrollbar always visible
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(), // Added BouncingScrollPhysics
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 16),
+                Center(
+                  child: Column(
+                    children: [
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Icon(
+                            Icons.opacity,
+                            size: 120 +
+                                (context.watch<WaterTracker>().currentStreak *
+                                        2)
+                                    .toDouble(),
+                            color: context
+                                        .watch<WaterTracker>()
+                                        .currentStreak >=
+                                    30
+                                ? Colors.blue // Platinum
+                                : context.watch<WaterTracker>().currentStreak >=
+                                        20
+                                    ? Colors.amber // Gold
+                                    : context
+                                                .watch<WaterTracker>()
+                                                .currentStreak >=
+                                            15
+                                        ? Colors.grey // Silver
+                                        : context
+                                                    .watch<WaterTracker>()
+                                                    .currentStreak >=
+                                                10
+                                            ? Colors.brown // Bronze
+                                            : Colors.blueAccent
+                                                .withOpacity(0.3), // Grey
+                          ),
+                          Column(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6.0),
+                                child: Text(
+                                  '${context.watch<WaterTracker>().currentStreak}',
+                                  style: GoogleFonts.cherryBombOne(
+                                    fontSize: 60,
+                                    color: Colors.black87,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              _buildCalendar(),
-              const SizedBox(height: 16),
-              Center(
-                child: Text(
-                  '${_getMonthName(_selectedDate.month)} ${_selectedDate.day}, ${_selectedDate.year}',
-                  style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87),
-                ),
-              ),
-              const SizedBox(height: 16),
-              logs.isEmpty
-                  ? const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'No entries recorded!',
-                            style: TextStyle(fontSize: 18, color: Colors.grey),
-                          ),
-                          SizedBox(height: 16),
-                          Image(
-                            image: AssetImage(
-                                'lib/assets/images/wade_running.png'),
-                            height: 100,
+                            ],
                           ),
                         ],
                       ),
-                    )
-                  : ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: logs.length,
-                      itemBuilder: (context, index) {
-                        final log = logs[index];
-                        return Card(
-                          margin: const EdgeInsets.symmetric(vertical: 8.0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15.0),
-                          ),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.all(16.0),
-                            leading: CircleAvatar(
-                              backgroundColor: log.drinkName == 'Soda'
-                                  ? Colors.brown
-                                  : log.drinkName == 'Energy Drink'
-                                      ? Colors.red
-                                      : log.drinkName == 'Tea'
-                                          ? Colors.green
-                                          : log.drinkName == 'Smoothie'
-                                              ? Colors.purple
-                                              : log.drinkName == 'Milk'
-                                                  ? Colors.white
-                                                  : log.drinkName ==
-                                                          'Orange Juice'
-                                                      ? Colors.orange
-                                                      : log.drinkName == 'Water'
-                                                          ? Colors.blueAccent
-                                                          : Colors.grey,
-                              child: const Icon(
-                                Icons.local_drink,
-                                color: Colors.white,
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildCalendar(),
+                const SizedBox(height: 16),
+                Center(
+                  child: Text(
+                    '${_getMonthName(_selectedDate.month)} ${_selectedDate.day}, ${_selectedDate.year}',
+                    style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                logs.isEmpty
+                    ? const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'No entries recorded!',
+                              style:
+                                  TextStyle(fontSize: 18, color: Colors.grey),
+                            ),
+                            SizedBox(height: 16),
+                            Image(
+                              image: AssetImage(
+                                  'lib/assets/images/wade_running.png'),
+                              height: 100,
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: logs.length,
+                        itemBuilder: (context, index) {
+                          final log = logs[index];
+                          final drink = [
+                            {
+                              'name': 'Water',
+                              'icon': Icons.water_drop,
+                              'color': Colors.blue[700] ?? Colors.blue
+                            },
+                            {
+                              'name': 'Sparkling Water',
+                              'icon': Icons.bubble_chart_outlined,
+                              'color': Colors.cyan[700] ?? Colors.cyan
+                            },
+                            {
+                              'name': 'Coconut Water',
+                              'icon': Icons.beach_access,
+                              'color': Colors.teal[600] ?? Colors.teal
+                            },
+                            {
+                              'name': 'Black Tea',
+                              'icon': Icons.local_cafe,
+                              'color': Colors.brown[800] ?? Colors.brown
+                            },
+                            {
+                              'name': 'Green Tea',
+                              'icon': Icons.eco,
+                              'color': Colors.green[700] ?? Colors.green
+                            },
+                            {
+                              'name': 'Herbal Tea',
+                              'icon': Icons.spa,
+                              'color':
+                                  Colors.lightGreen[700] ?? Colors.lightGreen
+                            },
+                            {
+                              'name': 'Matcha',
+                              'icon': Icons.grass,
+                              'color':
+                                  Colors.greenAccent[700] ?? Colors.greenAccent
+                            },
+                            {
+                              'name': 'Juice',
+                              'icon': Icons.local_bar,
+                              'color': Colors.orange[700] ?? Colors.orange
+                            },
+                            {
+                              'name': 'Lemonade',
+                              'icon': Icons.wb_sunny,
+                              'color': Colors.yellow[800] ?? Colors.yellow
+                            },
+                            {
+                              'name': 'Milk',
+                              'icon': Icons.local_drink,
+                              'color': Colors.blueGrey[300] ?? Colors.blueGrey
+                            },
+                            {
+                              'name': 'Skim Milk',
+                              'icon': Icons.local_drink_outlined,
+                              'color': Colors.indigo[300] ?? Colors.indigo
+                            },
+                            {
+                              'name': 'Almond Milk',
+                              'icon': Icons.nature,
+                              'color': Colors.pink[400] ?? Colors.pink
+                            },
+                            {
+                              'name': 'Oat Milk',
+                              'icon': Icons.grain,
+                              'color': Colors.brown[400] ?? Colors.brown
+                            },
+                            {
+                              'name': 'Soy Milk',
+                              'icon': Icons.emoji_nature,
+                              'color': Colors.amber[400] ?? Colors.amber
+                            },
+                            {
+                              'name': 'Yogurt',
+                              'icon': Icons.icecream_outlined,
+                              'color':
+                                  Colors.deepOrange[400] ?? Colors.deepOrange
+                            },
+                            {
+                              'name': 'Milkshake',
+                              'icon': Icons.blender_outlined,
+                              'color': Colors.purple[600] ?? Colors.purple
+                            },
+                            {
+                              'name': 'Energy Drink',
+                              'icon': Icons.bolt,
+                              'color': Colors.red[700] ?? Colors.red
+                            },
+                            {
+                              'name': 'Coffee',
+                              'icon': Icons.coffee_maker,
+                              'color': Colors.brown[700] ?? Colors.brown
+                            },
+                            {
+                              'name': 'Decaf Coffee',
+                              'icon': Icons.coffee_outlined,
+                              'color': Colors.brown[600] ?? Colors.brown
+                            },
+                            {
+                              'name': 'Latte',
+                              'icon': Icons.local_cafe_outlined,
+                              'color': Colors.brown[500] ?? Colors.brown
+                            },
+                            {
+                              'name': 'Hot Chocolate',
+                              'icon': Icons.coffee_rounded,
+                              'color':
+                                  Colors.deepOrange[700] ?? Colors.deepOrange
+                            },
+                            {
+                              'name': 'Soda',
+                              'icon': Icons.sports_bar,
+                              'color': Colors.redAccent[700] ?? Colors.redAccent
+                            },
+                            {
+                              'name': 'Diet Soda',
+                              'icon': Icons.no_drinks,
+                              'color': Colors.pink[700] ?? Colors.pink
+                            },
+                            {
+                              'name': 'Smoothie',
+                              'icon': Icons.blender,
+                              'color': Colors.purple[700] ?? Colors.purple
+                            },
+                            {
+                              'name': 'Sports Drink',
+                              'icon': Icons.sports_handball,
+                              'color': Colors.blue[800] ?? Colors.blue
+                            },
+                            {
+                              'name': 'Protein Shake',
+                              'icon': Icons.fitness_center,
+                              'color': Colors.orangeAccent[700] ??
+                                  Colors.orangeAccent
+                            },
+                            {
+                              'name': 'Soup',
+                              'icon': Icons.ramen_dining,
+                              'color': Colors.redAccent[800] ?? Colors.redAccent
+                            },
+                          ].firstWhere(
+                            (drink) => drink['name'] == log.drinkName,
+                            orElse: () => {
+                              'icon': Icons.local_drink,
+                              'color': Colors.grey,
+                            },
+                          );
+
+                          return Card(
+                            margin: const EdgeInsets.symmetric(vertical: 8.0),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15.0),
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.all(16.0),
+                              leading: CircleAvatar(
+                                backgroundColor: drink['color'] as Color,
+                                child: Icon(
+                                  drink['icon'] as IconData,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              title: Text(log.drinkName,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold)),
+                              subtitle: Text(
+                                  'Amount: ${log.amount} oz\nWater Content: ${log.waterContent}%'),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _formatTime(log.entryTime),
+                                    style: const TextStyle(
+                                        fontSize: 12, color: Colors.grey),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.close,
+                                        color: Colors.red),
+                                    onPressed: () {
+                                      _deleteLog(context, log);
+                                    },
+                                  ),
+                                ],
                               ),
                             ),
-                            title: Text(log.drinkName,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold)),
-                            subtitle: Text(
-                                'Amount: ${log.amount} oz\nWater Content: ${log.waterContent}%'),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  _formatTime(log.entryTime),
-                                  style: const TextStyle(
-                                      fontSize: 12, color: Colors.grey),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.close,
-                                      color: Colors.red),
-                                  onPressed: () {
-                                    _deleteLog(context, log);
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-            ],
+                          );
+                        },
+                      ),
+              ],
+            ),
           ),
         ),
       ),
@@ -814,85 +973,93 @@ class ChallengesScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Challenges'),
+        title: Text(
+          'Challenges',
+          style: GoogleFonts.cherryBombOne(),
+        ),
         centerTitle: true,
         automaticallyImplyLeading: false,
       ),
-      body: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
-        child: GridView.builder(
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 1,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 0,
-            childAspectRatio: 2.25,
-          ),
-          itemCount: 6,
-          itemBuilder: (context, index) {
-            return GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ChallengeDetailScreen(index: index),
-                  ),
-                );
-              },
-              child: Container(
-                margin: const EdgeInsets.fromLTRB(0, 8, 0, 8),
-                decoration: BoxDecoration(
-                  color: _getChallengeColor(index),
-                  borderRadius: BorderRadius.circular(15),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black26,
-                      blurRadius: 5,
-                      spreadRadius: 1,
+      body: Scrollbar(
+        thumbVisibility: true, // Makes the scrollbar always visible
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
+          child: GridView.builder(
+            physics:
+                const BouncingScrollPhysics(), // Added BouncingScrollPhysics
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 1,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 0,
+              childAspectRatio: 2.25,
+            ),
+            itemCount: 6,
+            itemBuilder: (context, index) {
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ChallengeDetailScreen(index: index),
                     ),
-                  ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            '14 Day Challenge',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            getChallengeTitle(index),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Image.asset(
-                          _getChallengeImage(index),
-                          width: 120,
-                          height: 200,
-                        ),
+                  );
+                },
+                child: Container(
+                  margin: const EdgeInsets.fromLTRB(0, 8, 0, 8),
+                  decoration: BoxDecoration(
+                    color: _getChallengeColor(index),
+                    borderRadius: BorderRadius.circular(15),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black26, // Match shadow color
+                        blurRadius: 6, // Match blur radius
+                        spreadRadius: 1, // Match spread radius
+                        offset: const Offset(0, 3), // Match offset
                       ),
                     ],
                   ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              '14 Day Challenge',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              getChallengeTitle(index),
+                              style: GoogleFonts.cherryBombOne(
+                                color: Colors.white,
+                                fontSize: 22,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Image.asset(
+                            _getChallengeImage(index),
+                            width: 120,
+                            height: 200,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );
@@ -910,6 +1077,7 @@ class ChallengesScreen extends StatelessWidget {
         automaticallyImplyLeading: false,
       ),
       body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(), // Added BouncingScrollPhysics
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1195,74 +1363,82 @@ class ChallengeDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(ChallengesScreen.getChallengeTitle(index)),
-        backgroundColor: _getChallengeColor(index),
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Image.asset(
-                  ChallengesScreen()._getChallengeImage(index),
-                  width: 200,
-                  height: 200,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Center(
-                child: Text(
-                  ChallengesScreen.getChallengeTitle(index),
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blueAccent,
+      appBar: AppBar(),
+      body: Scrollbar(
+        thumbVisibility: true, // Makes the scrollbar always visible
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(), // Added BouncingScrollPhysics
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16.0, 0.0, 16.0, 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      SizedBox(
+                        width: 220,
+                        height: 200,
+                      ),
+                      Image.asset(
+                        ChallengesScreen()._getChallengeImage(index),
+                        width: 200,
+                        height: 200,
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                getChallengeDescription(index),
-                style: const TextStyle(fontSize: 18, color: Colors.black87),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Challenge Details',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blueAccent,
+                const SizedBox(height: 20),
+                Center(
+                  child: Text(
+                    ChallengesScreen.getChallengeTitle(index),
+                    style: GoogleFonts.cherryBombOne(
+                      fontSize: 28,
+                      color: _getChallengeColor(index),
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                getChallengeDetails(index),
-                style: const TextStyle(fontSize: 16, color: Colors.black87),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Health Factoids',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blueAccent,
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(16.0),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(15),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.3),
+                        spreadRadius: 2,
+                        blurRadius: 5,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    getChallengeDescription(index),
+                    style: const TextStyle(fontSize: 18, color: Colors.black87),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                getHealthFactoids(index),
-                style: const TextStyle(fontSize: 16, color: Colors.black87),
-              ),
-              const SizedBox(height: 90),
-            ],
+                const SizedBox(height: 20),
+                _buildSection(
+                  title: 'Challenge Details',
+                  content: getChallengeDetails(index),
+                  color: _getChallengeColor(index),
+                ),
+                const SizedBox(height: 20),
+                _buildSection(
+                  title: 'Health Factoids',
+                  content: getHealthFactoids(index),
+                  color: _getChallengeColor(index),
+                ),
+                const SizedBox(height: 90),
+              ],
+            ),
           ),
         ),
       ),
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 16.0),
+        padding: const EdgeInsets.only(bottom: 2.0),
         child: FloatingActionButton.extended(
           onPressed: () {
             showDialog(
@@ -1296,9 +1472,50 @@ class ChallengeDetailScreen extends StatelessWidget {
           },
           label: const Text('Begin Challenge!'),
           icon: const Icon(Icons.flag),
+          backgroundColor: _getChallengeColor(index),
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+
+  Widget _buildSection({
+    required String title,
+    required String content,
+    required Color color,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.all(16.0),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(15),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.3),
+                spreadRadius: 2,
+                blurRadius: 5,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Text(
+            content,
+            style: const TextStyle(fontSize: 16, color: Colors.black87),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1403,10 +1620,28 @@ class _HomeScreenState extends State<HomeScreen>
 
     // Load water data when the screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await context.read<WaterTracker>().loadWaterData();
+      await _fetchWaterDataFromFirestore(); // Fetch water data from Firestore
       _initializeEntryTimer();
       setState(() {});
     });
+  }
+
+  Future<void> _fetchWaterDataFromFirestore() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final uid = user.uid;
+      final snapshot =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+      if (snapshot.exists) {
+        final data = snapshot.data();
+        if (data != null) {
+          final waterTracker = context.read<WaterTracker>();
+          waterTracker.waterConsumed = data['waterConsumed'];
+          waterTracker.waterGoal = data['waterGoal'];
+        }
+      }
+    }
   }
 
   @override
@@ -1440,7 +1675,7 @@ class _HomeScreenState extends State<HomeScreen>
               child: ClipPath(
                 clipper: CupClipper(), // Custom cup shape
                 child: Container(
-                  width: MediaQuery.of(context).size.width * 0.8,
+                  width: MediaQuery.of(context).size.width * 0.83,
                   height: MediaQuery.of(context).size.height * 0.7,
                   color: Colors.transparent,
                   child: AnimatedWave(
@@ -1464,7 +1699,7 @@ class _HomeScreenState extends State<HomeScreen>
                     .contain, // Ensure the image fits within the container
                 width: MediaQuery.of(context).size.width * 0.9,
                 height: MediaQuery.of(context).size.height * 0.7,
-                opacity: AlwaysStoppedAnimation(0.8), // Slightly transparent
+                opacity: AlwaysStoppedAnimation(0.95), // Slightly transparent
               ),
             ),
           ),
@@ -1493,9 +1728,8 @@ class _HomeScreenState extends State<HomeScreen>
                               ? '${waterConsumedInCups.toStringAsFixed(0)} cups'
                               : '${tracker.waterConsumed.toStringAsFixed(0)} oz',
                           key: ValueKey(showCups),
-                          style: TextStyle(
+                          style: GoogleFonts.cherryBombOne(
                             fontSize: 48,
-                            fontWeight: FontWeight.bold,
                             color: showCups
                                 ? Colors.green
                                 : const Color(0xFF36708B),
@@ -1515,7 +1749,7 @@ class _HomeScreenState extends State<HomeScreen>
                             showCups
                                 ? '${(waterGoalCups - waterConsumedInCups).toStringAsFixed(0)} cups to go!'
                                 : '${(waterGoal - waterConsumed).toStringAsFixed(0)} oz to go!',
-                            style: const TextStyle(
+                            style: GoogleFonts.cherryBombOne(
                               fontSize: 16,
                               color: Colors.black87,
                             ),
@@ -1537,7 +1771,7 @@ class _HomeScreenState extends State<HomeScreen>
                         '${_remainingTime ~/ 60}:${(_remainingTime % 60).toString().padLeft(2, '0')}',
                         style: TextStyle(
                           fontSize: 24,
-                          color: Colors.blueGrey[800],
+                          color: Colors.black87,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -1553,7 +1787,16 @@ class _HomeScreenState extends State<HomeScreen>
               onPressed: () {
                 _showDrinkSelectionSheet(context);
               },
-              child: const Icon(Icons.add),
+              child: Padding(
+                padding: const EdgeInsets.only(
+                    bottom: 4.0), // Raise the text slightly
+                child: Text(
+                  '+',
+                  style: GoogleFonts.cherryBombOne(
+                    fontSize: 26,
+                  ),
+                ),
+              ),
             )
           : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
@@ -1613,12 +1856,17 @@ class _HomeScreenState extends State<HomeScreen>
 
   void _showDrinkAmountSlider(
       BuildContext context, String drinkName, double drinkWaterRatio) {
+    final drinkIcon = _getDrinkIcon(drinkName); // Get the icon for the drink
+    final drinkColor = _getDrinkColor(drinkName); // Get the color for the drink
+
     showModalBottomSheet(
       context: context,
       builder: (context) {
         return DrinkAmountSlider(
           drinkName: drinkName,
           drinkWaterRatio: drinkWaterRatio,
+          drinkIcon: drinkIcon, // Pass the icon to the slider
+          drinkColor: drinkColor, // Pass the color to the slider
           onConfirm: (double waterIntake) {
             _incrementWaterConsumed(waterIntake);
             logDrink(context, drinkName, waterIntake, drinkWaterRatio * 100);
@@ -1631,6 +1879,74 @@ class _HomeScreenState extends State<HomeScreen>
         );
       },
     );
+  }
+
+  IconData _getDrinkIcon(String drinkName) {
+    // Map drink names to their respective icons
+    const drinkIcons = {
+      'Water': Icons.water_drop_rounded,
+      'Sparkling Water': Icons.bubble_chart_rounded,
+      'Coconut Water': Icons.beach_access_rounded,
+      'Black Tea': Icons.local_cafe_rounded,
+      'Green Tea': Icons.eco_rounded,
+      'Herbal Tea': Icons.spa_rounded,
+      'Matcha': Icons.grass_rounded,
+      'Juice': Icons.local_bar_rounded,
+      'Lemonade': Icons.wb_sunny_rounded,
+      'Milk': Icons.local_drink_rounded,
+      'Skim Milk': Icons.local_drink_outlined,
+      'Almond Milk': Icons.nature_rounded,
+      'Oat Milk': Icons.grain_rounded,
+      'Soy Milk': Icons.emoji_nature_rounded,
+      'Yogurt': Icons.icecream_rounded,
+      'Milkshake': Icons.blender_rounded,
+      'Energy Drink': Icons.bolt_rounded,
+      'Coffee': Icons.coffee_maker_rounded,
+      'Decaf Coffee': Icons.coffee_rounded,
+      'Latte': Icons.local_cafe_rounded,
+      'Hot Chocolate': Icons.coffee_rounded,
+      'Soda': Icons.sports_bar_rounded,
+      'Diet Soda': Icons.no_drinks_rounded,
+      'Smoothie': Icons.blender_rounded,
+      'Sports Drink': Icons.sports_handball_rounded,
+      'Protein Shake': Icons.fitness_center_rounded,
+      'Soup': Icons.ramen_dining_rounded,
+    };
+    return drinkIcons[drinkName] ?? Icons.local_drink;
+  }
+
+  Color _getDrinkColor(String drinkName) {
+    // Map drink names to their respective colors
+    var drinkColors = {
+      'Water': Colors.blue[700] ?? Colors.blue,
+      'Sparkling Water': Colors.cyan[700] ?? Colors.cyan,
+      'Coconut Water': Colors.teal[600] ?? Colors.teal,
+      'Black Tea': Colors.brown[800] ?? Colors.brown,
+      'Green Tea': Colors.green[700] ?? Colors.green,
+      'Herbal Tea': Colors.lightGreen[700] ?? Colors.lightGreen,
+      'Matcha': Colors.greenAccent[700] ?? Colors.greenAccent,
+      'Juice': Colors.orange[700] ?? Colors.orange,
+      'Lemonade': Colors.yellow[800] ?? Colors.yellow,
+      'Milk': Colors.blueGrey[300] ?? Colors.blueGrey,
+      'Skim Milk': Colors.indigo[300] ?? Colors.indigo,
+      'Almond Milk': Colors.pink[400] ?? Colors.pink,
+      'Oat Milk': Colors.brown[400] ?? Colors.brown,
+      'Soy Milk': Colors.amber[400] ?? Colors.amber,
+      'Yogurt': Colors.deepOrange[400] ?? Colors.deepOrange,
+      'Milkshake': Colors.purple[600] ?? Colors.purple,
+      'Energy Drink': Colors.red[700] ?? Colors.red,
+      'Coffee': Colors.brown[700] ?? Colors.brown,
+      'Decaf Coffee': Colors.brown[600] ?? Colors.brown,
+      'Latte': Colors.brown[500] ?? Colors.brown,
+      'Hot Chocolate': Colors.deepOrange[700] ?? Colors.deepOrange,
+      'Soda': Colors.redAccent[700] ?? Colors.redAccent,
+      'Diet Soda': Colors.pink[700] ?? Colors.pink,
+      'Smoothie': Colors.purple[700] ?? Colors.purple,
+      'Sports Drink': Colors.blue[800] ?? Colors.blue,
+      'Protein Shake': Colors.orangeAccent[700] ?? Colors.orangeAccent,
+      'Soup': Colors.redAccent[800] ?? Colors.redAccent,
+    };
+    return drinkColors[drinkName] ?? Colors.grey;
   }
 
   void _startEntryTimer() async {
@@ -1656,7 +1972,7 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
-  void _initializeEntryTimer() {
+  void _initializeEntryTimer() async {
     final nextEntryTime = context.read<WaterTracker>().nextEntryTime;
     if (nextEntryTime != null) {
       final remainingDuration =
@@ -1667,17 +1983,26 @@ class _HomeScreenState extends State<HomeScreen>
         });
 
         _entryTimer?.cancel();
-        _entryTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-          setState(() {
-            if (_remainingTime > 0) {
-              _remainingTime--;
-            } else {
-              timer.cancel();
-            }
-          });
+        _entryTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+          if (mounted) {
+            setState(() {
+              if (_remainingTime > 0) {
+                _remainingTime--;
+              } else {
+                timer.cancel();
+              }
+            });
+          }
         });
       }
     }
+  }
+
+  void _incrementWaterConsumed(double amount) async {
+    // Debug log
+    print('Calling incrementWaterConsumed with amount: $amount');
+    context.read<WaterTracker>().incrementWaterConsumed(amount);
+    context.read<WaterTracker>().checkGoalMet(context); // Check if goal is met
   }
 
   void _resetEntryTimer() {
@@ -1685,12 +2010,6 @@ class _HomeScreenState extends State<HomeScreen>
       _remainingTime = 0;
       context.read<WaterTracker>().nextEntryTime = null;
     });
-  }
-
-  void _incrementWaterConsumed(double amount) {
-    context.read<WaterTracker>().incrementWaterConsumed(amount);
-    context.read<WaterTracker>().checkGoalMet(
-        context); // Check if goal is met and navigate to congrats screen
   }
 
   void logDrink(BuildContext context, String drinkName, double amount,
@@ -1702,8 +2021,13 @@ class _HomeScreenState extends State<HomeScreen>
       entryTime: DateTime.now(),
     );
 
-    context.read<WaterTracker>().addLog(
-        log); // Use addLog method to ensure waterConsumed is updated correctly
+    context.read<WaterTracker>().addLog(log);
+
+    // Increment record streak after user makes an entry
+    final waterTracker = context.read<WaterTracker>();
+    if (waterTracker.currentStreak > waterTracker.recordStreak) {
+      waterTracker.recordStreak = waterTracker.currentStreak;
+    }
 
     // Send log to Firebase
     final user = FirebaseAuth.instance.currentUser;
@@ -1723,7 +2047,7 @@ class _HomeScreenState extends State<HomeScreen>
           .add(logData);
 
       // Update Firestore with the new water consumption
-      await context.read<WaterTracker>().updateFirestore();
+      await waterTracker.updateFirestore();
     }
   }
 }
@@ -1874,9 +2198,11 @@ class DrinkSelectionBottomSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      //scrollbar
       padding: const EdgeInsets.all(16.0),
       height: 475,
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Center(
@@ -1887,11 +2213,19 @@ class DrinkSelectionBottomSheet extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Expanded(
-            child: GridView.count(
-              crossAxisCount: 3, // Number of columns
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 2,
-              children: _buildDrinkItems(context),
+            child: Scrollbar(
+              thumbVisibility: true, // Makes the scrollbar always visible
+              child: GridView.count(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.only(top: 10),
+                shrinkWrap: true,
+                primary: false,
+                childAspectRatio: 1.2,
+                crossAxisCount: 3, // Number of columns
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 2,
+                children: _buildDrinkItems(context),
+              ),
             ),
           ),
         ],
@@ -1904,176 +2238,176 @@ class DrinkSelectionBottomSheet extends StatelessWidget {
       // Waters
       {
         'name': 'Water',
-        'icon': Icons.water,
+        'icon': Icons.water_drop_rounded, // Updated to rounded version
         'ratio': 1.0,
-        'color': Colors.blue
+        'color': Colors.blue[700] ?? Colors.blue
       },
       {
         'name': 'Sparkling Water',
-        'icon': Icons.bubble_chart,
+        'icon': Icons.bubble_chart_rounded, // Updated to rounded version
         'ratio': 1.0,
-        'color': Colors.lightBlue
+        'color': Colors.cyan[700] ?? Colors.cyan
       },
       {
         'name': 'Coconut Water',
-        'icon': Icons.local_drink,
-        'ratio': 0.95,
-        'color': Colors.brown
+        'icon': Icons.beach_access_rounded, // Updated to rounded version
+        'ratio': 1.0,
+        'color': Colors.teal[600] ?? Colors.teal
       },
       // Teas
       {
         'name': 'Black Tea',
-        'icon': Icons.emoji_food_beverage,
-        'ratio': 0.95,
-        'color': Colors.black
+        'icon': Icons.local_cafe_rounded, // Updated to rounded version
+        'ratio': 0.9,
+        'color': Colors.brown[800] ?? Colors.brown
       },
       {
         'name': 'Green Tea',
-        'icon': Icons.emoji_food_beverage,
-        'ratio': 0.95,
-        'color': Colors.green
+        'icon': Icons.eco_rounded, // Updated to rounded version
+        'ratio': 0.9,
+        'color': Colors.green[700] ?? Colors.green
       },
       {
         'name': 'Herbal Tea',
-        'icon': Icons.emoji_food_beverage,
-        'ratio': 0.95,
-        'color': Colors.lightGreen
+        'icon': Icons.spa_rounded, // Updated to rounded version
+        'ratio': 1.0,
+        'color': Colors.lightGreen[700] ?? Colors.lightGreen
       },
       {
         'name': 'Matcha',
-        'icon': Icons.emoji_food_beverage,
-        'ratio': 0.95,
-        'color': Colors.greenAccent
+        'icon': Icons.grass_rounded, // Updated to rounded version
+        'ratio': 0.9,
+        'color': Colors.greenAccent[700] ?? Colors.greenAccent
       },
       // Juices
       {
         'name': 'Juice',
-        'icon': Icons.local_drink,
+        'icon': Icons.local_bar_rounded, // Updated to rounded version
         'ratio': 0.9,
-        'color': Colors.orange
+        'color': Colors.orange[700] ?? Colors.orange
       },
       {
         'name': 'Lemonade',
-        'icon': Icons.local_drink,
-        'ratio': 0.9,
-        'color': Colors.yellow
+        'icon': Icons.wb_sunny_rounded, // Updated to rounded version
+        'ratio': 0.8,
+        'color': Colors.yellow[800] ?? Colors.yellow
       },
       // Milks
       {
         'name': 'Milk',
-        'icon': Icons.local_drink,
-        'ratio': 0.9,
-        'color': Colors.white
+        'icon': Icons.local_drink_rounded, // Updated to rounded version
+        'ratio': 1.5,
+        'color': Colors.blueGrey[300] ?? Colors.blueGrey
       },
       {
         'name': 'Skim Milk',
-        'icon': Icons.local_drink,
-        'ratio': 0.9,
-        'color': Colors.grey[300],
+        'icon': Icons.local_drink_outlined, // No rounded version available
+        'ratio': 1.5,
+        'color': Colors.indigo[300] ?? Colors.indigo
       },
       {
         'name': 'Almond Milk',
-        'icon': Icons.local_drink,
-        'ratio': 0.9,
-        'color': Colors.pink[100]
+        'icon': Icons.nature_rounded, // Updated to rounded version
+        'ratio': 1.0,
+        'color': Colors.pink[400] ?? Colors.pink
       },
       {
         'name': 'Oat Milk',
-        'icon': Icons.local_drink,
-        'ratio': 0.9,
-        'color': Colors.brown[100]
+        'icon': Icons.grain_rounded, // Updated to rounded version
+        'ratio': 1.0,
+        'color': Colors.brown[400] ?? Colors.brown
       },
       {
         'name': 'Soy Milk',
-        'icon': Icons.local_drink,
-        'ratio': 0.9,
-        'color': Colors.grey[200]
+        'icon': Icons.emoji_nature_rounded, // Updated to rounded version
+        'ratio': 1.0,
+        'color': Colors.amber[400] ?? Colors.amber
       },
       // Yogurt
       {
         'name': 'Yogurt',
-        'icon': Icons.local_drink,
-        'ratio': 0.7,
-        'color': Colors.orangeAccent
+        'icon': Icons.icecream_rounded, // Updated to rounded version
+        'ratio': 1.2,
+        'color': Colors.deepOrange[400] ?? Colors.deepOrange
       },
       // Milkshake
       {
         'name': 'Milkshake',
-        'icon': Icons.local_drink,
-        'ratio': 0.7,
-        'color': Colors.purple
+        'icon': Icons.blender_rounded, // Updated to rounded version
+        'ratio': 0.8,
+        'color': Colors.purple[600] ?? Colors.purple
       },
       // Energy Drinks
       {
         'name': 'Energy Drink',
-        'icon': Icons.flash_on,
-        'ratio': 0.6,
-        'color': Colors.red
+        'icon': Icons.bolt_rounded, // Updated to rounded version
+        'ratio': 0.8,
+        'color': Colors.red[700] ?? Colors.red
       },
       // Coffee
       {
         'name': 'Coffee',
-        'icon': Icons.coffee,
-        'ratio': 0.8,
-        'color': Colors.brown
+        'icon': Icons.coffee_maker_rounded, // Updated to rounded version
+        'ratio': 0.9,
+        'color': Colors.brown[700] ?? Colors.brown
       },
       {
         'name': 'Decaf Coffee',
-        'icon': Icons.coffee,
-        'ratio': 0.9,
-        'color': Colors.brown
+        'icon': Icons.coffee_rounded, // Updated to rounded version
+        'ratio': 1.0,
+        'color': Colors.brown[600] ?? Colors.brown
       },
       {
         'name': 'Latte',
-        'icon': Icons.local_cafe,
-        'ratio': 0.8,
-        'color': Colors.brown
+        'icon': Icons.local_cafe_rounded, // Updated to rounded version
+        'ratio': 1.0,
+        'color': Colors.brown[500] ?? Colors.brown
       },
       {
         'name': 'Hot Chocolate',
-        'icon': Icons.local_cafe,
+        'icon': Icons.coffee_rounded, // Updated to rounded version
         'ratio': 0.8,
-        'color': Colors.brown
+        'color': Colors.deepOrange[700] ?? Colors.deepOrange
       },
       // Sodas
       {
         'name': 'Soda',
-        'icon': Icons.local_drink,
+        'icon': Icons.sports_bar_rounded, // Updated to rounded version
         'ratio': 0.8,
-        'color': Colors.brown
+        'color': Colors.redAccent[700] ?? Colors.redAccent
       },
       {
         'name': 'Diet Soda',
-        'icon': Icons.local_drink,
-        'ratio': 0.8,
-        'color': Colors.brown
+        'icon': Icons.no_drinks_rounded, // Updated to rounded version
+        'ratio': 0.9,
+        'color': Colors.pink[700] ?? Colors.pink
       },
       // Smoothies
       {
         'name': 'Smoothie',
-        'icon': Icons.blender,
-        'ratio': 0.9,
-        'color': Colors.purple
+        'icon': Icons.blender_rounded, // Updated to rounded version
+        'ratio': 1.0,
+        'color': Colors.purple[700] ?? Colors.purple
       },
       // Sports Drinks
       {
         'name': 'Sports Drink',
-        'icon': Icons.sports,
-        'ratio': 0.9,
-        'color': Colors.blue
+        'icon': Icons.sports_handball_rounded, // Updated to rounded version
+        'ratio': 1.1,
+        'color': Colors.blue[800] ?? Colors.blue
       },
       {
         'name': 'Protein Shake',
-        'icon': Icons.fitness_center,
-        'ratio': 0.8,
-        'color': Colors.orangeAccent
+        'icon': Icons.fitness_center_rounded, // Updated to rounded version
+        'ratio': 1.0,
+        'color': Colors.orangeAccent[700] ?? Colors.orangeAccent
       },
       // Soup
       {
         'name': 'Soup',
-        'icon': Icons.soup_kitchen,
-        'ratio': 0.7,
-        'color': Colors.redAccent
+        'icon': Icons.ramen_dining_rounded, // Updated to rounded version
+        'ratio': 1.2,
+        'color': Colors.redAccent[800] ?? Colors.redAccent
       },
     ];
 
@@ -2104,12 +2438,16 @@ class DrinkSelectionBottomSheet extends StatelessWidget {
 class DrinkAmountSlider extends StatefulWidget {
   final String drinkName;
   final double drinkWaterRatio;
+  final IconData drinkIcon; // Add drink icon parameter
+  final Color drinkColor; // Add drink color parameter
   final Function(double) onConfirm;
 
   const DrinkAmountSlider({
     super.key,
     required this.drinkName,
     required this.drinkWaterRatio,
+    required this.drinkIcon, // Pass drink icon
+    required this.drinkColor, // Pass drink color
     required this.onConfirm,
   });
 
@@ -2136,23 +2474,25 @@ class _DrinkAmountSliderState extends State<DrinkAmountSlider> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (widget.drinkName == 'Energy Drink' ||
-            widget.drinkName == 'Smoothie' ||
-            widget.drinkName == 'Sports Drink')
-          Text(
-            'How much of the ${widget.drinkName} did you drink?',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          )
-        else
-          Text(
-            'How much ${widget.drinkName} did you drink?',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
+        Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(height: 10),
+            Icon(widget.drinkIcon, size: 45, color: widget.drinkColor),
+            const SizedBox(height: 8),
+            Text(
+              'How much ${widget.drinkName} did you drink?',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
         Slider(
           value: _sliderValue,
           min: 0,
           max: 40,
           divisions: 40,
+          activeColor: widget.drinkColor, // Use the drink color
           label: '${_sliderValue.toStringAsFixed(0)} oz',
           onChanged: (double value) {
             setState(() {
@@ -2162,9 +2502,23 @@ class _DrinkAmountSliderState extends State<DrinkAmountSlider> {
         ),
         Padding(
           padding: const EdgeInsets.all(8.0),
-          child: Text(
-            '${waterIntake.toStringAsFixed(1)} oz (${waterIntakeInCups.toStringAsFixed(1)} cups of water)',
-            style: const TextStyle(fontSize: 16),
+          child: RichText(
+            text: TextSpan(
+              style: const TextStyle(fontSize: 16, color: Colors.black),
+              children: [
+                const TextSpan(text: 'Equivalent to '),
+                TextSpan(
+                  text: '${waterIntake.toStringAsFixed(1)} oz',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const TextSpan(text: ' ('),
+                TextSpan(
+                  text: '${waterIntakeInCups.toStringAsFixed(1)} cups',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const TextSpan(text: ') of water.'),
+              ],
+            ),
           ),
         ),
         // Display disclaimer if the drink is in the list
@@ -2265,7 +2619,7 @@ class DuckScreen extends StatelessWidget {
 
   final List<String> _duckNames = [
     '5-Day Streak', //
-    'Consecutive Logger',
+    'Logger',
     '10-Day Streak',
     'Water Purist',
     '2-Week Logger',
@@ -2350,76 +2704,83 @@ class DuckScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ducks'),
+        title: Text(
+          'Ducks',
+          style: GoogleFonts.cherryBombOne(),
+        ),
         centerTitle: true,
         automaticallyImplyLeading: false,
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-            ),
-            itemCount: 24, // Number of ducks
-            itemBuilder: (context, index) {
-              final isUnlocked = _isDuckUnlocked(context, index);
-              return GestureDetector(
-                onTap: () {
-                  _showDuckDetails(
-                      context, index); // Trigger bottom sheet on tap
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: isUnlocked
-                          ? [Colors.blueAccent, Colors.lightBlueAccent]
-                          : [Colors.blue.shade400, Colors.blue.shade200],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(15),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black26,
-                        blurRadius: 5,
-                        spreadRadius: 1,
+      body: Scrollbar(
+        thumbVisibility: true, // Makes the scrollbar always visible
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(), // Adds bouncing effect
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+              ),
+              itemCount: 24, // Number of ducks
+              itemBuilder: (context, index) {
+                final isUnlocked = _isDuckUnlocked(context, index);
+                return GestureDetector(
+                  onTap: () {
+                    _showDuckDetails(
+                        context, index); // Trigger bottom sheet on tap
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isUnlocked
+                            ? [Colors.blueAccent, Colors.lightBlueAccent]
+                            : [Colors.blue.shade400, Colors.blue.shade200],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        isUnlocked
-                            ? Image.asset(
-                                'lib/assets/images/wade_flying.png',
-                                width: 80,
-                                height: 80,
-                              )
-                            : const Icon(Icons.lock,
-                                size: 40,
-                                color: Colors.black), // Display a silhouette
-                        const SizedBox(height: 8),
-                        Text(
-                          _duckNames[index],
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black26,
+                          blurRadius: 5,
+                          spreadRadius: 1,
                         ),
                       ],
                     ),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          isUnlocked
+                              ? Image.asset(
+                                  'lib/assets/images/wade_flying.png',
+                                  width: 80,
+                                  height: 80,
+                                )
+                              : const Icon(Icons.lock,
+                                  size: 45,
+                                  color: Colors.black), // Display a silhouette
+                          const SizedBox(height: 8),
+                          Text(
+                            _duckNames[index],
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -2438,13 +2799,16 @@ class ProfileScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: Text(
+          'Profile',
+          style: GoogleFonts.cherryBombOne(),
+        ),
         centerTitle: true,
         automaticallyImplyLeading: false,
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(12.0),
           child: Column(
             children: [
               Screenshot(
@@ -2461,9 +2825,9 @@ class ProfileScreen extends StatelessWidget {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
-                        borderRadius: BorderRadius.circular(15),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      padding: const EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.all(12.0),
                       child: Column(
                         children: [
                           GestureDetector(
@@ -2491,7 +2855,6 @@ class ProfileScreen extends StatelessWidget {
                                               await picker.pickImage(
                                                   source: ImageSource.gallery);
                                           if (image != null) {
-                                            // Assuming you have a method to upload and save the image
                                             final user = FirebaseAuth
                                                 .instance.currentUser;
                                             if (user != null) {
@@ -2502,7 +2865,6 @@ class ProfileScreen extends StatelessWidget {
                                                   .updateProfileImage(
                                                       imagePath);
 
-                                              // Save the image path to Firestore
                                               await FirebaseFirestore.instance
                                                   .collection('users')
                                                   .doc(uid)
@@ -2522,7 +2884,7 @@ class ProfileScreen extends StatelessWidget {
                               );
                             },
                             child: CircleAvatar(
-                              radius: 60,
+                              radius: 50,
                               backgroundImage: waterTracker.profileImage != null
                                   ? FileImage(File(waterTracker.profileImage!))
                                   : null,
@@ -2534,61 +2896,45 @@ class ProfileScreen extends StatelessWidget {
                                   : null,
                             ),
                           ),
-                          const SizedBox(height: 10),
-                          Consumer<WaterTracker>(
-                            builder: (context, tracker, child) {
-                              return FutureBuilder<DocumentSnapshot>(
-                                future: FirebaseFirestore.instance
-                                    .collection('users')
-                                    .doc(FirebaseAuth.instance.currentUser?.uid)
-                                    .get(),
-                                builder: (context, snapshot) {
-                                  if (snapshot.connectionState ==
-                                      ConnectionState.waiting) {
-                                    return const CircularProgressIndicator();
-                                  }
-                                  if (snapshot.hasError) {
-                                    return const Text(
-                                      'Error loading username',
-                                      style: TextStyle(
-                                        fontSize: 28,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
-                                    );
-                                  }
-                                  if (!snapshot.hasData ||
-                                      !snapshot.data!.exists) {
-                                    return const Text(
-                                      'No username found',
-                                      style: TextStyle(
-                                        fontSize: 28,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
-                                    );
-                                  }
-                                  final data = snapshot.data!.data()
-                                      as Map<String, dynamic>;
-                                  final username = data['username'] ?? 'Guest';
-                                  final fontSize =
-                                      username.length > 10 ? 20.0 : 28.0;
-                                  return Text(
-                                    username,
-                                    style: TextStyle(
-                                      fontSize: fontSize,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  );
-                                },
+                          const SizedBox(height: 8),
+                          FutureBuilder<DocumentSnapshot>(
+                            future: FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(FirebaseAuth.instance.currentUser?.uid)
+                                .get(),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return const CircularProgressIndicator();
+                              }
+                              if (snapshot.hasError || !snapshot.hasData) {
+                                return const Text(
+                                  'Error loading username',
+                                  style: TextStyle(
+                                    fontSize: 18.0,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                );
+                              }
+                              final data = snapshot.data?.data()
+                                  as Map<String, dynamic>?;
+                              final username =
+                                  data?['username'] ?? 'No username found';
+                              return Text(
+                                username,
+                                style: TextStyle(
+                                  fontSize: username.length > 10 ? 18.0 : 24.0,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
                               );
                             },
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 20),
                     // User's current streak, record streak, challenges, companions
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -2596,7 +2942,7 @@ class ProfileScreen extends StatelessWidget {
                         Expanded(
                           child: Padding(
                             padding:
-                                const EdgeInsets.symmetric(horizontal: 18.0),
+                                const EdgeInsets.symmetric(horizontal: 12.0),
                             child: _buildStatisticCard(
                               icon: Icons.opacity,
                               label: 'Current Streak',
@@ -2608,25 +2954,25 @@ class ProfileScreen extends StatelessWidget {
                         Expanded(
                           child: Padding(
                             padding:
-                                const EdgeInsets.symmetric(horizontal: 18.0),
+                                const EdgeInsets.symmetric(horizontal: 12.0),
                             child: _buildStatisticCard(
                               icon: Icons.star,
                               label: 'Record Streak',
                               value: '${waterTracker.recordStreak}',
-                              color: Colors.yellowAccent,
+                              color: Colors.amber[300] ?? Colors.amber,
                             ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         Expanded(
                           child: Padding(
                             padding:
-                                const EdgeInsets.symmetric(horizontal: 18.0),
+                                const EdgeInsets.symmetric(horizontal: 12.0),
                             child: _buildStatisticCard(
                               icon: Icons.check_circle,
                               label: 'Challenges',
@@ -2638,7 +2984,7 @@ class ProfileScreen extends StatelessWidget {
                         Expanded(
                           child: Padding(
                             padding:
-                                const EdgeInsets.symmetric(horizontal: 18.0),
+                                const EdgeInsets.symmetric(horizontal: 12.0),
                             child: _buildStatisticCard(
                               icon: Icons.emoji_nature,
                               label: 'Ducks',
@@ -2652,12 +2998,12 @@ class ProfileScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 20),
               // List of options with trailing icons
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.grey.withOpacity(0.3),
@@ -2728,7 +3074,6 @@ class ProfileScreen extends StatelessWidget {
                       icon: Icons.notifications,
                       label: 'Goal Reminders/Notifications',
                       onTap: () {
-                        // take to the notifications screen
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -2765,25 +3110,25 @@ class ProfileScreen extends StatelessWidget {
     required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(12.0),
       decoration: BoxDecoration(
         color: color.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
         children: [
-          Icon(icon, size: 36, color: color),
-          const SizedBox(height: 10),
+          Icon(icon, size: 32, color: color),
+          const SizedBox(height: 8),
           Text(
             label,
             style: const TextStyle(fontSize: 16, color: Colors.black87),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 4),
           Text(
             value,
             style: const TextStyle(
-              fontSize: 22,
+              fontSize: 24,
               fontWeight: FontWeight.bold,
               color: Colors.black,
             ),
@@ -2803,9 +3148,9 @@ class ProfileScreen extends StatelessWidget {
       leading: Icon(icon, color: Colors.blue),
       title: Text(
         label,
-        style: const TextStyle(fontSize: 18),
+        style: const TextStyle(fontSize: 16),
       ),
-      trailing: const Icon(Icons.arrow_forward_ios, size: 18),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       onTap: onTap,
     );
   }

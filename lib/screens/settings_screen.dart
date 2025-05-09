@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import 'package:waterly/models/water_tracker.dart';
@@ -20,7 +21,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Settings'),
+        title: Text(style: GoogleFonts.cherryBombOne(), 'Settings'),
       ),
       body: Stack(
         children: [
@@ -90,7 +91,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               Text('Developed by: William Wyler'),
                               SizedBox(height: 10),
                               Text(
-                                  'Built for   BPA 24-25 PS WSAP Mobile Applications '),
+                                  'Built for BPA 24-25 PS WSAP Mobile Applications '),
                               SizedBox(height: 10),
                               Text('Credits:'),
                               Text(' - Developer: William Wyler'),
@@ -148,19 +149,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 content: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    SwitchListTile(
-                      title: Text('Disable Next Entry Timer'),
-                      value: context.read<WaterTracker>().nextEntryTime == null,
-                      onChanged: (value) {
-                        setState(() {
-                          if (value) {
-                            context.read<WaterTracker>().nextEntryTime = null;
-                          } else {
-                            context.read<WaterTracker>().nextEntryTime =
-                                DateTime.now().add(Duration(minutes: 15));
-                          }
-                        });
+                    ElevatedButton(
+                      onPressed: () async {
+                        final waterTracker = context.read<WaterTracker>();
+                        final currentNextEntryTime = waterTracker.nextEntryTime;
+                        if (currentNextEntryTime != null) {
+                          final newNextEntryTime = currentNextEntryTime
+                              .subtract(Duration(minutes: 15));
+                          await FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(FirebaseAuth.instance.currentUser?.uid)
+                              .update({
+                            'nextEntryTime': newNextEntryTime.toIso8601String()
+                          });
+                          setState(() {
+                            waterTracker.nextEntryTime = newNextEntryTime;
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                                content: Text('Next entry timer deactivated.')),
+                          );
+                        }
                       },
+                      child: Text('Deactivate Current Next Entry Timer'),
                     ),
                   ],
                 ),

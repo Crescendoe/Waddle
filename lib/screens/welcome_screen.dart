@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -79,9 +80,9 @@ class WelcomeScreenState extends State<WelcomeScreen>
                 // wade_wave.png image
                 Image.asset('lib/assets/images/wade_wave.png', height: 175),
                 const SizedBox(height: 10),
-                const Text(
+                Text(
                   'Welcome to Waddle!',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  style: GoogleFonts.cherryBombOne(fontSize: 24),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 10),

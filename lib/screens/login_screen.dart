@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:waterly/models/water_tracker.dart';
 import 'package:waterly/screens/forgot_password_screen.dart';
 import 'package:flutter/foundation.dart'; // Add this import for logging
+import 'package:google_fonts/google_fonts.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -22,6 +25,11 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
+    // Suppress Firebase App Check warnings during development
+    if (kDebugMode) {
+      FirebaseAuth.instance
+          .setSettings(appVerificationDisabledForTesting: true);
+    }
     _loadRememberedUser();
   }
 
@@ -69,6 +77,12 @@ class _LoginScreenState extends State<LoginScreen> {
           email: _emailController.text,
           password: _passwordController.text,
         );
+
+        // Load user data after successful login
+        await context
+            .read<WaterTracker>()
+            .loadWaterData(); // Ensure data is loaded from Firestore
+
         if (!mounted) return;
         Navigator.of(context).pop();
         if (_rememberMe) {
@@ -99,9 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
         return false;
       },
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Log In'),
-        ),
+        appBar: AppBar(),
         body: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -110,10 +122,11 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 20),
                   Text(
                     'Log In',
-                    style: Theme.of(context).textTheme.headlineMedium,
+                    style: GoogleFonts.cherryBombOne(
+                      textStyle: Theme.of(context).textTheme.headlineMedium,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 20),
@@ -207,6 +220,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     },
                     child: const Text('Don\'t have an account? Register'),
                   ),
+                  const SizedBox(height: 20),
+                  Image.asset('lib/assets/images/wade_flying.png', height: 100),
                 ],
               ),
             ),

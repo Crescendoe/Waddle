@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
@@ -56,13 +57,7 @@ class RegistrationScreenState extends State<RegistrationScreen> {
         await FirebaseFirestore.instance
             .collection('users')
             .doc(uid)
-            .collection('waterLogs')
-            .add({
-          'drinkName': 'Water',
-          'amount': 0.0,
-          'waterContent': 0.0,
-          'entryTime': DateTime.now().toIso8601String(),
-        });
+            .collection('waterLogs');
       }
     } catch (e) {
       print('Error saving user data: $e'); // Log the error for debugging
@@ -146,10 +141,8 @@ class RegistrationScreenState extends State<RegistrationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Create an Account'),
-      ),
-      body: _isLoading // Show loading indicator if loading
+      appBar: AppBar(),
+      body: _isLoading
           ? Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               child: Padding(
@@ -162,7 +155,9 @@ class RegistrationScreenState extends State<RegistrationScreen> {
                       const SizedBox(height: 20),
                       Text(
                         'Register',
-                        style: Theme.of(context).textTheme.headlineMedium,
+                        style: GoogleFonts.cherryBombOne(
+                          textStyle: Theme.of(context).textTheme.headlineMedium,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 20),
@@ -232,7 +227,7 @@ class RegistrationScreenState extends State<RegistrationScreen> {
                           if (!RegExp(
                                   r'^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d!?]{8,}$')
                               .hasMatch(value)) {
-                            return 'Password must be 8+ chars, include 1 letter, 1 number, and can include ? and !';
+                            return 'Password must be 8+ chars, 1 letter, 1 number, ? or !';
                           }
                           return null;
                         },
@@ -279,6 +274,10 @@ class RegistrationScreenState extends State<RegistrationScreen> {
                         },
                         child: const Text('Already have an account? Log in'),
                       ),
+                      const SizedBox(height: 10),
+                      Image.asset(
+                          'lib/assets/images/wade_sitting_looking_up.png',
+                          height: 100),
                     ],
                   ),
                 ),
