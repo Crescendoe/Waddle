@@ -48,7 +48,10 @@ class CongratsScreenState extends State<CongratsScreen>
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF4facfe), Color(0xFF00f2fe)],
+            colors: [
+              Color.fromARGB(255, 201, 230, 255),
+              Color.fromARGB(255, 108, 204, 209)
+            ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),

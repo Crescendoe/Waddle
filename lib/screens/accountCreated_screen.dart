@@ -49,7 +49,10 @@ class _AccountCreatedScreenState extends State<AccountCreatedScreen>
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF1E88E5), Color(0xFF42A5F5)],
+            colors: [
+              Color.fromARGB(255, 201, 230, 255),
+              Color.fromARGB(255, 108, 204, 209)
+            ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),

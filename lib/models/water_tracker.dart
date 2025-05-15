@@ -36,7 +36,10 @@ class WaterTracker extends ChangeNotifier {
   int daysLeft = 14;
   bool notificationsEnabled = false;
   String userId = '';
+  bool _isLoading =
+      false; // Added to track loading state, crucial for UI updates
 
+  //Getter methods
   double get getWaterConsumed => waterConsumed;
   double get getWaterGoal => waterGoal;
   int get currentStreak => _currentStreak;
@@ -54,7 +57,9 @@ class WaterTracker extends ChangeNotifier {
   bool get getChallenge4Active => challenge4Active;
   bool get getChallenge5Active => challenge5Active;
   bool get getChallenge6Active => challenge6Active;
+  bool get isLoading => _isLoading; // Expose the loading state to the UI.
 
+  //Setter methods
   set setActiveChallengeIndex(int? index) {
     activeChallengeIndex = index;
     notifyListeners();
@@ -70,13 +75,8 @@ class WaterTracker extends ChangeNotifier {
       FlutterLocalNotificationsPlugin();
 
   WaterTracker({this.username}) {
-    loadWaterData();
-    if (kDebugMode) {
-      printFirestoreVariables(); // Log Firestore variables only once
-    }
-    loadNotificationSettings();
-    scheduleDailyReset(); // Schedule the daily reset
-    checkAndResetDailyData(); // Check and reset daily data on initialization
+    // Removed loadWaterData() from the constructor.
+    _initialize(); // Call initialize
   }
 
   WaterTracker.withNotifications({
@@ -85,18 +85,30 @@ class WaterTracker extends ChangeNotifier {
     this.notificationInterval,
     required this.userId,
   }) {
-    loadWaterData();
+    // Removed loadWaterData() from the constructor.
+    _initialize(); // Call initialize
+  }
+
+  // Initialization method.  This should be called instead of calling loadWaterData() in the constructor.
+  Future<void> _initialize() async {
+    _isLoading =
+        true; // Set loading to true *before* starting the async operation
+    notifyListeners(); // Notify listeners to show loading state in UI
+
+    await loadWaterData(); // Await the loading of data
     if (kDebugMode) {
-      printFirestoreVariables(); // Log Firestore variables only once
+      printFirestoreVariables();
     }
     loadNotificationSettings();
-    scheduleDailyReset(); // Schedule the daily reset
-    checkAndResetDailyData(); // Check and reset daily data on initialization
+    scheduleDailyReset();
+    await checkAndResetDailyData(); // Await
+    _isLoading =
+        false; // Set loading to false *after* data is loaded.  Crucial!
+    notifyListeners(); // Notify listeners to update UI with loaded data
   }
 
   Future<void> handleFirebaseAuthError(FirebaseAuthException e) async {
     _logger.e('FirebaseAuth Error: ${e.message}');
-    // Handle specific error codes if needed
     switch (e.code) {
       case 'user-not-found':
         _logger.e('No user found for that email.');
@@ -104,7 +116,6 @@ class WaterTracker extends ChangeNotifier {
       case 'wrong-password':
         _logger.e('Wrong password provided.');
         break;
-      // Add more cases as needed
       default:
         _logger.e('An undefined Error happened.');
     }
@@ -117,7 +128,6 @@ class WaterTracker extends ChangeNotifier {
       try {
         DocumentReference userDocRef = _firestore.collection('users').doc(uid);
 
-        // Update only the user's main document without affecting the waterLogs collection
         await userDocRef.set(
           {
             'waterConsumed': waterConsumed,
@@ -143,8 +153,7 @@ class WaterTracker extends ChangeNotifier {
             'challenge6Active': challenge6Active,
             'daysLeft': daysLeft,
           },
-          SetOptions(
-              merge: true), // Use merge to avoid overwriting the document
+          SetOptions(merge: true),
         );
       } catch (e) {
         _logger.e('Error updating Firestore: $e');
@@ -153,15 +162,14 @@ class WaterTracker extends ChangeNotifier {
   }
 
   void addLog(WaterLog log) async {
-    // Check if the last log was added within the last minute
     if (_lastLogTime != null &&
         DateTime.now().difference(_lastLogTime!).inSeconds < 60) {
-      return; // Prevent adding the log if it was added within the last minute
+      return;
     }
-    _lastLogTime = DateTime.now(); // Update the last log time
+    _lastLogTime = DateTime.now();
 
     logs.add(log);
-    waterConsumed += log.amount; // Ensure waterConsumed is updated correctly
+    waterConsumed += log.amount;
     await updateFirestore();
     saveWaterData();
     notifyListeners();
@@ -169,7 +177,6 @@ class WaterTracker extends ChangeNotifier {
 
   void logDrink(BuildContext context, String drinkName, double amount,
       double waterContent) async {
-    // Prevent duplicate entries by checking the last log time
     if (_lastLogTime != null &&
         DateTime.now().difference(_lastLogTime!).inSeconds < 60) {
       _logger.w('Duplicate log prevented: $drinkName, $amount');
@@ -183,10 +190,8 @@ class WaterTracker extends ChangeNotifier {
       entryTime: DateTime.now(),
     );
 
-    addLog(
-        log); // Use addLog method to ensure waterConsumed is updated correctly
+    addLog(log);
 
-    // Send log to Firebase
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       final uid = user.uid;
@@ -203,16 +208,15 @@ class WaterTracker extends ChangeNotifier {
           .collection('waterLogs')
           .add(logData);
 
-      // Update Firestore with the new water consumption
       await updateFirestore();
     }
 
-    _lastLogTime = DateTime.now(); // Update the last log time
+    _lastLogTime = DateTime.now();
   }
 
   void removeLog(WaterLog log) async {
     logs.remove(log);
-    waterConsumed -= log.amount; // Ensure waterConsumed is updated correctly
+    waterConsumed -= log.amount;
     await updateFirestore();
     saveWaterData();
     notifyListeners();
@@ -226,13 +230,10 @@ class WaterTracker extends ChangeNotifier {
 
   Future<void> setWaterGoal(double goal) async {
     waterGoal = goal;
-    resetEntryTimer(); // Reset entry timer when water goal is changed
-
-    // Ensure streak-related logic is not triggered
+    resetEntryTimer();
     if (waterConsumed >= waterGoal) {
-      goalMetToday = false; // Reset goalMetToday to prevent streak increment
+      goalMetToday = false;
     }
-
     await updateFirestore();
     saveWaterData();
     notifyListeners();
@@ -246,58 +247,57 @@ class WaterTracker extends ChangeNotifier {
     if (waterConsumed >= waterGoal) {
       goalMetToday = true;
       incrementStreak();
-      await flutterLocalNotificationsPlugin.cancelAll(); // Cancel notifications
+      await flutterLocalNotificationsPlugin.cancelAll();
       if (context.mounted) {
-        checkGoalMet(
-            context); // Check if goal is met and navigate to congrats screen
+        checkGoalMet(context);
       }
     }
-    await updateFirestore(); // Update Firestore
+    await updateFirestore();
     saveWaterData();
     notifyListeners();
   }
 
   Future<void> incrementWaterConsumed(double amount) async {
-    _logger
-        .i('incrementWaterConsumed called with amount: $amount'); // Debug log
+    _logger.i(
+        'incrementWaterConsumed called with amount: $amount, current waterConsumed: $waterConsumed, target: ${waterConsumed + amount}');
     double target = waterConsumed + amount;
-    int duration = 50;
+    int initialDuration = 50;
+    int currentDuration = initialDuration;
 
     if (target <= waterConsumed) {
       _logger.w(
-          'Target is less than or equal to current waterConsumed. Adjusting target.'); // Debug log
-      target = waterConsumed + 1; // Ensure at least one increment
+          'Target is less than or equal to current waterConsumed. Adjusting target to ${waterConsumed + 1}');
+      target = waterConsumed + 1;
     }
 
     Future<void> incrementWater() async {
-      await Future.delayed(Duration(milliseconds: duration), () async {
-        if (waterConsumed < target && waterConsumed < waterGoal) {
-          waterConsumed += 1;
-          _logger.i('Incrementing waterConsumed: $waterConsumed'); // Debug log
-          duration = max((duration * 1.03).toInt(), 20); // Gradually slow down
-          await incrementWater(); // Continue animation
-        } else {
-          waterConsumed =
-              min(target, waterGoal); // Ensure final value is correct
-          if (waterConsumed >= waterGoal && !goalMetToday) {
-            goalMetToday = true;
-            incrementStreak();
-          }
-          _logger.i('Final waterConsumed: $waterConsumed'); // Debug log
-          await updateFirestore(); // Save final value to Firestore
-          saveWaterData();
-          notifyListeners();
+      if (waterConsumed < target && waterConsumed < waterGoal) {
+        await Future.delayed(Duration(milliseconds: currentDuration));
+        waterConsumed += 1;
+        _logger.i(
+            'Incrementing waterConsumed: $waterConsumed, currentDuration: $currentDuration');
+        currentDuration = max((currentDuration * 1.03).toInt(), 20);
+        notifyListeners(); // Notify within the loop for visual updates
+        await incrementWater();
+      } else {
+        waterConsumed = min(target, waterGoal);
+        if (waterConsumed >= waterGoal && !goalMetToday) {
+          goalMetToday = true;
+          incrementStreak();
         }
-        notifyListeners();
-      });
+        _logger.i('Final waterConsumed: $waterConsumed');
+        await updateFirestore();
+        saveWaterData();
+        notifyListeners(); // Final notification
+      }
     }
 
-    await incrementWater(); // Start animation and wait for it to finish
+    await incrementWater();
   }
 
   void incrementStreak() async {
     if (_currentStreak == 0) {
-      _currentStreak = 1; // Start the streak from 1
+      _currentStreak = 1;
     } else {
       _currentStreak++;
     }
@@ -317,7 +317,7 @@ class WaterTracker extends ChangeNotifier {
     if (waterConsumed < waterGoal) {
       goalMetToday = false;
     }
-    await updateFirestore(); // Update Firestore
+    await updateFirestore();
     saveWaterData();
     notifyListeners();
   }
@@ -326,7 +326,7 @@ class WaterTracker extends ChangeNotifier {
     if (!goalMetToday) {
       _currentStreak = 0;
     }
-    waterConsumed = 0.0; // Reset waterConsumed to 0
+    waterConsumed = 0.0;
     goalMetToday = false;
     await updateFirestore();
     saveWaterData();
@@ -346,7 +346,7 @@ class WaterTracker extends ChangeNotifier {
       goalMetToday = true;
       incrementStreak();
     }
-    await updateFirestore(); // Update Firestore
+    await updateFirestore();
     saveWaterData();
     notifyListeners();
   }
@@ -404,23 +404,31 @@ class WaterTracker extends ChangeNotifier {
           challengeCompleted = userDoc['challengeCompleted'] ?? false;
           daysLeft = userDoc['daysLeft'] ?? 14;
           username = userDoc['username'] ?? username;
+          lastResetDate = userDoc['lastResetDate'] != null
+              ? DateTime.parse(userDoc['lastResetDate'])
+              : null;
+          //notification
+          String? notificationTimeString = userDoc['notificationTime'];
+          if (notificationTimeString != null) {
+            List<String> parts = notificationTimeString.split(':');
+            notificationTime = TimeOfDay(
+                hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+          }
+          notificationInterval = userDoc['notificationInterval'];
 
-          // Log success for debugging
           if (kDebugMode) {
-            _logger.i('Successfully loaded data from Firestore for user: $uid');
+            _logger.i(
+                'Successfully loaded data from Firestore for user: $uid'); //success
           }
         } else {
-          _logger.w('No Firestore document found for user: $uid');
+          _logger.w('No Firestore document found for user: $uid'); // no data
         }
       } catch (e) {
-        _logger.e('Error loading data from Firestore: $e');
+        _logger.e('Error loading data from Firestore: $e'); //error
       }
     } else {
-      _logger.w('No authenticated user found.');
+      _logger.w('No authenticated user found.'); //no user
     }
-
-    checkAndResetDailyData(); // Ensure daily data is reset if needed
-    notifyListeners();
   }
 
   Future<void> saveWaterData({bool updateLastResetDate = true}) async {
@@ -494,10 +502,8 @@ class WaterTracker extends ChangeNotifier {
               .get();
 
           if (snapshot.docs.isNotEmpty) {
-            // Update existing log
             await logCollection.doc(snapshot.docs.first.id).update(log.toMap());
           } else {
-            // Add new log
             await logCollection.add(log.toMap());
           }
         }
@@ -589,7 +595,7 @@ class WaterTracker extends ChangeNotifier {
   }
 
   Future<void> resetChallenge() async {
-    activeChallengeIndex = null; // Reset to null
+    activeChallengeIndex = null;
     challenge1Active = false;
     challenge2Active = false;
     challenge3Active = false;
@@ -674,7 +680,7 @@ class WaterTracker extends ChangeNotifier {
 
       Timer(timeUntilMidnight, () async {
         await resetDailyData();
-        scheduleDailyReset(); // Reschedule the next reset
+        scheduleDailyReset();
       });
     });
   }

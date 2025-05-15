@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
@@ -6,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:waterly/models/water_tracker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:logger/logger.dart'; // Import Logger
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -20,13 +22,18 @@ class NotificationsScreenState extends State<NotificationsScreen> {
   bool notificationsEnabled = false;
   TimeOfDay? selectedTime;
   int? selectedInterval;
+  final Logger _logger = Logger(); // Initialize Logger
 
   @override
   void initState() {
     super.initState();
     _initializeNotifications();
     tz.initializeTimeZones();
-    final waterTracker = context.read<WaterTracker>();
+    _loadInitialSettings(); // Load settings in initState
+  }
+
+  void _loadInitialSettings() {
+    final waterTracker = Provider.of<WaterTracker>(context, listen: false);
     notificationsEnabled = waterTracker.notificationsEnabled;
     selectedTime = waterTracker.notificationTime;
     selectedInterval = waterTracker.notificationInterval;
@@ -40,28 +47,51 @@ class NotificationsScreenState extends State<NotificationsScreen> {
     final bool? initialized = await flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
-        debugPrint('Notification clicked: ${response.payload}');
+        _logger.d('Notification clicked: ${response.payload}');
       },
     );
 
     if (initialized == null || !initialized) {
-      debugPrint("Failed to initialize notifications");
+      _logger.e("Failed to initialize notifications");
+      return;
     }
 
+    await _requestPermissions();
+  }
+
+  Future<void> _requestPermissions() async {
     try {
       final status = await Permission.notification.request();
       if (status.isGranted) {
-        debugPrint("Notification permissions granted");
+        _logger.d("Notification permissions granted");
+      } else {
+        _logger.w("Notification permissions denied: $status");
+        setState(() {
+          notificationsEnabled = false;
+        });
+        final waterTracker = Provider.of<WaterTracker>(context, listen: false);
+        waterTracker.notificationsEnabled = false;
+        await _saveSettingsToFirestore();
       }
     } catch (e) {
-      debugPrint("Error requesting notification permissions: $e");
+      _logger.e("Error requesting notification permissions: $e");
     }
   }
 
   Future<void> _scheduleDailyNotification(TimeOfDay time) async {
-    final now = TimeOfDay.now();
-    final scheduledDate = tz.TZDateTime.now(tz.local).add(Duration(
-        hours: time.hour - now.hour, minutes: time.minute - now.minute));
+    final now = tz.TZDateTime.now(tz.local);
+    tz.TZDateTime scheduledDate = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      time.hour,
+      time.minute,
+    );
+
+    if (scheduledDate.isBefore(now)) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    }
 
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
@@ -70,21 +100,67 @@ class NotificationsScreenState extends State<NotificationsScreen> {
       channelDescription: 'Channel for daily water reminder',
       importance: Importance.max,
       priority: Priority.high,
+      ticker: 'Time to drink water',
+      enableVibration: true,
+      playSound: true,
+      onlyAlertOnce: false,
     );
     const NotificationDetails platformChannelSpecifics =
         NotificationDetails(android: androidPlatformChannelSpecifics);
 
-    await flutterLocalNotificationsPlugin.zonedSchedule(
-      0,
-      'Water Reminder',
-      'Time to drink water and log your intake!',
-      scheduledDate,
-      platformChannelSpecifics,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time,
+    try {
+      await flutterLocalNotificationsPlugin.zonedSchedule(
+        0, // Use a unique ID (0 for daily)
+        'Water Reminder',
+        'Time to drink water and log your intake!',
+        scheduledDate,
+        platformChannelSpecifics,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time,
+      );
+      _logger.d('Daily notification scheduled for: $scheduledDate');
+    } catch (e) {
+      _logger.e('Error scheduling daily notification: $e');
+    }
+  }
+
+  Future<void> _scheduleIntervalNotification(int interval) async {
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'interval_reminder_channel',
+      'Interval Reminder',
+      channelDescription: 'Channel for interval water reminder',
+      importance: Importance.defaultImportance,
+      priority: Priority.defaultPriority,
+      ticker: 'Time to drink water',
+      enableVibration: true,
+      playSound: true,
+      onlyAlertOnce: false,
     );
+    const NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+
+    try {
+      await flutterLocalNotificationsPlugin.periodicallyShow(
+        1, // Use a different ID (1 for interval)
+        'Water Reminder',
+        'Drink water to stay hydrated!',
+        RepeatInterval.everyMinute, // Use interval
+        platformChannelSpecifics,
+        androidScheduleMode: AndroidScheduleMode
+            .exactAllowWhileIdle, //for  interval notifications as well
+      );
+      _logger.d('Interval notification scheduled for every $interval minutes');
+    } catch (e) {
+      _logger.e('Error scheduling interval notification: $e');
+    }
+  }
+
+  Future<void> _cancelNotifications() async {
+    await flutterLocalNotificationsPlugin.cancelAll();
+    _logger.d('All notifications cancelled');
   }
 
   Future<void> _saveSettingsToFirestore() async {
@@ -93,21 +169,56 @@ class NotificationsScreenState extends State<NotificationsScreen> {
     waterTracker.notificationTime = selectedTime;
     waterTracker.notificationInterval = selectedInterval;
 
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(waterTracker.userId)
-        .update({
-      'notificationsEnabled': notificationsEnabled,
-      'notificationTime': selectedTime != null
-          ? {'hour': selectedTime!.hour, 'minute': selectedTime!.minute}
-          : null,
-      'notificationInterval': selectedInterval,
-    });
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .update({
+          'notificationsEnabled': notificationsEnabled,
+          'notificationTime': selectedTime != null
+              ? {
+                  'hour': selectedTime!.hour,
+                  'minute': selectedTime!.minute
+                } // Store as map
+              : null,
+          'notificationInterval': selectedInterval,
+        });
+        _logger.d('Firestore settings updated.');
+      }
+    } catch (e) {
+      _handleFirestoreError(e);
+    }
+    await waterTracker.saveWaterData(); // Ensure shared preferences is updated
+    _updateNotificationSchedule(); // Call this after saving to Firestore
+  }
 
-    if (notificationsEnabled && selectedTime != null) {
-      await _scheduleDailyNotification(selectedTime!);
+  void _updateNotificationSchedule() {
+    if (notificationsEnabled) {
+      if (selectedTime != null) {
+        _scheduleDailyNotification(selectedTime!);
+      }
+      if (selectedInterval != null) {
+        _scheduleIntervalNotification(selectedInterval!);
+      }
     } else {
-      await flutterLocalNotificationsPlugin.cancelAll();
+      _cancelNotifications();
+    }
+  }
+
+  void _handleFirestoreError(dynamic error) {
+    if (error is FirebaseException) {
+      _logger.e('Firestore Error (${error.code}): ${error.message}');
+      switch (error.code) {
+        case 'permission-denied':
+          break;
+        case 'not-found':
+          break;
+        default:
+      }
+    } else {
+      _logger.e('Generic Firestore Error: $error');
     }
   }
 
@@ -144,7 +255,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
                   onPressed: () async {
                     final time = await showTimePicker(
                       context: context,
-                      initialTime: TimeOfDay.now(),
+                      initialTime: selectedTime ?? TimeOfDay.now(),
                     );
                     if (time != null) {
                       setState(() {

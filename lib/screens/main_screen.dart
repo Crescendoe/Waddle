@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_types_as_parameter_names
+
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -15,16 +17,19 @@ import 'package:screenshot/screenshot.dart';
 import 'package:path_provider/path_provider.dart' as path_provider;
 import 'package:google_fonts/google_fonts.dart';
 
+// MainScreen is the root widget for the main navigation and logic of the app.
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _MainScreenState createState() => _MainScreenState();
 }
 
+// State for MainScreen, handles navigation, loading, and challenge state.
 class _MainScreenState extends State<MainScreen>
     with SingleTickerProviderStateMixin {
-  int _selectedIndex = 2; // Set default index to 2
+  int _selectedIndex = 2; // Set default index to 2 (Home)
   final PageController _pageController =
       PageController(initialPage: 2); // Set initial page to 2
 
@@ -35,6 +40,7 @@ class _MainScreenState extends State<MainScreen>
   @override
   void initState() {
     super.initState();
+    // Animation controller for water wave animation
     _waveController = AnimationController(
       duration: const Duration(seconds: 3),
       vsync: this,
@@ -91,6 +97,7 @@ class _MainScreenState extends State<MainScreen>
     });
   }
 
+  // Schedules a timer to reset daily data at midnight
   void scheduleDailyReset() {
     final now = DateTime.now();
     final nextMidnight = DateTime(now.year, now.month, now.day + 1);
@@ -102,6 +109,8 @@ class _MainScreenState extends State<MainScreen>
     });
   }
 
+  // Resets the entry timer for water logging
+  // ignore: unused_element
   void _resetEntryTimer() {
     setState(() {
       context.read<WaterTracker>().nextEntryTime = null;
@@ -115,6 +124,8 @@ class _MainScreenState extends State<MainScreen>
     super.dispose();
   }
 
+  // Shares a screenshot of the profile to social media
+  // ignore: unused_element
   void _shareProfile() async {
     final image = await _screenshotController.capture();
     if (image != null && mounted) {
@@ -140,7 +151,9 @@ class _MainScreenState extends State<MainScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Main build method, handles loading, challenge, and main content states
     return Scaffold(
+      // ignore: deprecated_member_use
       body: WillPopScope(
         onWillPop: () async {
           return false;
@@ -156,6 +169,7 @@ class _MainScreenState extends State<MainScreen>
     );
   }
 
+  // UI shown when the user fails a challenge
   Widget _buildFailureState() {
     return Center(
       child: Column(
@@ -179,6 +193,7 @@ class _MainScreenState extends State<MainScreen>
     );
   }
 
+  // UI shown when the user completes a challenge
   Widget _buildSuccessState() {
     return Center(
       child: Column(
@@ -202,6 +217,7 @@ class _MainScreenState extends State<MainScreen>
     );
   }
 
+  // Main content with navigation and page views
   Widget _buildMainContent() {
     return Scaffold(
       body: Stack(
@@ -290,6 +306,7 @@ class _MainScreenState extends State<MainScreen>
     );
   }
 
+  // Helper to build navigation bar items with animation
   BottomNavigationBarItem _buildBottomNavItem({
     required IconData icon,
     required String label,
@@ -318,15 +335,17 @@ class _MainScreenState extends State<MainScreen>
   }
 }
 
+// Extension to allow ScreenshotController to be disposed (no-op)
 extension on ScreenshotController {
   void dispose() {}
 }
 
+// Helper to rebuild UI, e.g., after profile image change
 void rebuildUI(BuildContext context) {
   try {
     Navigator.pushReplacementNamed(context, '/home');
   } catch (e) {
-    print('Error navigating to home: $e');
+    // Handle error if needed
   }
 }
 
@@ -334,26 +353,13 @@ class StreakScreen extends StatefulWidget {
   const StreakScreen({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _StreakScreenState createState() => _StreakScreenState();
 }
 
 class _StreakScreenState extends State<StreakScreen> {
   Map<DateTime, bool> _loggedDays = {};
-  int _currentStreak = 0;
   DateTime _selectedDate = DateTime.now();
-
-  int _calculateCurrentStreak() {
-    int streak = 0;
-    DateTime today = DateTime.now();
-    DateTime currentDay = DateTime(today.year, today.month, today.day);
-
-    while (_loggedDays[currentDay] == true) {
-      streak++;
-      currentDay = currentDay.subtract(const Duration(days: 1));
-    }
-
-    return streak;
-  }
 
   @override
   void initState() {
@@ -363,6 +369,7 @@ class _StreakScreenState extends State<StreakScreen> {
   }
 
   Future<void> _loadLoggedDays() async {
+    // ignore: unnecessary_cast
     final user = FirebaseAuth.instance.currentUser as User?;
     if (user != null) {
       final uid = user.uid;
@@ -382,10 +389,10 @@ class _StreakScreenState extends State<StreakScreen> {
 
       setState(() {
         _loggedDays = loggedDays;
-        _currentStreak = _calculateCurrentStreak();
       });
 
       // Ensure lastResetDate is not unintentionally updated
+      // ignore: use_build_context_synchronously
       final waterTracker = context.read<WaterTracker>();
       if (waterTracker.lastResetDate == null ||
           waterTracker.lastResetDate!
@@ -416,6 +423,7 @@ class _StreakScreenState extends State<StreakScreen> {
       }).toList();
 
       // Set logs without overwriting existing data
+      // ignore: use_build_context_synchronously
       context.read<WaterTracker>().setLogs(logs);
     }
   }
@@ -1756,8 +1764,10 @@ class _HomeScreenState extends State<HomeScreen>
                           );
                   },
                 ),
-                if (_remainingTime > 0)
-                  Column(
+                AnimatedOpacity(
+                  opacity: _remainingTime > 0 ? 1 : 0.0,
+                  duration: const Duration(milliseconds: 500),
+                  child: Column(
                     children: [
                       const SizedBox(height: 20),
                       Text(
@@ -1777,6 +1787,7 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     ],
                   ),
+                ),
               ],
             ),
           ),
@@ -2903,30 +2914,35 @@ class ProfileScreen extends StatelessWidget {
                                 .doc(FirebaseAuth.instance.currentUser?.uid)
                                 .get(),
                             builder: (context, snapshot) {
-                              if (snapshot.connectionState ==
-                                  ConnectionState.waiting) {
-                                return const CircularProgressIndicator();
-                              }
-                              if (snapshot.hasError || !snapshot.hasData) {
-                                return const Text(
-                                  'Error loading username',
+                              return AnimatedOpacity(
+                                opacity: snapshot.connectionState ==
+                                        ConnectionState.done
+                                    ? 1.0
+                                    : 0.0,
+                                duration: const Duration(milliseconds: 500),
+                                child: Text(
+                                  snapshot.hasData && snapshot.data != null
+                                      ? (snapshot.data?.data() as Map<String,
+                                              dynamic>)['username'] ??
+                                          'No username found'
+                                      : 'No username found',
                                   style: TextStyle(
-                                    fontSize: 18.0,
+                                    fontSize: snapshot.hasData &&
+                                            snapshot.data != null &&
+                                            (snapshot.data?.data() as Map<
+                                                    String,
+                                                    dynamic>)['username'] !=
+                                                null &&
+                                            (snapshot.data?.data() as Map<
+                                                        String,
+                                                        dynamic>)['username']
+                                                    .length >
+                                                10
+                                        ? 18.0
+                                        : 24.0,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.white,
                                   ),
-                                );
-                              }
-                              final data = snapshot.data?.data()
-                                  as Map<String, dynamic>?;
-                              final username =
-                                  data?['username'] ?? 'No username found';
-                              return Text(
-                                username,
-                                style: TextStyle(
-                                  fontSize: username.length > 10 ? 18.0 : 24.0,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
                                 ),
                               );
                             },
