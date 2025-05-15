@@ -32,6 +32,7 @@ migrate_working_dir/
 /build/
 .packages
 .melos_tool/
+lib/firebase_options.dart
 
 # Sensitive files
 .env
