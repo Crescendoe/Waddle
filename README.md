@@ -1,6 +1,6 @@
 # Waddle
 
-Waddle is a Flutter-based hydration tracking app designed to help you build healthy water-drinking habits through daily goals, streaks, challenges, and fun achievements.
+Waddle is a Flutter-based hydration tracking app designed to help you build healthy water-drinking habits through daily goals, streaks, challenges, achievements.
 
 ## Features
 
