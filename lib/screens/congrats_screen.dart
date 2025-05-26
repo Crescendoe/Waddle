@@ -71,15 +71,7 @@ class CongratsScreenState extends State<CongratsScreen>
 
                 _streakAnimation =
                     IntTween(begin: oldStreak, end: currentStreak)
-                        .animate(_controller)
-                      ..addListener(() {
-                        setState(() {});
-                        if (_streakAnimation.value == currentStreak &&
-                            !_confettiPlayed) {
-                          _confettiController.play();
-                          _confettiPlayed = true;
-                        }
-                      });
+                        .animate(_controller);
 
                 _scaleAnimation =
                     Tween<double>(begin: 1, end: 1.5).animate(CurvedAnimation(
@@ -137,6 +129,12 @@ class CongratsScreenState extends State<CongratsScreen>
                         AnimatedBuilder(
                           animation: _streakAnimation,
                           builder: (context, child) {
+                            // Play confetti exactly when the streak reaches the current value, and only once
+                            if (_streakAnimation.value == currentStreak &&
+                                !_confettiPlayed) {
+                              _confettiController.play();
+                              _confettiPlayed = true;
+                            }
                             return ScaleTransition(
                               scale: _scaleAnimation,
                               child: Text(

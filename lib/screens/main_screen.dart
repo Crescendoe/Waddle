@@ -2217,14 +2217,14 @@ class DrinkSelectionBottomSheet extends StatelessWidget {
           const SizedBox(height: 6),
           Expanded(
             child: Scrollbar(
-              thumbVisibility: true, // Makes the scrollbar always visible
+              thumbVisibility: true,
               child: GridView.count(
                 physics: const BouncingScrollPhysics(),
                 padding: const EdgeInsets.only(top: 10),
                 shrinkWrap: true,
                 primary: false,
                 childAspectRatio: 1.2,
-                crossAxisCount: 3, // Number of columns
+                crossAxisCount: 3,
                 crossAxisSpacing: 10,
                 mainAxisSpacing: 2,
                 children: _buildDrinkItems(context),
@@ -2449,8 +2449,8 @@ class DrinkAmountSlider extends StatefulWidget {
     super.key,
     required this.drinkName,
     required this.drinkWaterRatio,
-    required this.drinkIcon, // Pass drink icon
-    required this.drinkColor, // Pass drink color
+    required this.drinkIcon,
+    required this.drinkColor,
     required this.onConfirm,
   });
 
@@ -2495,7 +2495,7 @@ class _DrinkAmountSliderState extends State<DrinkAmountSlider> {
           min: 0,
           max: 40,
           divisions: 40,
-          activeColor: widget.drinkColor, // Use the drink color
+          activeColor: widget.drinkColor,
           label: '${_sliderValue.toStringAsFixed(0)} oz',
           onChanged: (double value) {
             setState(() {
