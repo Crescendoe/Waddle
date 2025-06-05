@@ -24,7 +24,7 @@ Waddle is a Flutter-based hydration tracking app designed to help you build heal
 
 1. **Clone the repository:**
    ```
-   git clone <your-repo-url>
+   git clone <https://github.com/Crescendoe/Waddle>
    cd waddle
    ```
 
