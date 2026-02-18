@@ -510,9 +510,14 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     final increment = (to - from) / 30; // 30 steps
     int step = 0;
 
+    // Include the new log in todayLogs from the start so the segmented
+    // painter knows about the new drink and can grow it as fill rises.
+    final logsWithNew = [...currentState.todayLogs, newLog];
+
     emit(currentState.copyWith(
       isAnimating: true,
       animatedWaterOz: from,
+      todayLogs: logsWithNew,
     ));
 
     _animationTimer = Timer.periodic(const Duration(milliseconds: 33), (timer) {
@@ -521,10 +526,9 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
 
       if (step >= 30 || current >= to) {
         timer.cancel();
-        final updatedLogs = [...currentState.todayLogs, newLog];
         emit(HydrationLoaded(
           hydration: finalHydration,
-          todayLogs: updatedLogs,
+          todayLogs: logsWithNew,
           isAnimating: false,
           animatedWaterOz: to,
         ));
@@ -533,6 +537,7 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
           isAnimating: true,
           animatedWaterOz: current,
           hydration: finalHydration,
+          todayLogs: logsWithNew,
         ));
       }
     });
