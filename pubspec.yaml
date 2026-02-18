@@ -1,7 +1,7 @@
 name: waddle
 description: "Waddle - A fun water tracking app with a duck mascot."
 publish_to: "none"
-version: 0.9.1+2
+version: 0.9.1+4
 
 environment:
   sdk: ^3.5.3

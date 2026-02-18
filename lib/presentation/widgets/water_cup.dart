@@ -429,34 +429,39 @@ class _AnimatedWaterCupState extends State<AnimatedWaterCup>
             ),
 
             // Default label (fades out when details shown)
-            if (hasSegments)
-              AnimatedBuilder(
-                animation: _defaultFade,
-                builder: (context, child) => Opacity(
-                  opacity: _defaultFade.value,
-                  child: child,
-                ),
-                child: _buildDefaultLabel(),
-              )
-            else
-              _buildDefaultLabel(),
+            // Positioned must be a direct child of Stack, so keep it outside
+            // any RenderObjectWidget wrappers (Opacity, Transform, etc.)
+            Positioned.fill(
+              child: hasSegments
+                  ? AnimatedBuilder(
+                      animation: _defaultFade,
+                      builder: (context, child) => Opacity(
+                        opacity: _defaultFade.value,
+                        child: child,
+                      ),
+                      child: _buildDefaultLabelContent(),
+                    )
+                  : _buildDefaultLabelContent(),
+            ),
 
             // Segment labels (fades + scales in)
             if (hasSegments)
-              AnimatedBuilder(
-                animation: _detailsController,
-                builder: (context, _) {
-                  if (_detailsFade.value <= 0.01) {
-                    return const SizedBox.shrink();
-                  }
-                  return Opacity(
-                    opacity: _detailsFade.value,
-                    child: Transform.scale(
-                      scale: _detailsScale.value,
-                      child: _buildSegmentLabels(segments, cupHeight),
-                    ),
-                  );
-                },
+              Positioned.fill(
+                child: AnimatedBuilder(
+                  animation: _detailsController,
+                  builder: (context, _) {
+                    if (_detailsFade.value <= 0.01) {
+                      return const SizedBox.shrink();
+                    }
+                    return Opacity(
+                      opacity: _detailsFade.value,
+                      child: Transform.scale(
+                        scale: _detailsScale.value,
+                        child: _buildSegmentLabelsInner(segments, cupHeight),
+                      ),
+                    );
+                  },
+                ),
               ),
           ],
         ),
@@ -464,63 +469,56 @@ class _AnimatedWaterCupState extends State<AnimatedWaterCup>
     );
   }
 
-  /// Default centre label — total oz, always at the visual centre of the cup.
+  /// Default centre label content — total oz at the visual centre of the cup.
   /// Text colour adapts to whatever drink segment is behind it.
-  Widget _buildDefaultLabel() {
+  /// Returns content only (no Positioned) — the caller wraps in Positioned.
+  Widget _buildDefaultLabelContent() {
     final cupHeight = widget.size * 1.36;
     final segments = _segments;
     final labelColor = _adaptiveLabelColor(segments, cupHeight);
 
-    return Positioned(
-      top: 0,
-      bottom: 0,
-      left: 0,
-      right: 0,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              widget.effectiveWaterOz.toStringAsFixed(0),
-              style: AppTextStyles.waterAmount.copyWith(
-                color: labelColor,
-                shadows: [
-                  Shadow(
-                      color: Colors.black.withValues(alpha: 0.6),
-                      blurRadius: 4),
-                  Shadow(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      blurRadius: 1,
-                      offset: const Offset(0.5, 0.5)),
-                  Shadow(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      blurRadius: 1,
-                      offset: const Offset(-0.5, -0.5)),
-                ],
-              ),
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            widget.effectiveWaterOz.toStringAsFixed(0),
+            style: AppTextStyles.waterAmount.copyWith(
+              color: labelColor,
+              shadows: [
+                Shadow(
+                    color: Colors.black.withValues(alpha: 0.6), blurRadius: 4),
+                Shadow(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    blurRadius: 1,
+                    offset: const Offset(0.5, 0.5)),
+                Shadow(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    blurRadius: 1,
+                    offset: const Offset(-0.5, -0.5)),
+              ],
             ),
-            Text(
-              'oz',
-              style: AppTextStyles.labelLarge.copyWith(
-                color: labelColor,
-                fontWeight: FontWeight.w600,
-                shadows: [
-                  Shadow(
-                      color: Colors.black.withValues(alpha: 0.6),
-                      blurRadius: 4),
-                  Shadow(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      blurRadius: 1,
-                      offset: const Offset(0.5, 0.5)),
-                  Shadow(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      blurRadius: 1,
-                      offset: const Offset(-0.5, -0.5)),
-                ],
-              ),
+          ),
+          Text(
+            'oz',
+            style: AppTextStyles.labelLarge.copyWith(
+              color: labelColor,
+              fontWeight: FontWeight.w600,
+              shadows: [
+                Shadow(
+                    color: Colors.black.withValues(alpha: 0.6), blurRadius: 4),
+                Shadow(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    blurRadius: 1,
+                    offset: const Offset(0.5, 0.5)),
+                Shadow(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    blurRadius: 1,
+                    offset: const Offset(-0.5, -0.5)),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -549,13 +547,13 @@ class _AnimatedWaterCupState extends State<AnimatedWaterCup>
     return AppColors.primary;
   }
 
-  /// Show drink name + oz labels centred inside each coloured segment
-  Widget _buildSegmentLabels(List<DrinkSegment> segments, double cupHeight) {
+  /// Segment labels content without outer Positioned — caller wraps it.
+  Widget _buildSegmentLabelsInner(
+      List<DrinkSegment> segments, double cupHeight) {
     final totalFillHeight =
         cupHeight * widget.effectiveFillPercent.clamp(0.0, 1.0);
     if (totalFillHeight <= 0) return const SizedBox.shrink();
 
-    // Compute pixel height of each segment
     final segHeights = <double>[];
     double remaining = totalFillHeight;
     for (final seg in segments) {
@@ -565,7 +563,6 @@ class _AnimatedWaterCupState extends State<AnimatedWaterCup>
       remaining -= h;
     }
 
-    // Build positioned labels – each centred within its segment band
     final labels = <Widget>[];
     double yFromBottom = 0;
 
@@ -574,10 +571,8 @@ class _AnimatedWaterCupState extends State<AnimatedWaterCup>
       final segH = segHeights[i];
       if (segH < 1) continue;
 
-      // Segment band in absolute coordinates (from top of cup)
       final segTop = cupHeight - yFromBottom - segH;
 
-      // Skip if too tiny to show anything meaningful
       if (segH >= 14) {
         labels.add(
           Positioned(
@@ -601,7 +596,8 @@ class _AnimatedWaterCupState extends State<AnimatedWaterCup>
       yFromBottom += segH;
     }
 
-    return Positioned.fill(child: Stack(children: labels));
+    // Return just the Stack (no outer Positioned) — caller provides Positioned
+    return Stack(children: labels);
   }
 }
 
