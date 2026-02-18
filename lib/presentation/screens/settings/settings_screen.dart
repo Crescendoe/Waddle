@@ -131,6 +131,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ).animate().fadeIn(delay: 300.ms),
             const SizedBox(height: 20),
 
+            // ── What's New ──
+            _sectionLabel('What\'s New'),
+            GlassCard(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: _settingsItem(
+                icon: Icons.new_releases_rounded,
+                label: 'Changelog',
+                subtitle: 'See what\'s new in v${AppConstants.appVersion}',
+                onTap: () => _showChangelog(),
+              ),
+            ).animate().fadeIn(delay: 350.ms),
+            const SizedBox(height: 20),
+
             // ── Share & Rate ──
             _sectionLabel('Spread the Word'),
             GlassCard(
@@ -604,6 +617,181 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // Share & Rate
   // ═══════════════════════════════════════════════════════════
 
+  void _showChangelog() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.75,
+        ),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.divider,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Text('Changelog', style: AppTextStyles.headlineSmall),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                children: [
+                  _changelogVersion(
+                    version: '0.9.1',
+                    date: 'February 18, 2026',
+                    changes: [
+                      _ChangeEntry(
+                        icon: Icons.water_drop_rounded,
+                        title: 'Segmented Cup Display',
+                        description:
+                            'The cup now shows colored segments for each drink type you\'ve logged throughout the day. Tap the cup to see a breakdown of each drink.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.local_cafe_rounded,
+                        title: '70+ Drink Options',
+                        description:
+                            'Massively expanded drink menu with researched hydration ratios and health tiers — including teas, coffees, juices, dairy-free milks, sports drinks, alcohol, and more.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.star_rounded,
+                        title: 'Favorite Drinks',
+                        description:
+                            'Long-press any drink to add it to your favorites. Favorites appear at the top of the drink menu for quick logging.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.search_rounded,
+                        title: 'Drink Search',
+                        description:
+                            'Search bar in the drink picker to quickly find any beverage by name or category.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.palette_rounded,
+                        title: 'Improved Cup Labels',
+                        description:
+                            'Consistent, adaptive labels on drink segments with smooth scaling. Readable text over any drink color.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.sort_rounded,
+                        title: 'Today\'s Log Sorting',
+                        description:
+                            'Today\'s drink log now shows your most recent entries first.',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  _changelogVersion(
+                    version: '0.9.0',
+                    date: 'February 2026',
+                    changes: [
+                      _ChangeEntry(
+                        icon: Icons.egg_rounded,
+                        title: 'Initial Release',
+                        description:
+                            'Water tracking, duck collection, streaks, challenges, friend profiles, and notification reminders.',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _changelogVersion({
+    required String version,
+    required String date,
+    required List<_ChangeEntry> changes,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'v$version',
+                style: AppTextStyles.labelLarge.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              date,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        ...changes.map((entry) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(entry.icon, size: 18, color: AppColors.primary),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          entry.title,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          entry.description,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            )),
+        const Divider(height: 24),
+      ],
+    );
+  }
+
   void _shareApp() {
     Share.share(
       'Check out Waddle — a fun water tracking app with a duck mascot! '
@@ -619,4 +807,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
+}
+
+class _ChangeEntry {
+  final IconData icon;
+  final String title;
+  final String description;
+
+  const _ChangeEntry({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
 }

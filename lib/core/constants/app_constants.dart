@@ -4,7 +4,7 @@ class AppConstants {
 
   // App Info
   static const String appName = 'Waddle';
-  static const String appVersion = '0.9.0';
+  static const String appVersion = '0.9.1';
   static const String developerName = 'William Wyler';
   static const String supportEmail = 'crescendoedd@gmail.com';
 
@@ -42,6 +42,7 @@ class AppConstants {
   static const String prefLastResetDate = 'lastResetDate';
   static const String prefNextEntryTime = 'nextEntryTime';
   static const String prefActiveChallengeIndex = 'activeChallengeIndex';
+  static const String prefFavoriteDrinks = 'favoriteDrinks';
 
   // FCM Topics
   static const String fcmTopicAllUsers = 'all_users_reminders';

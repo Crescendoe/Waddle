@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:waddle/core/constants/app_constants.dart';
 import 'package:waddle/core/theme/app_theme.dart';
 import 'package:waddle/domain/entities/drink_type.dart';
@@ -22,12 +23,57 @@ class DrinkSelectionSheet extends StatefulWidget {
 class _DrinkSelectionSheetState extends State<DrinkSelectionSheet> {
   DrinkType? _selectedDrink;
   double _amountOz = 8.0;
+  Set<String> _favoriteDrinkNames = {};
+  String _searchQuery = '';
+  final _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFavorites();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadFavorites() async {
+    final prefs = await SharedPreferences.getInstance();
+    final favs =
+        prefs.getStringList(AppConstants.prefFavoriteDrinks) ?? <String>[];
+    if (mounted) setState(() => _favoriteDrinkNames = favs.toSet());
+  }
+
+  Future<void> _toggleFavorite(String drinkName) async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      if (_favoriteDrinkNames.contains(drinkName)) {
+        _favoriteDrinkNames.remove(drinkName);
+      } else {
+        _favoriteDrinkNames.add(drinkName);
+      }
+    });
+    await prefs.setStringList(
+        AppConstants.prefFavoriteDrinks, _favoriteDrinkNames.toList());
+  }
 
   List<DrinkType> get _availableDrinks {
     if (widget.activeChallengeIndex != null) {
       return DrinkTypes.forChallenge(widget.activeChallengeIndex!);
     }
     return DrinkTypes.all;
+  }
+
+  List<DrinkType> get _filteredDrinks {
+    if (_searchQuery.isEmpty) return _availableDrinks;
+    final q = _searchQuery.toLowerCase();
+    return _availableDrinks
+        .where((d) =>
+            d.name.toLowerCase().contains(q) ||
+            d.category.name.toLowerCase().contains(q))
+        .toList();
   }
 
   /// Suggest a healthier swap for limit-tier drinks
@@ -37,6 +83,15 @@ class _DrinkSelectionSheetState extends State<DrinkSelectionSheet> {
       'Diet Soda': 'Sparkling Water',
       'Energy Drink': 'Green Tea',
       'Milkshake': 'Protein Shake',
+      'Root Beer': 'Sparkling Water',
+      'Frappuccino': 'Cold Brew',
+      'Bubble Tea': 'Iced Tea',
+      'Eggnog': 'Whole Milk',
+      'Cocktail': 'Sparkling Water',
+      'Spirits': 'Water',
+      'Wine': 'Kombucha',
+      'Beer': 'Sparkling Water',
+      'Hard Seltzer': 'Club Soda',
     };
     final swapName = swaps[drink.name];
     if (swapName == null) return DrinkTypes.byName('Water');
@@ -83,9 +138,15 @@ class _DrinkSelectionSheetState extends State<DrinkSelectionSheet> {
   }
 
   Widget _buildDrinkGrid() {
-    // Group drinks by category
+    final drinks = _filteredDrinks;
+
+    // Favorites (only from available drinks, matching search)
+    final favDrinks =
+        drinks.where((d) => _favoriteDrinkNames.contains(d.name)).toList();
+
+    // Group remaining drinks by category
     final categories = <DrinkCategory, List<DrinkType>>{};
-    for (final drink in _availableDrinks) {
+    for (final drink in drinks) {
       categories.putIfAbsent(drink.category, () => []).add(drink);
     }
 
@@ -93,6 +154,42 @@ class _DrinkSelectionSheetState extends State<DrinkSelectionSheet> {
       child: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
+          // Search bar
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (v) => setState(() => _searchQuery = v),
+              decoration: InputDecoration(
+                hintText: 'Search drinks...',
+                hintStyle: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.textHint,
+                ),
+                prefixIcon: Icon(Icons.search_rounded,
+                    color: AppColors.textSecondary, size: 20),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? GestureDetector(
+                        onTap: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                        child: Icon(Icons.close_rounded,
+                            color: AppColors.textSecondary, size: 18),
+                      )
+                    : null,
+                filled: true,
+                fillColor: AppColors.surfaceLight,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              style: AppTextStyles.bodySmall,
+            ),
+          ),
+
           // Health tier legend
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
@@ -120,13 +217,55 @@ class _DrinkSelectionSheetState extends State<DrinkSelectionSheet> {
               }).toList(),
             ),
           ),
+
+          // Hint text
+          if (_searchQuery.isEmpty && _favoriteDrinkNames.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Text(
+                'Long-press a drink to add it to favorites',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.textHint,
+                  fontSize: 11,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+
+          // ── Favorites section ──
+          if (favDrinks.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  Icon(Icons.star_rounded,
+                      size: 16, color: Colors.amber.shade700),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Favorites',
+                    style: AppTextStyles.labelLarge.copyWith(
+                      color: Colors.amber.shade800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: favDrinks.map((drink) {
+                return _buildDrinkChip(drink, isFavorite: true);
+              }).toList(),
+            ),
+            const Divider(height: 20),
+          ],
+
+          // ── Category sections ──
           ...categories.entries.toList().asMap().entries.map((entry) {
             final categoryEntry = entry.value;
             final index = entry.key;
-            final categoryName = categoryEntry.key.name.replaceAllMapped(
-              RegExp(r'([a-z])([A-Z])'),
-              (m) => '${m[1]} ${m[2]}',
-            );
+            final categoryName = _categoryDisplayName(categoryEntry.key);
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -134,7 +273,7 @@ class _DrinkSelectionSheetState extends State<DrinkSelectionSheet> {
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Text(
-                    categoryName[0].toUpperCase() + categoryName.substring(1),
+                    categoryName,
                     style: AppTextStyles.labelLarge.copyWith(
                       color: AppColors.textSecondary,
                     ),
@@ -144,46 +283,67 @@ class _DrinkSelectionSheetState extends State<DrinkSelectionSheet> {
                   spacing: 8,
                   runSpacing: 8,
                   children: categoryEntry.value.map((drink) {
-                    return GestureDetector(
-                      onTap: () => setState(() => _selectedDrink = drink),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: drink.color.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: drink.color.withValues(alpha: 0.3),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(drink.icon, size: 18, color: drink.color),
-                            const SizedBox(width: 6),
-                            Text(
-                              drink.name,
-                              style: AppTextStyles.bodySmall.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Icon(
-                              drink.healthTier.icon,
-                              size: 13,
-                              color: drink.healthTier.color,
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
+                    final isFav = _favoriteDrinkNames.contains(drink.name);
+                    return _buildDrinkChip(drink, isFavorite: isFav);
                   }).toList(),
                 ),
                 if (index < categories.length - 1) const Divider(height: 20),
               ],
-            ).animate().fadeIn(delay: (index * 80).ms);
+            ).animate().fadeIn(delay: (index * 60).ms);
           }),
+          const SizedBox(height: 16),
         ],
+      ),
+    );
+  }
+
+  String _categoryDisplayName(DrinkCategory cat) {
+    final name = cat.name.replaceAllMapped(
+      RegExp(r'([a-z])([A-Z])'),
+      (m) => '${m[1]} ${m[2]}',
+    );
+    return name[0].toUpperCase() + name.substring(1);
+  }
+
+  Widget _buildDrinkChip(DrinkType drink, {required bool isFavorite}) {
+    return GestureDetector(
+      onTap: () => setState(() => _selectedDrink = drink),
+      onLongPress: () => _toggleFavorite(drink.name),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: drink.color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isFavorite
+                ? Colors.amber.shade600.withValues(alpha: 0.6)
+                : drink.color.withValues(alpha: 0.3),
+            width: isFavorite ? 1.5 : 1.0,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(drink.icon, size: 18, color: drink.color),
+            const SizedBox(width: 6),
+            Text(
+              drink.name,
+              style: AppTextStyles.bodySmall.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              drink.healthTier.icon,
+              size: 13,
+              color: drink.healthTier.color,
+            ),
+            if (isFavorite) ...[
+              const SizedBox(width: 3),
+              Icon(Icons.star_rounded, size: 12, color: Colors.amber.shade600),
+            ],
+          ],
+        ),
       ),
     );
   }

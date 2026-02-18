@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:waddle/core/constants/app_constants.dart';
 import 'package:waddle/core/theme/app_theme.dart';
+import 'package:waddle/domain/entities/drink_type.dart';
 import 'package:waddle/domain/entities/hydration_state.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_cubit.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_state.dart';
@@ -21,7 +22,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   Timer? _cooldownTimer;
-  bool _showCups = false;
+  bool _showDrinkDetails = false;
   bool _logsExpanded = false;
 
   @override
@@ -282,26 +283,29 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       children: [
         // Cup
-        GestureDetector(
-          onTap: () => setState(() => _showCups = !_showCups),
-          child: AnimatedWaterCup(
-            currentOz: state.displayedWater,
-            goalOz: hydration.waterGoalOz,
-            size: cupSize.clamp(240.0, 380.0),
-            showCups: _showCups,
-            onTapToggle: () => setState(() => _showCups = !_showCups),
-          ),
+        AnimatedWaterCup(
+          currentOz: state.displayedWater,
+          goalOz: hydration.waterGoalOz,
+          size: cupSize.clamp(240.0, 380.0),
+          showDetails: _showDrinkDetails,
+          todayLogs: state.todayLogs,
+          onTapToggle: () =>
+              setState(() => _showDrinkDetails = !_showDrinkDetails),
         ),
         const SizedBox(height: 10),
-        // Oz / cups readout
-        Text(
-          _showCups
-              ? '${(state.displayedWater / 8).toStringAsFixed(1)} / ${(hydration.waterGoalOz / 8).toStringAsFixed(1)} cups'
-              : '${state.displayedWater.toStringAsFixed(0)} / ${hydration.waterGoalOz.toStringAsFixed(0)} oz',
-          style: AppTextStyles.headlineMedium.copyWith(
-            color: AppColors.primary,
+        if (state.todayLogs.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              _showDrinkDetails
+                  ? 'Tap cup to hide details'
+                  : 'Tap cup for drink breakdown',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.textHint,
+                fontSize: 11,
+              ),
+            ),
           ),
-        ),
       ],
     ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1);
   }
@@ -378,7 +382,9 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final visibleCount = _logsExpanded ? state.todayLogs.length : 3;
-    final visibleLogs = state.todayLogs.reversed.take(visibleCount);
+    final sortedLogs = List.of(state.todayLogs)
+      ..sort((a, b) => b.entryTime.compareTo(a.entryTime));
+    final visibleLogs = sortedLogs.take(visibleCount);
 
     return GlassCard(
       padding: const EdgeInsets.all(16),
@@ -395,6 +401,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 12),
           ...visibleLogs.map((log) {
+            final drink = DrinkTypes.byName(log.drinkName);
+            final drinkColor = drink?.color ?? AppColors.accent;
+            final drinkIcon = drink?.icon ?? Icons.water_drop_rounded;
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Row(
@@ -403,11 +412,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: AppColors.accent.withValues(alpha: 0.15),
+                      color: drinkColor.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.water_drop_rounded,
-                        size: 18, color: AppColors.accent),
+                    child: Icon(drinkIcon, size: 18, color: drinkColor),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
