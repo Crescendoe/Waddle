@@ -1,7 +1,41 @@
+rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{username} {
-      allow read, write: if true; // For development only
+
+    // ── Users ────────────────────────────────────────────────
+    match /users/{userId} {
+      // Any authenticated user can read any user doc (for search/profiles)
+      allow read: if request.auth != null;
+      // Only the owner can write their own doc
+      allow create, delete: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null
+        && (request.auth.uid == userId
+            // Allow any authed user to update ONLY friendCount (for accept/remove ops)
+            || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['friendCount']));
+
+      // Friends subcollection
+      match /friends/{friendId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null
+          && (request.auth.uid == userId || request.auth.uid == friendId);
+      }
+
+      // Water logs subcollection
+      match /waterLogs/{logId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    // ── Friend Requests ──────────────────────────────────────
+    match /friendRequests/{requestId} {
+      // Anyone authenticated can read requests they sent or received
+      allow read: if request.auth != null;
+      // Anyone authenticated can create a request
+      allow create: if request.auth != null;
+      // Sender or receiver can update (accept/decline)
+      allow update: if request.auth != null
+        && (resource.data.fromUid == request.auth.uid
+            || resource.data.toUid == request.auth.uid);
     }
   }
 }

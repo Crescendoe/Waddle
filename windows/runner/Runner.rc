@@ -69,7 +69,7 @@ IDI_APP_ICON            ICON                    "resources\\app_icon.ico"
 #if defined(FLUTTER_VERSION)
 #define VERSION_AS_STRING FLUTTER_VERSION
 #else
-#define VERSION_AS_STRING "1.0.0"
+#define VERSION_AS_STRING "0.9.0"
 #endif
 
 VS_VERSION_INFO VERSIONINFO
@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "waterly" "\0"
+            VALUE "FileDescription", "Waddle" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "waterly" "\0"
+            VALUE "InternalName", "waddle" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2024 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "waterly.exe" "\0"
-            VALUE "ProductName", "waterly" "\0"
+            VALUE "OriginalFilename", "waddle.exe" "\0"
+            VALUE "ProductName", "Waddle" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

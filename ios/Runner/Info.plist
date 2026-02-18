@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Waterly</string>
+	<string>Waddle</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>waterly</string>
+	<string>Waddle</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -45,5 +45,10 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- HealthKit usage descriptions -->
+	<key>NSHealthShareUsageDescription</key>
+	<string>Waddle reads your water intake data from Apple Health to display your hydration history.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Waddle writes your logged water intake to Apple Health so it stays in sync across your apps.</string>
 </dict>
 </plist>

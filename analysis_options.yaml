@@ -10,6 +10,9 @@
 analyzer:
   errors:
     depend_on_referenced_packages: ignore
+  exclude:
+    - dataconnect-generated/**
+    - build/**
 include: package:flutter_lints/flutter.yaml
 
 linter:
