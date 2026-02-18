@@ -99,3 +99,9 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 node_modules
+
+# Key.properties file
+android/key.properties
+
+# Ignore app-level build.gradle
+android/app/build.gradle
