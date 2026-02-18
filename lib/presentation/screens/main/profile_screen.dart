@@ -96,12 +96,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                         child: Column(
                           children: [
-                            _buildProfileHeader(user, hydration),
-                            const SizedBox(height: 14),
-                            if (hydration != null) _buildStatsGrid(hydration),
-                            const SizedBox(height: 14),
-                            if (hydration != null)
-                              _buildJourneyStrip(user, hydration),
+                            RepaintBoundary(
+                              key: _shareCardKey,
+                              child: Column(
+                                children: [
+                                  _buildProfileHeader(user, hydration),
+                                  const SizedBox(height: 14),
+                                  if (hydration != null)
+                                    _buildStatsGrid(hydration),
+                                  const SizedBox(height: 14),
+                                  if (hydration != null)
+                                    _buildJourneyStrip(user, hydration),
+                                ],
+                              ),
+                            ),
                             if (hydration != null) const SizedBox(height: 14),
                             _buildFriendsSection(),
                             if (_pendingRequests.isNotEmpty)
@@ -343,14 +351,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         value: '${hydration.currentStreak}',
         label: 'Current Streak',
         color: AppColors.warning,
-        suffix: 'd',
       ),
       _StatData(
         icon: Icons.emoji_events_rounded,
         value: '${hydration.recordStreak}',
         label: 'Best Streak',
         color: AppColors.streakGold,
-        suffix: 'd',
       ),
       _StatData(
         icon: Icons.water_drop_rounded,
@@ -371,7 +377,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         color: AppColors.accentDark,
       ),
       _StatData(
-        icon: Icons.pets_rounded,
+        icon: Icons.egg_rounded,
         value: '$ducks/${DuckCompanions.all.length}',
         label: 'Ducks',
         color: AppColors.duckLegendary,
@@ -390,30 +396,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     ];
 
-    return RepaintBoundary(
-      key: _shareCardKey,
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 4,
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 10,
-          childAspectRatio: 0.82,
-        ),
-        itemCount: stats.length,
-        itemBuilder: (context, index) {
-          final stat = stats[index];
-          return _buildStatTile(stat)
-              .animate()
-              .fadeIn(delay: (80 * index).ms)
-              .scale(
-                begin: const Offset(0.85, 0.85),
-                end: const Offset(1, 1),
-                delay: (80 * index).ms,
-              );
-        },
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4,
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
+        childAspectRatio: 0.82,
       ),
+      itemCount: stats.length,
+      itemBuilder: (context, index) {
+        final stat = stats[index];
+        return _buildStatTile(stat)
+            .animate()
+            .fadeIn(delay: (80 * index).ms)
+            .scale(
+              begin: const Offset(0.85, 0.85),
+              end: const Offset(1, 1),
+              delay: (80 * index).ms,
+            );
+      },
     );
   }
 
@@ -501,8 +504,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           _journeyItem(
             Icons.calendar_today_rounded,
-            '${daysSinceJoined}d',
-            'Member',
+            '$daysSinceJoined',
+            'Days',
           ),
           _journeyDivider(),
           _journeyItem(
@@ -730,7 +733,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Icon(Icons.local_fire_department_rounded,
                         size: 9, color: AppColors.warning),
                     Text(
-                      '${friend.currentStreak}d',
+                      '${friend.currentStreak}',
                       style: AppTextStyles.bodySmall.copyWith(
                         fontSize: 8,
                         color: AppColors.warning,

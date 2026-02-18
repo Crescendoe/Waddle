@@ -271,7 +271,7 @@ class _FriendsScreenState extends State<FriendsScreen>
                           size: 13, color: AppColors.warning),
                       const SizedBox(width: 2),
                       Text(
-                        '${friend.currentStreak}d streak',
+                        '${friend.currentStreak} streak',
                         style: AppTextStyles.bodySmall.copyWith(
                           fontSize: 11,
                           color: AppColors.warning,
@@ -668,7 +668,7 @@ class _FriendsScreenState extends State<FriendsScreen>
                         size: 12, color: AppColors.warning),
                     const SizedBox(width: 2),
                     Text(
-                      '${streak}d',
+                      '${streak}',
                       style: AppTextStyles.bodySmall.copyWith(
                         fontSize: 10,
                         color: AppColors.warning,

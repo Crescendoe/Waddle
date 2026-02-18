@@ -387,6 +387,8 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
 
   /// Reset entry cooldown timer (debug)
   void resetEntryTimer() {
+    if (_realState != null) return; // Block during debug mode
+
     final currentState = state;
     if (currentState is! HydrationLoaded) return;
 
@@ -397,6 +399,8 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
 
   /// Apply an unlocked theme (or reset to default with null).
   Future<void> setActiveTheme(String? themeId) async {
+    if (_realState != null) return; // Block during debug mode
+
     final currentState = state;
     if (currentState is! HydrationLoaded) return;
 
@@ -415,12 +419,16 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
   HydrationState? _realState;
 
   /// Activate debug mode — overrides stats so everything appears unlocked.
-  /// Does NOT persist to Firestore.
+  /// Does NOT persist to Firestore. Pauses background saves.
   void activateDebugMode() {
     final currentState = state;
     if (currentState is! HydrationLoaded) return;
 
     _realState = currentState.hydration;
+
+    // Pause background timers that could trigger saves
+    _resetWatchdog?.cancel();
+    _dailyResetTimer?.cancel();
 
     // All drink names for uniqueDrinksLogged
     final allDrinks = [
@@ -478,6 +486,10 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
 
     emit(currentState.copyWith(hydration: _realState!));
     _realState = null;
+
+    // Resume background timers
+    _startResetWatchdog();
+    _scheduleDailyReset();
   }
 
   /// Re-schedule the daily reset timer (call after changing reset hour).
@@ -582,6 +594,9 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
   /// Synchronously apply daily reset to in-memory state if a day boundary
   /// has been crossed. Called before every addWater and by the watchdog.
   void _applyResetIfNeeded() {
+    // Don't touch state during debug mode
+    if (_realState != null) return;
+
     final currentState = state;
     if (currentState is! HydrationLoaded) return;
 

@@ -369,6 +369,14 @@ class FriendService {
       'totalGoalsMet': data['totalGoalsMet'] as int? ?? 0,
       'totalDaysLogged': data['totalDaysLogged'] as int? ?? 0,
       'completedChallenges': data['completedChallenges'] as int? ?? 0,
+      'totalDrinksLogged': data['totalDrinksLogged'] as int? ?? 0,
+      'totalHealthyPicks': data['totalHealthyPicks'] as int? ?? 0,
+      'uniqueDrinksLogged': (data['uniqueDrinksLogged'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+      'waterGoal': (data['waterGoal'] as num?)?.toDouble() ?? 80.0,
+      'friendCount': data['friendCount'] as int? ?? 0,
       'createdAt': (data['createdAt'] as Timestamp?)?.toDate(),
     };
   }

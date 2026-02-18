@@ -382,14 +382,27 @@ class AuthRepositoryImpl implements AuthRepository {
         return 'No account found with this email.';
       case 'wrong-password':
         return 'Incorrect password.';
+      case 'invalid-credential':
+      case 'invalid-login-credentials':
+        return 'Incorrect email or password. Please try again.';
       case 'email-already-in-use':
         return 'An account already exists with this email.';
       case 'weak-password':
         return 'Password is too weak.';
       case 'invalid-email':
         return 'Invalid email address.';
+      case 'user-disabled':
+        return 'This account has been disabled. Contact support.';
       case 'too-many-requests':
         return 'Too many attempts. Please try again later.';
+      case 'network-request-failed':
+        return 'No internet connection. Check your network and try again.';
+      case 'operation-not-allowed':
+        return 'This sign-in method is not enabled.';
+      case 'requires-recent-login':
+        return 'Please sign out and sign back in, then try again.';
+      case 'account-exists-with-different-credential':
+        return 'An account already exists with this email using a different sign-in method.';
       default:
         return 'Authentication error: $code';
     }

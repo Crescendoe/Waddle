@@ -6,6 +6,7 @@ import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:waddle/core/theme/app_theme.dart';
 import 'package:waddle/data/services/friend_service.dart';
+import 'package:waddle/domain/entities/duck_companion.dart';
 import 'package:waddle/presentation/widgets/common.dart';
 
 class FriendProfileScreen extends StatefulWidget {
@@ -101,15 +102,40 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
     final totalGoalsMet = s['totalGoalsMet'] as int? ?? 0;
     final totalDaysLogged = s['totalDaysLogged'] as int? ?? 0;
     final completedChallenges = s['completedChallenges'] as int? ?? 0;
+    final totalDrinksLogged = s['totalDrinksLogged'] as int? ?? 0;
+    final totalHealthyPicks = s['totalHealthyPicks'] as int? ?? 0;
+    final uniqueDrinks = s['uniqueDrinksLogged'] as List? ?? [];
+    final waterGoal = (s['waterGoal'] as num?)?.toDouble() ?? 80.0;
+    final friendCount = s['friendCount'] as int? ?? 0;
     final createdAt = s['createdAt'] as DateTime?;
     final memberSince =
         createdAt != null ? DateFormat('MMM yyyy').format(createdAt) : '';
+
+    // Computed stats
+    final daysSinceJoined =
+        createdAt != null ? DateTime.now().difference(createdAt).inDays : 0;
+    final avgOzPerDay =
+        totalDaysLogged > 0 ? (totalWater / totalDaysLogged) : 0.0;
+    final avgCups = avgOzPerDay / 8;
+    final ducks = DuckCompanions.countUnlocked(
+      currentStreak: currentStreak,
+      recordStreak: recordStreak,
+      completedChallenges: completedChallenges,
+      totalWaterConsumed: totalWater,
+      totalDaysLogged: totalDaysLogged,
+    );
+    final goalHitRate = totalDaysLogged > 0
+        ? ((totalGoalsMet / totalDaysLogged) * 100).toStringAsFixed(0)
+        : '0';
+    final avgDrinksPerDay = totalDaysLogged > 0
+        ? (totalDrinksLogged / totalDaysLogged).toStringAsFixed(1)
+        : '0';
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // Header card
+          // ── Header card ──
           GlassCard(
             padding: const EdgeInsets.all(24),
             child: Column(
@@ -128,10 +154,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                       : null,
                 ),
                 const SizedBox(height: 14),
-                Text(
-                  username,
-                  style: AppTextStyles.headlineMedium,
-                ),
+                Text(username, style: AppTextStyles.headlineMedium),
                 if (bio != null && bio.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   Text(
@@ -143,11 +166,11 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                     maxLines: 3,
                   ),
                 ],
-                if (memberSince.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (memberSince.isNotEmpty) ...[
                       Icon(Icons.calendar_today_rounded,
                           size: 13, color: AppColors.textHint),
                       const SizedBox(width: 4),
@@ -156,15 +179,85 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                         style: AppTextStyles.bodySmall
                             .copyWith(color: AppColors.textHint),
                       ),
+                      const SizedBox(width: 14),
                     ],
-                  ),
-                ],
+                    Icon(Icons.people_rounded,
+                        size: 13, color: AppColors.textHint),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$friendCount friends',
+                      style: AppTextStyles.bodySmall
+                          .copyWith(color: AppColors.textHint),
+                    ),
+                  ],
+                ),
               ],
             ),
           ).animate().fadeIn().slideY(begin: -0.05, end: 0),
+          const SizedBox(height: 12),
+
+          // ── Stats grid (matches user's own profile) ──
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 4,
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+            childAspectRatio: 0.82,
+            children: [
+              _statTile(Icons.local_fire_department_rounded, '$currentStreak',
+                  'Current Streak', AppColors.warning),
+              _statTile(Icons.emoji_events_rounded, '$recordStreak',
+                  'Best Streak', AppColors.streakGold),
+              _statTile(Icons.water_drop_rounded, _formatWater(totalWater),
+                  'Total Water', AppColors.water),
+              _statTile(Icons.flag_rounded, '$totalGoalsMet', 'Goals Met',
+                  AppColors.success),
+              _statTile(Icons.military_tech_rounded, '$completedChallenges',
+                  'Challenges Won', AppColors.accentDark),
+              _statTile(
+                  Icons.egg_rounded,
+                  '$ducks/${DuckCompanions.all.length}',
+                  'Ducks',
+                  AppColors.duckLegendary),
+              _statTile(Icons.local_drink_rounded, '${uniqueDrinks.length}',
+                  'Drinks Tried', AppColors.primaryLight),
+              _statTile(Icons.favorite_rounded, '$totalHealthyPicks',
+                  'Healthy Picks', AppColors.error),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // ── Journey strip (matches user's own profile) ──
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.1),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _journeyItem(
+                    Icons.calendar_today_rounded, '$daysSinceJoined', 'Days'),
+                _journeyDivider(),
+                _journeyItem(Icons.show_chart_rounded,
+                    avgCups.toStringAsFixed(1), 'Cups/day'),
+                _journeyDivider(),
+                _journeyItem(
+                    Icons.checklist_rounded, '$totalDaysLogged', 'Days logged'),
+                _journeyDivider(),
+                _journeyItem(
+                    Icons.local_drink_rounded, '$totalDrinksLogged', 'Drinks'),
+              ],
+            ),
+          ),
           const SizedBox(height: 16),
 
-          // Stats grid
+          // ── Fun facts card ──
           GlassCard(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -172,68 +265,55 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.bar_chart_rounded,
-                        size: 18, color: AppColors.primary),
+                    Icon(Icons.auto_awesome_rounded,
+                        size: 18, color: AppColors.accent),
                     const SizedBox(width: 8),
                     Text(
-                      '$username\'s Stats',
+                      'Fun Facts',
                       style: AppTextStyles.headlineSmall.copyWith(fontSize: 16),
                     ),
                   ],
                 ),
                 const SizedBox(height: 14),
-                GridView.count(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: 3,
-                  mainAxisSpacing: 10,
-                  crossAxisSpacing: 10,
-                  childAspectRatio: 1.0,
-                  children: [
-                    _statCard(
-                      Icons.local_fire_department_rounded,
-                      '${currentStreak}d',
-                      'Current Streak',
-                      AppColors.warning,
-                    ),
-                    _statCard(
-                      Icons.emoji_events_rounded,
-                      '${recordStreak}d',
-                      'Best Streak',
-                      AppColors.streakGold,
-                    ),
-                    _statCard(
-                      Icons.water_drop_rounded,
-                      _formatWater(totalWater),
-                      'Total Water',
-                      AppColors.water,
-                    ),
-                    _statCard(
-                      Icons.flag_rounded,
-                      '$totalGoalsMet',
-                      'Goals Met',
-                      AppColors.success,
-                    ),
-                    _statCard(
-                      Icons.military_tech_rounded,
-                      '$completedChallenges',
-                      'Challenges',
-                      AppColors.accentDark,
-                    ),
-                    _statCard(
-                      Icons.checklist_rounded,
-                      '$totalDaysLogged',
-                      'Days Logged',
-                      AppColors.primaryLight,
-                    ),
-                  ],
+                _funFactRow(
+                  Icons.opacity_rounded,
+                  'Fills ${(totalWater / 128).toStringAsFixed(1)} gallons total',
+                  AppColors.water,
                 ),
+                _funFactRow(
+                  Icons.pool_rounded,
+                  totalWater >= 640000
+                      ? 'Could fill an Olympic pool!'
+                      : 'That\'s ${(totalWater / 640000 * 100).toStringAsFixed(4)}% of an Olympic pool',
+                  AppColors.primaryLight,
+                ),
+                _funFactRow(
+                  Icons.percent_rounded,
+                  '$goalHitRate% goal hit rate',
+                  AppColors.success,
+                ),
+                _funFactRow(
+                  Icons.speed_rounded,
+                  '$avgDrinksPerDay drinks per day on average',
+                  AppColors.accent,
+                ),
+                _funFactRow(
+                  Icons.gps_fixed_rounded,
+                  'Daily goal: ${waterGoal.toStringAsFixed(0)} oz (${(waterGoal / 8).toStringAsFixed(1)} cups)',
+                  AppColors.primary,
+                ),
+                if (uniqueDrinks.isNotEmpty)
+                  _funFactRow(
+                    Icons.explore_rounded,
+                    'Tried ${uniqueDrinks.length} different drink${uniqueDrinks.length == 1 ? '' : 's'}',
+                    AppColors.accentDark,
+                  ),
               ],
             ),
           ).animate().fadeIn(delay: 200.ms),
           const SizedBox(height: 16),
 
-          // Remove friend button
+          // ── Remove friend button ──
           GlassCard(
             padding: const EdgeInsets.all(8),
             child: ListTile(
@@ -252,19 +332,33 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
     );
   }
 
-  Widget _statCard(IconData icon, String value, String label, Color color) {
+  Widget _statTile(IconData icon, String value, String label, Color color) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.15)),
+        color: Colors.white.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 22, color: color),
-          const SizedBox(height: 4),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 16, color: color),
+          ),
+          const SizedBox(height: 6),
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
@@ -272,7 +366,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
               style: AppTextStyles.labelMedium.copyWith(
                 fontWeight: FontWeight.bold,
                 color: color,
-                fontSize: 16,
+                fontSize: 15,
               ),
             ),
           ),
@@ -282,10 +376,68 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
             child: Text(
               label,
               style: AppTextStyles.bodySmall.copyWith(
-                fontSize: 10,
+                fontSize: 9,
                 color: AppColors.textHint,
               ),
               textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _journeyItem(IconData icon, String value, String label) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: AppColors.primary),
+        const SizedBox(height: 3),
+        Text(
+          value,
+          style: AppTextStyles.labelMedium.copyWith(
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        Text(
+          label,
+          style: AppTextStyles.bodySmall.copyWith(
+            fontSize: 9,
+            color: AppColors.textHint,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _journeyDivider() {
+    return Container(
+      width: 1,
+      height: 28,
+      color: AppColors.primary.withValues(alpha: 0.15),
+    );
+  }
+
+  Widget _funFactRow(IconData icon, String text, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 16, color: color),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: AppTextStyles.bodyMedium.copyWith(fontSize: 13),
             ),
           ),
         ],

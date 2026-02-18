@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:waddle/core/constants/app_constants.dart';
 import 'package:waddle/core/theme/app_theme.dart';
+import 'package:waddle/core/utils/session_animation_tracker.dart';
 import 'package:waddle/domain/entities/challenge.dart';
 import 'package:waddle/domain/entities/drink_type.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_cubit.dart';
@@ -21,6 +22,8 @@ class ChallengesScreen extends StatelessWidget {
         }
 
         final hydration = state.hydration;
+        final _animate = SessionAnimationTracker.shouldAnimate(
+            SessionAnimationTracker.challenges);
 
         return GradientBackground(
           child: SafeArea(
@@ -30,7 +33,7 @@ class ChallengesScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Challenges', style: AppTextStyles.displaySmall)
-                      .animate()
+                      .animateOnce(_animate)
                       .fadeIn(),
                   const SizedBox(height: 8),
                   Text(
@@ -38,12 +41,12 @@ class ChallengesScreen extends StatelessWidget {
                     style: AppTextStyles.bodyMedium.copyWith(
                       color: AppColors.textSecondary,
                     ),
-                  ).animate().fadeIn(delay: 100.ms),
+                  ).animateOnce(_animate).fadeIn(delay: 100.ms),
                   const SizedBox(height: 24),
 
                   // Active challenge card
                   if (hydration.hasActiveChallenge)
-                    _buildActiveChallenge(context, hydration),
+                    _buildActiveChallenge(context, hydration, _animate),
 
                   // Challenge grid
                   ...Challenges.all.asMap().entries.map((entry) {
@@ -69,7 +72,10 @@ class ChallengesScreen extends StatelessWidget {
                           hydration.hasActiveChallenge,
                         ),
                       ),
-                    ).animate().fadeIn(delay: (200 + index * 100).ms).slideX(
+                    )
+                        .animateOnce(_animate)
+                        .fadeIn(delay: (200 + index * 100).ms)
+                        .slideX(
                           begin: 0.05,
                           end: 0,
                         );
@@ -83,7 +89,8 @@ class ChallengesScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActiveChallenge(BuildContext context, dynamic hydration) {
+  Widget _buildActiveChallenge(
+      BuildContext context, dynamic hydration, bool _animate) {
     final challenge = Challenges.getByIndex(hydration.activeChallengeIndex!);
     return GlassCard(
       padding: const EdgeInsets.all(20),
@@ -163,7 +170,7 @@ class ChallengesScreen extends StatelessWidget {
           ),
         ],
       ),
-    ).animate().fadeIn(delay: 100.ms).slideY(begin: -0.05);
+    ).animateOnce(_animate).fadeIn(delay: 100.ms).slideY(begin: -0.05);
   }
 
   void _confirmGiveUp(BuildContext context) {

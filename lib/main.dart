@@ -21,20 +21,39 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Firebase init
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
-    alert: true,
-    badge: true,
-    sound: true,
-  );
+  try {
+    // Firebase init
+    await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform);
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    await FirebaseMessaging.instance
+        .setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
 
-  // DI setup (registers SharedPreferences, repos, cubits, services)
-  await setupDependencies();
+    // DI setup (registers SharedPreferences, repos, cubits, services)
+    await setupDependencies();
 
-  // Initialize local notification service (creates channels, restores schedules)
-  await getIt<NotificationService>().init();
+    // Initialize local notification service (creates channels, restores schedules)
+    await getIt<NotificationService>().init();
+  } catch (e) {
+    debugPrint('Initialization error: $e');
+    // Run a minimal error app so the screen isn't black
+    runApp(MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Text('Failed to start Waddle:\n$e',
+                textAlign: TextAlign.center),
+          ),
+        ),
+      ),
+    ));
+    return;
+  }
 
   runApp(const WaddleApp());
 }
