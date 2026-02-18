@@ -109,7 +109,7 @@ class _MainShellState extends State<MainShell> {
                   ),
                   _NavItem(
                     icon: Icons.egg_rounded,
-                    label: 'Ducks',
+                    label: 'Collection',
                     isSelected: _currentIndex == 3,
                     onTap: () => _onTabTapped(3),
                   ),

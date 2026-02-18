@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:waddle/core/constants/app_constants.dart';
 import 'package:waddle/core/theme/app_theme.dart';
+import 'package:waddle/domain/entities/drink_type.dart';
 import 'package:waddle/domain/entities/hydration_state.dart';
 import 'package:waddle/domain/entities/water_log.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_cubit.dart';
@@ -471,6 +472,10 @@ class _StreaksScreenState extends State<StreaksScreen>
   }
 
   Widget _buildLogEntry(WaterLog log) {
+    final drinkType = DrinkTypes.byName(log.drinkName);
+    final drinkIcon = drinkType?.icon ?? Icons.water_drop_rounded;
+    final drinkColor = drinkType?.color ?? AppColors.accent;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -479,11 +484,10 @@ class _StreaksScreenState extends State<StreaksScreen>
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: AppColors.accent.withValues(alpha: 0.15),
+              color: drinkColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.water_drop_rounded,
-                size: 18, color: AppColors.accent),
+            child: Icon(drinkIcon, size: 18, color: drinkColor),
           ),
           const SizedBox(width: 12),
           Expanded(
