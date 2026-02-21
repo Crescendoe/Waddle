@@ -14,6 +14,10 @@ enum ThemeEffect {
   petals,
   waves,
   sparkles,
+  raindrops,
+  dust,
+  sunbeams,
+  blossoms,
 }
 
 // ── Unlock criteria ─────────────────────────────────────────────────
@@ -102,6 +106,8 @@ class ThemeReward extends Equatable {
   final IconData icon;
   final ThemeUnlockCondition unlockCondition;
   final ThemeEffect effect;
+  final Color primaryColor;
+  final Color accentColor;
 
   const ThemeReward({
     required this.id,
@@ -111,6 +117,8 @@ class ThemeReward extends Equatable {
     required this.icon,
     required this.unlockCondition,
     this.effect = ThemeEffect.none,
+    required this.primaryColor,
+    required this.accentColor,
   });
 
   @override
@@ -130,12 +138,13 @@ class ThemeRewards {
       description: 'The classic Waddle look — cool and calming.',
       gradientColors: [Color(0xFFE8F4FC), Color(0xFFB8E4E8)],
       icon: Icons.water_drop_rounded,
-      effect: ThemeEffect.bubbles,
       unlockCondition: ThemeUnlockCondition(
         type: ThemeUnlockType.free,
         value: 0,
         displayText: 'Always available',
       ),
+      primaryColor: Color(0xFF36708B),
+      accentColor: Color(0xFF6CCCD1),
     ),
 
     // ── Total drinks logged ─────────────────────────────────────────
@@ -151,6 +160,8 @@ class ThemeRewards {
         value: 1,
         displayText: 'Log your first drink',
       ),
+      primaryColor: Color(0xFF2E7D32),
+      accentColor: Color(0xFF81C784),
     ),
     ThemeReward(
       id: 'sunset_glow',
@@ -164,6 +175,8 @@ class ThemeRewards {
         value: 25,
         displayText: 'Log 25 drinks',
       ),
+      primaryColor: Color(0xFFE65100),
+      accentColor: Color(0xFFFFAB91),
     ),
 
     // ── Streaks ─────────────────────────────────────────────────────
@@ -179,6 +192,8 @@ class ThemeRewards {
         value: 7,
         displayText: 'Reach a 7-day streak',
       ),
+      primaryColor: Color(0xFF0277BD),
+      accentColor: Color(0xFF4FC3F7),
     ),
     ThemeReward(
       id: 'lavender_fields',
@@ -192,6 +207,8 @@ class ThemeRewards {
         value: 14,
         displayText: 'Reach a 14-day streak',
       ),
+      primaryColor: Color(0xFF5E35B1),
+      accentColor: Color(0xFFB39DDB),
     ),
     ThemeReward(
       id: 'emerald_spring',
@@ -205,6 +222,8 @@ class ThemeRewards {
         value: 30,
         displayText: 'Reach a 30-day streak',
       ),
+      primaryColor: Color(0xFF00695C),
+      accentColor: Color(0xFF80CBC4),
     ),
     ThemeReward(
       id: 'diamond_falls',
@@ -218,6 +237,8 @@ class ThemeRewards {
         value: 60,
         displayText: 'Reach a 60-day streak',
       ),
+      primaryColor: Color(0xFF546E7A),
+      accentColor: Color(0xFF90A4AE),
     ),
 
     // ── Unique drinks tried ─────────────────────────────────────────
@@ -227,11 +248,14 @@ class ThemeRewards {
       description: 'Exploring the full spectrum of green.',
       gradientColors: [Color(0xFFE8F5E9), Color(0xFFA5D6A7)],
       icon: Icons.forest_rounded,
+      effect: ThemeEffect.leaves,
       unlockCondition: ThemeUnlockCondition(
         type: ThemeUnlockType.uniqueDrinks,
         value: 5,
         displayText: 'Try 5 different drinks',
       ),
+      primaryColor: Color(0xFF33691E),
+      accentColor: Color(0xFFAED581),
     ),
     ThemeReward(
       id: 'coral_reef',
@@ -239,11 +263,14 @@ class ThemeRewards {
       description: 'A vibrant underwater palette of warm corals.',
       gradientColors: [Color(0xFFFBE9E7), Color(0xFFFFAB91)],
       icon: Icons.scuba_diving_rounded,
+      effect: ThemeEffect.bubbles,
       unlockCondition: ThemeUnlockCondition(
         type: ThemeUnlockType.uniqueDrinks,
         value: 10,
         displayText: 'Try 10 different drinks',
       ),
+      primaryColor: Color(0xFFBF360C),
+      accentColor: Color(0xFFFF8A65),
     ),
 
     // ── Healthy picks ───────────────────────────────────────────────
@@ -253,11 +280,14 @@ class ThemeRewards {
       description: 'Sweet berry tones for sweet healthy choices.',
       gradientColors: [Color(0xFFF3E5F5), Color(0xFFE1BEE7)],
       icon: Icons.local_florist_rounded,
+      effect: ThemeEffect.blossoms,
       unlockCondition: ThemeUnlockCondition(
         type: ThemeUnlockType.healthyPicks,
         value: 15,
         displayText: 'Log 15 healthy drinks',
       ),
+      primaryColor: Color(0xFF7B1FA2),
+      accentColor: Color(0xFFCE93D8),
     ),
     ThemeReward(
       id: 'cherry_blossom',
@@ -271,6 +301,8 @@ class ThemeRewards {
         value: 50,
         displayText: 'Log 50 healthy drinks',
       ),
+      primaryColor: Color(0xFFC2185B),
+      accentColor: Color(0xFFF48FB1),
     ),
     ThemeReward(
       id: 'cosmic_tide',
@@ -284,6 +316,8 @@ class ThemeRewards {
         value: 100,
         displayText: 'Log 100 healthy drinks',
       ),
+      primaryColor: Color(0xFF4527A0),
+      accentColor: Color(0xFF9575CD),
     ),
 
     // ── Goals met ───────────────────────────────────────────────────
@@ -293,11 +327,14 @@ class ThemeRewards {
       description: 'Warm amber glow for meeting your daily targets.',
       gradientColors: [Color(0xFFFFFDE7), Color(0xFFFFE082)],
       icon: Icons.wb_sunny_rounded,
+      effect: ThemeEffect.sunbeams,
       unlockCondition: ThemeUnlockCondition(
         type: ThemeUnlockType.goalsMet,
         value: 7,
         displayText: 'Meet your daily goal 7 times',
       ),
+      primaryColor: Color(0xFFF57F17),
+      accentColor: Color(0xFFFFD54F),
     ),
     ThemeReward(
       id: 'midnight_lake',
@@ -311,6 +348,8 @@ class ThemeRewards {
         value: 30,
         displayText: 'Meet your daily goal 30 times',
       ),
+      primaryColor: Color(0xFF283593),
+      accentColor: Color(0xFF7986CB),
     ),
 
     // ── Total oz consumed ───────────────────────────────────────────
@@ -326,6 +365,8 @@ class ThemeRewards {
         value: 500,
         displayText: 'Drink 500 oz total',
       ),
+      primaryColor: Color(0xFF1565C0),
+      accentColor: Color(0xFF64B5F6),
     ),
     ThemeReward(
       id: 'desert_oasis',
@@ -333,11 +374,14 @@ class ThemeRewards {
       description: 'Sand meeting aqua — a true hydration journey.',
       gradientColors: [Color(0xFFFFF8E1), Color(0xFFB2EBF2)],
       icon: Icons.beach_access_rounded,
+      effect: ThemeEffect.dust,
       unlockCondition: ThemeUnlockCondition(
         type: ThemeUnlockType.totalOzConsumed,
         value: 2000,
         displayText: 'Drink 2,000 oz total',
       ),
+      primaryColor: Color(0xFF00838F),
+      accentColor: Color(0xFF4DD0E1),
     ),
 
     // ── Challenges ──────────────────────────────────────────────────
@@ -347,11 +391,14 @@ class ThemeRewards {
       description: 'Breezy teal for your first challenge victory.',
       gradientColors: [Color(0xFFE0F2F1), Color(0xFFB2DFDB)],
       icon: Icons.emoji_events_rounded,
+      effect: ThemeEffect.raindrops,
       unlockCondition: ThemeUnlockCondition(
         type: ThemeUnlockType.challengesCompleted,
         value: 1,
         displayText: 'Complete 1 challenge',
       ),
+      primaryColor: Color(0xFF00796B),
+      accentColor: Color(0xFF80CBC4),
     ),
     ThemeReward(
       id: 'northern_lights',
@@ -365,6 +412,8 @@ class ThemeRewards {
         value: 3,
         displayText: 'Complete 3 challenges',
       ),
+      primaryColor: Color(0xFF6A1B9A),
+      accentColor: Color(0xFFAB47BC),
     ),
     ThemeReward(
       id: 'volcanic_spring',
@@ -378,6 +427,8 @@ class ThemeRewards {
         value: 6,
         displayText: 'Complete all 6 challenges',
       ),
+      primaryColor: Color(0xFFD84315),
+      accentColor: Color(0xFFFF8A65),
     ),
   ];
 

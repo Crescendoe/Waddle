@@ -25,6 +25,7 @@ import 'package:waddle/presentation/blocs/auth/auth_state.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_cubit.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_state.dart';
 import 'package:waddle/presentation/widgets/common.dart';
+import 'package:waddle/core/utils/session_animation_tracker.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -41,6 +42,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _loadingFriends = true;
   StreamSubscription? _friendsSub;
   StreamSubscription? _requestsSub;
+  late final bool _animate =
+      SessionAnimationTracker.shouldAnimate(SessionAnimationTracker.profile);
 
   @override
   void initState() {
@@ -170,8 +173,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       child: CircleAvatar(
                         radius: 32,
-                        backgroundColor:
-                            AppColors.primary.withValues(alpha: 0.1),
+                        backgroundColor: ActiveThemeColors.of(context)
+                            .primary
+                            .withValues(alpha: 0.1),
                         backgroundImage: _resolveProfileImage(user),
                         child: _resolveProfileImage(user) == null
                             ? MascotImage(
@@ -187,7 +191,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(3),
                         decoration: BoxDecoration(
-                          color: AppColors.primary,
+                          color: ActiveThemeColors.of(context).primary,
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 1.5),
                         ),
@@ -333,16 +337,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(width: 8),
               Container(
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.08),
+                  color: ActiveThemeColors.of(context)
+                      .primary
+                      .withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: AppColors.primary.withValues(alpha: 0.2),
+                    color: ActiveThemeColors.of(context)
+                        .primary
+                        .withValues(alpha: 0.2),
                   ),
                 ),
                 child: IconButton(
                   onPressed: () => context.pushNamed('settings'),
                   icon: const Icon(Icons.settings_rounded, size: 20),
-                  color: AppColors.primary,
+                  color: ActiveThemeColors.of(context).primary,
                   padding: const EdgeInsets.all(10),
                   constraints: const BoxConstraints(),
                 ),
@@ -351,7 +359,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.05, end: 0);
+    )
+        .animateOnce(_animate)
+        .fadeIn(duration: 400.ms)
+        .slideY(begin: -0.05, end: 0);
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -430,7 +441,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       itemBuilder: (context, index) {
         final stat = stats[index];
         return _buildStatTile(stat)
-            .animate()
+            .animateOnce(_animate)
             .fadeIn(delay: (80 * index).ms)
             .scale(
               begin: const Offset(0.85, 0.85),
@@ -517,7 +528,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         color: Colors.white.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.1),
+          color: ActiveThemeColors.of(context).primary.withValues(alpha: 0.1),
         ),
       ),
       child: Row(
@@ -548,14 +559,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
-    ).animate().fadeIn(delay: 300.ms);
+    ).animateOnce(_animate).fadeIn(delay: 300.ms);
   }
 
   Widget _journeyItem(IconData icon, String value, String label) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: AppColors.primary),
+        Icon(icon, size: 14, color: ActiveThemeColors.of(context).primary),
         const SizedBox(height: 3),
         Text(
           value,
@@ -598,7 +609,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             borderRadius: BorderRadius.circular(8),
             child: Row(
               children: [
-                Icon(Icons.people_rounded, size: 18, color: AppColors.primary),
+                Icon(Icons.people_rounded,
+                    size: 18, color: ActiveThemeColors.of(context).primary),
                 const SizedBox(width: 8),
                 Text(
                   'Friends',
@@ -630,7 +642,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(width: 4),
                 Icon(Icons.chevron_right_rounded,
-                    size: 18, color: AppColors.primary),
+                    size: 18, color: ActiveThemeColors.of(context).primary),
               ],
             ),
           ),
@@ -646,7 +658,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _buildFriendsRow(),
         ],
       ),
-    ).animate().fadeIn(delay: 200.ms);
+    ).animateOnce(_animate).fadeIn(delay: 200.ms);
   }
 
   Widget _buildEmptyFriends() {
@@ -701,7 +713,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   CircleAvatar(
                     radius: 22,
-                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                    backgroundColor: ActiveThemeColors.of(context)
+                        .primary
+                        .withValues(alpha: 0.1),
                     child: Text(
                       '+${_friends.length - 8}',
                       style: AppTextStyles.labelLarge.copyWith(fontSize: 11),
@@ -722,7 +736,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 CircleAvatar(
                   radius: 22,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                  backgroundColor: ActiveThemeColors.of(context)
+                      .primary
+                      .withValues(alpha: 0.1),
                   backgroundImage: _resolveImage(friend.profileImageUrl),
                   child: _resolveImage(friend.profileImageUrl) == null
                       ? Text(
@@ -730,7 +746,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ? friend.username[0].toUpperCase()
                               : '?',
                           style: AppTextStyles.headlineSmall.copyWith(
-                            color: AppColors.primary,
+                            color: ActiveThemeColors.of(context).primary,
                             fontSize: 15,
                           ),
                         )
@@ -783,7 +799,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Row(
             children: [
               Icon(Icons.person_add_rounded,
-                  size: 18, color: AppColors.primary),
+                  size: 18, color: ActiveThemeColors.of(context).primary),
               const SizedBox(width: 8),
               Text(
                 'Friend Requests',
@@ -802,7 +818,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
         ],
       ),
-    ).animate().fadeIn(delay: 300.ms);
+    ).animateOnce(_animate).fadeIn(delay: 300.ms);
   }
 
   Widget _buildRequestTile(FriendRequest request) {
@@ -812,7 +828,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+            backgroundColor:
+                ActiveThemeColors.of(context).primary.withValues(alpha: 0.1),
             backgroundImage: _resolveImage(request.fromProfileImageUrl),
             child: _resolveImage(request.fromProfileImageUrl) == null
                 ? Text(
@@ -892,9 +909,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       icon: Icon(icon, size: 16),
       label: Text(label, style: const TextStyle(fontSize: 13)),
       style: OutlinedButton.styleFrom(
-        foregroundColor: AppColors.primary,
+        foregroundColor: ActiveThemeColors.of(context).primary,
         side: BorderSide(
-          color: AppColors.primary.withValues(alpha: 0.3),
+          color: ActiveThemeColors.of(context).primary.withValues(alpha: 0.3),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         shape: RoundedRectangleBorder(
@@ -1017,8 +1034,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Text('Change Profile Photo', style: AppTextStyles.headlineSmall),
             const SizedBox(height: 16),
             ListTile(
-              leading: const Icon(Icons.camera_alt_rounded,
-                  color: AppColors.primary),
+              leading: Icon(Icons.camera_alt_rounded,
+                  color: ActiveThemeColors.of(context).primary),
               title: const Text('Take a Photo'),
               onTap: () {
                 Navigator.pop(context);
@@ -1026,8 +1043,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library_rounded,
-                  color: AppColors.primary),
+              leading: Icon(Icons.photo_library_rounded,
+                  color: ActiveThemeColors.of(context).primary),
               title: const Text('Choose from Gallery'),
               onTap: () {
                 Navigator.pop(context);

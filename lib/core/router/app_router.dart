@@ -18,6 +18,7 @@ import 'package:waddle/presentation/screens/settings/settings_screen.dart';
 import 'package:waddle/presentation/screens/settings/terms_of_service_screen.dart';
 import 'package:waddle/presentation/screens/celebration/congrats_screen.dart';
 import 'package:waddle/presentation/screens/celebration/challenge_complete_screen.dart';
+import 'package:waddle/presentation/screens/celebration/challenge_failed_screen.dart';
 import 'package:waddle/presentation/screens/splash/splash_screen.dart';
 
 class AppRouter {
@@ -113,6 +114,16 @@ class AppRouter {
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>? ?? {};
             return ChallengeCompleteScreen(
+              challengeIndex: extra['challengeIndex'] as int? ?? 0,
+            );
+          },
+        ),
+        GoRoute(
+          path: '/challenge-failed',
+          name: 'challengeFailed',
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>? ?? {};
+            return ChallengeFailedScreen(
               challengeIndex: extra['challengeIndex'] as int? ?? 0,
             );
           },

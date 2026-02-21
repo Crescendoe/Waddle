@@ -10,10 +10,10 @@ import 'package:waddle/domain/entities/drink_type.dart';
 import 'package:waddle/domain/entities/hydration_state.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_cubit.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_state.dart';
-import 'package:waddle/presentation/widgets/challenge_failure_sheet.dart';
 import 'package:waddle/presentation/widgets/common.dart';
 import 'package:waddle/presentation/widgets/water_cup.dart';
 import 'package:waddle/presentation/screens/main/drink_selection_sheet.dart';
+import 'package:waddle/core/utils/session_animation_tracker.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -26,6 +26,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Timer? _cooldownTimer;
   bool _showDrinkDetails = false;
   bool _logsExpanded = false;
+  late final bool _animate =
+      SessionAnimationTracker.shouldAnimate(SessionAnimationTracker.home);
 
   @override
   void dispose() {
@@ -79,15 +81,9 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         if (state is ChallengeFailed) {
           HapticFeedback.mediumImpact();
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (_) => BlocProvider.value(
-              value: context.read<HydrationCubit>(),
-              child:
-                  ChallengeFailureSheet(challengeIndex: state.challengeIndex),
-            ),
+          context.pushNamed(
+            'challengeFailed',
+            extra: {'challengeIndex': state.challengeIndex},
           );
         }
       },
@@ -126,32 +122,38 @@ class _HomeScreenState extends State<HomeScreen> {
           _startCooldownTicker();
         }
 
-        return GradientBackground(
-          child: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Column(
-                children: [
-                  _buildHeader(hydration, loaded),
-                  const SizedBox(height: 16),
-                  _buildWaterCupSection(loaded),
-                  const SizedBox(height: 20),
-                  _buildDrinkButton(hydration),
-                  const SizedBox(height: 20),
-                  _buildTodayLogs(loaded),
-                  const SizedBox(height: 20),
-                  if (hydration.hasActiveChallenge)
-                    _buildChallengeCard(hydration),
-                ],
+        return Stack(
+          children: [
+            GradientBackground(
+              child: SafeArea(
+                child: SingleChildScrollView(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  child: Column(
+                    children: [
+                      _buildHeader(hydration, loaded),
+                      const SizedBox(height: 16),
+                      _buildWaterCupSection(loaded),
+                      const SizedBox(height: 20),
+                      _buildDrinkButton(hydration),
+                      const SizedBox(height: 20),
+                      _buildTodayLogs(loaded),
+                      const SizedBox(height: 20),
+                      if (hydration.hasActiveChallenge)
+                        _buildChallengeCard(hydration),
+                    ],
+                  ),
+                ),
               ),
             ),
-          ),
+          ],
         );
       },
     );
   }
 
   Widget _buildHeader(HydrationState hydration, HydrationLoaded loaded) {
+    final tc = ActiveThemeColors.of(context);
     return Row(
       children: [
         Column(
@@ -176,7 +178,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onTap: () => _showBadgeTip(
               context,
               icon: Icons.playlist_add_check_rounded,
-              color: AppColors.primary,
+              color: tc.primary,
               title: 'Drinks Logged',
               body:
                   'This counts every drink you log today — water, coffee, soda, everything!\n\nHonest tracking gives you the most accurate view of your hydration. Every log counts.',
@@ -185,30 +187,30 @@ class _HomeScreenState extends State<HomeScreen> {
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.10),
+                color: tc.primary.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.25),
+                  color: tc.primary.withValues(alpha: 0.25),
                 ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.playlist_add_check_rounded,
-                      size: 14, color: AppColors.primary),
+                      size: 14, color: tc.primary),
                   const SizedBox(width: 3),
                   Text(
                     '${loaded.todayLogs.length}',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
+                      color: tc.primary,
                     ),
                   ),
                 ],
               ),
             ),
-          ).animate().fadeIn(),
+          ).animateOnce(_animate).fadeIn(),
         // Healthy picks badge (bonus — only shows when > 0)
         if (loaded.healthyPicksToday > 0)
           GestureDetector(
@@ -247,7 +249,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-          ).animate().fadeIn(),
+          ).animateOnce(_animate).fadeIn(),
         // Streak badge
         GestureDetector(
           onTap: () => _showBadgeTip(
@@ -283,9 +285,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-        ).animate().fadeIn().slideX(begin: 0.2),
+        ).animateOnce(_animate).fadeIn().slideX(begin: 0.2),
       ],
-    ).animate().fadeIn();
+    ).animateOnce(_animate).fadeIn();
   }
 
   Widget _buildWaterCupSection(HydrationLoaded state) {
@@ -300,7 +302,7 @@ class _HomeScreenState extends State<HomeScreen> {
           size: cupSize.clamp(240.0, 380.0),
           showDetails: _showDrinkDetails,
           todayLogs: state.todayLogs,
-          showCupDuck: hydration.cupDuckIndex != null,
+          cupDuckCount: hydration.homeDuckIndices.length,
           onTapToggle: () =>
               setState(() => _showDrinkDetails = !_showDrinkDetails),
         ),
@@ -319,12 +321,13 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
       ],
-    ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1);
+    ).animateOnce(_animate).fadeIn(delay: 200.ms).slideY(begin: 0.1);
   }
 
   Widget _buildDrinkButton(HydrationState hydration) {
     final onCooldown = hydration.isEntryOnCooldown;
     final cooldown = hydration.cooldownRemaining;
+    final tc = ActiveThemeColors.of(context);
 
     return GestureDetector(
       onTap: onCooldown ? null : () => _showDrinkSheet(hydration),
@@ -333,13 +336,13 @@ class _HomeScreenState extends State<HomeScreen> {
         decoration: BoxDecoration(
           color: onCooldown
               ? AppColors.textHint.withValues(alpha: 0.25)
-              : const Color(0xFF0288D1),
+              : tc.primary,
           borderRadius: BorderRadius.circular(30),
           boxShadow: onCooldown
               ? []
               : [
                   BoxShadow(
-                    color: const Color(0xFF0288D1).withValues(alpha: 0.35),
+                    color: tc.primary.withValues(alpha: 0.35),
                     blurRadius: 14,
                     offset: const Offset(0, 5),
                   ),
@@ -368,7 +371,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-    ).animate().fadeIn(delay: 500.ms).scale(begin: const Offset(0.95, 0.95));
+    )
+        .animateOnce(_animate)
+        .fadeIn(delay: 500.ms)
+        .scale(begin: const Offset(0.95, 0.95));
   }
 
   Widget _buildTodayLogs(HydrationLoaded state) {
@@ -476,7 +482,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ? 'Show less'
                             : 'Show all ${state.todayLogs.length} entries',
                         style: AppTextStyles.bodySmall.copyWith(
-                          color: AppColors.primary,
+                          color: ActiveThemeColors.of(context).primary,
                         ),
                       ),
                       const SizedBox(width: 4),
@@ -485,7 +491,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ? Icons.keyboard_arrow_up_rounded
                             : Icons.keyboard_arrow_down_rounded,
                         size: 16,
-                        color: AppColors.primary,
+                        color: ActiveThemeColors.of(context).primary,
                       ),
                     ],
                   ),
@@ -494,7 +500,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
         ],
       ),
-    ).animate().fadeIn(delay: 600.ms);
+    ).animateOnce(_animate).fadeIn(delay: 600.ms);
   }
 
   Widget _buildChallengeCard(HydrationState hydration) {
@@ -527,7 +533,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const Icon(Icons.chevron_right_rounded, color: AppColors.textHint),
         ],
       ),
-    ).animate().fadeIn(delay: 700.ms);
+    ).animateOnce(_animate).fadeIn(delay: 700.ms);
   }
 
   void _confirmRemoveLog(dynamic log) {

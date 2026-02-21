@@ -9,6 +9,7 @@ import 'package:waddle/domain/entities/duck_companion.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_cubit.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_state.dart';
 import 'package:waddle/presentation/widgets/common.dart';
+import 'package:waddle/core/utils/session_animation_tracker.dart';
 
 class DuckCollectionScreen extends StatelessWidget {
   const DuckCollectionScreen({super.key});
@@ -21,6 +22,9 @@ class DuckCollectionScreen extends StatelessWidget {
           return const Center(child: WaddleLoader());
         }
 
+        final _animate = SessionAnimationTracker.shouldAnimate(
+            SessionAnimationTracker.duckCollection);
+
         return GradientBackground(
           child: DefaultTabController(
             length: 2,
@@ -32,7 +36,7 @@ class DuckCollectionScreen extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
                     child: Text('Collection', style: AppTextStyles.displaySmall)
-                        .animate()
+                        .animateOnce(_animate)
                         .fadeIn(),
                   ),
 
@@ -42,12 +46,14 @@ class DuckCollectionScreen extends StatelessWidget {
                     child: Container(
                       height: 42,
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.08),
+                        color: ActiveThemeColors.of(context)
+                            .primary
+                            .withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: TabBar(
                         indicator: BoxDecoration(
-                          color: AppColors.primary,
+                          color: ActiveThemeColors.of(context).primary,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         indicatorSize: TabBarIndicatorSize.tab,
@@ -63,7 +69,7 @@ class DuckCollectionScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                  ).animate().fadeIn(delay: 100.ms),
+                  ).animateOnce(_animate).fadeIn(delay: 100.ms),
 
                   const SizedBox(height: 12),
 
@@ -71,8 +77,8 @@ class DuckCollectionScreen extends StatelessWidget {
                   Expanded(
                     child: TabBarView(
                       children: [
-                        _DucksTab(loaded: state),
-                        _ThemesTab(loaded: state),
+                        _DucksTab(loaded: state, animate: _animate),
+                        _ThemesTab(loaded: state, animate: _animate),
                       ],
                     ),
                   ),
@@ -92,7 +98,8 @@ class DuckCollectionScreen extends StatelessWidget {
 
 class _DucksTab extends StatelessWidget {
   final HydrationLoaded loaded;
-  const _DucksTab({required this.loaded});
+  final bool animate;
+  const _DucksTab({required this.loaded, required this.animate});
 
   @override
   Widget build(BuildContext context) {
@@ -124,8 +131,11 @@ class _DucksTab extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: unlocked / DuckCompanions.all.length,
                     minHeight: 10,
-                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                    valueColor: const AlwaysStoppedAnimation(AppColors.accent),
+                    backgroundColor: ActiveThemeColors.of(context)
+                        .primary
+                        .withValues(alpha: 0.1),
+                    valueColor: AlwaysStoppedAnimation(
+                        ActiveThemeColors.of(context).accent),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -159,7 +169,7 @@ class _DucksTab extends StatelessWidget {
                   duck: duck,
                   isUnlocked: isUnlocked,
                   onTap: () => _showDuckDetail(context, duck, isUnlocked),
-                ).animate().fadeIn(delay: (100 + index * 50).ms);
+                ).animateOnce(animate).fadeIn(delay: (100 + index * 50).ms);
               },
               childCount: DuckCompanions.all.length,
             ),
@@ -180,7 +190,9 @@ class _DucksTab extends StatelessWidget {
         builder: (ctx, state) {
           final hydration = state is HydrationLoaded ? state.hydration : null;
           final isActiveBadge = hydration?.activeDuckIndex == duckIndex;
-          final isCupDuck = hydration?.cupDuckIndex == duckIndex;
+          final isHomeDuck =
+              hydration?.homeDuckIndices.contains(duckIndex) ?? false;
+          final homeCount = hydration?.homeDuckIndices.length ?? 0;
 
           return Container(
             decoration: const BoxDecoration(
@@ -245,8 +257,10 @@ class _DucksTab extends StatelessWidget {
                       textAlign: TextAlign.center),
                   const SizedBox(height: 16),
                   // Action buttons
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 10,
+                    runSpacing: 8,
                     children: [
                       // Badge button
                       _ActionChip(
@@ -261,19 +275,24 @@ class _DucksTab extends StatelessWidget {
                               );
                         },
                       ),
-                      const SizedBox(width: 10),
-                      // Cup button
+                      // Add to Home (combines cup float + home screen overlay)
                       _ActionChip(
-                        icon: isCupDuck
-                            ? Icons.water_drop_rounded
-                            : Icons.water_drop_outlined,
-                        label: isCupDuck ? 'In Cup ✓' : 'Float in Cup',
-                        isActive: isCupDuck,
-                        onTap: () {
-                          context.read<HydrationCubit>().setCupDuck(
-                                isCupDuck ? null : duckIndex,
-                              );
-                        },
+                        icon: isHomeDuck
+                            ? Icons.home_rounded
+                            : Icons.home_outlined,
+                        label: isHomeDuck
+                            ? 'Home ✓'
+                            : homeCount >= 3
+                                ? 'Home 3/3'
+                                : 'Add to Home',
+                        isActive: isHomeDuck,
+                        onTap: homeCount >= 3 && !isHomeDuck
+                            ? null
+                            : () {
+                                context
+                                    .read<HydrationCubit>()
+                                    .toggleHomeDuck(duckIndex);
+                              },
                       ),
                     ],
                   ),
@@ -307,7 +326,8 @@ class _DucksTab extends StatelessWidget {
 
 class _ThemesTab extends StatelessWidget {
   final HydrationLoaded loaded;
-  const _ThemesTab({required this.loaded});
+  final bool animate;
+  const _ThemesTab({required this.loaded, required this.animate});
 
   @override
   Widget build(BuildContext context) {
@@ -342,8 +362,11 @@ class _ThemesTab extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: unlocked / ThemeRewards.all.length,
                     minHeight: 10,
-                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                    valueColor: const AlwaysStoppedAnimation(AppColors.accent),
+                    backgroundColor: ActiveThemeColors.of(context)
+                        .primary
+                        .withValues(alpha: 0.1),
+                    valueColor: AlwaysStoppedAnimation(
+                        ActiveThemeColors.of(context).accent),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -384,7 +407,7 @@ class _ThemesTab extends StatelessWidget {
                   isActive: isActive,
                   onTap: () =>
                       _showThemeDetail(context, theme, isUnlocked, isActive),
-                ).animate().fadeIn(delay: (100 + index * 50).ms);
+                ).animateOnce(animate).fadeIn(delay: (100 + index * 50).ms);
               },
               childCount: ThemeRewards.all.length,
             ),
@@ -495,7 +518,7 @@ class _ThemesTab extends StatelessWidget {
                   icon: const Icon(Icons.palette_rounded, size: 18),
                   label: const Text('Apply theme'),
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: ActiveThemeColors.of(sheetCtx).primary,
                   ),
                 ),
             ] else ...[
@@ -683,31 +706,37 @@ class _ActionChip extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool isActive;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const _ActionChip({
     required this.icon,
     required this.label,
     required this.isActive,
-    required this.onTap,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    final tc = ActiveThemeColors.of(context);
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isActive
-              ? AppColors.accent.withValues(alpha: 0.12)
-              : AppColors.primary.withValues(alpha: 0.06),
+          color: !enabled
+              ? Colors.grey.withValues(alpha: 0.06)
+              : isActive
+                  ? tc.accent.withValues(alpha: 0.12)
+                  : tc.primary.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isActive
-                ? AppColors.accent.withValues(alpha: 0.4)
-                : AppColors.primary.withValues(alpha: 0.15),
+            color: !enabled
+                ? Colors.grey.withValues(alpha: 0.15)
+                : isActive
+                    ? tc.accent.withValues(alpha: 0.4)
+                    : tc.primary.withValues(alpha: 0.15),
           ),
         ),
         child: Row(
@@ -715,13 +744,21 @@ class _ActionChip extends StatelessWidget {
           children: [
             Icon(icon,
                 size: 16,
-                color: isActive ? AppColors.accent : AppColors.primary),
+                color: !enabled
+                    ? Colors.grey
+                    : isActive
+                        ? tc.accent
+                        : tc.primary),
             const SizedBox(width: 6),
             Text(
               label,
               style: AppTextStyles.bodySmall.copyWith(
                 fontWeight: FontWeight.w600,
-                color: isActive ? AppColors.accent : AppColors.primary,
+                color: !enabled
+                    ? Colors.grey
+                    : isActive
+                        ? tc.accent
+                        : tc.primary,
               ),
             ),
           ],

@@ -22,8 +22,12 @@ class ChallengeCompleteScreen extends StatefulWidget {
 class _ChallengeCompleteScreenState extends State<ChallengeCompleteScreen>
     with TickerProviderStateMixin {
   late final AnimationController _confettiController;
+  late final AnimationController _daysController;
+  late final Animation<int> _daysAnimation;
   final List<_ConfettiParticle> _particles = [];
   final _random = Random();
+  final GlobalKey _daysKey = GlobalKey();
+  bool _confettiFired = false;
 
   Challenge get challenge => Challenges.getByIndex(widget.challengeIndex);
 
@@ -32,15 +36,36 @@ class _ChallengeCompleteScreenState extends State<ChallengeCompleteScreen>
     super.initState();
     _confettiController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 3),
+      duration: const Duration(seconds: 4),
     );
     _generateParticles();
 
-    Future.delayed(const Duration(milliseconds: 800), () {
-      if (mounted) {
+    // Days count-up animation (like streak counter in congrats)
+    _daysController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    _daysAnimation = IntTween(
+      begin: 0,
+      end: challenge.durationDays,
+    ).animate(CurvedAnimation(
+      parent: _daysController,
+      curve: Curves.easeOutCubic,
+    ));
+
+    // When count-up finishes → fire confetti burst (loops forever)
+    _daysController.addStatusListener((status) {
+      if (status == AnimationStatus.completed && !_confettiFired) {
+        _confettiFired = true;
+        _regenerateParticlesFromBadge();
         HapticFeedback.heavyImpact();
-        _confettiController.forward();
+        _confettiController.repeat();
       }
+    });
+
+    // Start count-up after intro settles
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (mounted) _daysController.forward();
     });
   }
 
@@ -66,9 +91,43 @@ class _ChallengeCompleteScreenState extends State<ChallengeCompleteScreen>
     }
   }
 
+  /// Regenerate particles from the badge position for a focused burst
+  void _regenerateParticlesFromBadge() {
+    final box = _daysKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final screenSize = MediaQuery.of(context).size;
+    final pos =
+        box.localToGlobal(Offset(box.size.width / 2, box.size.height / 2));
+    final normX = pos.dx / screenSize.width;
+    final normY = pos.dy / screenSize.height;
+
+    _particles.clear();
+    for (int i = 0; i < 80; i++) {
+      _particles.add(_ConfettiParticle(
+        x: normX,
+        y: normY,
+        speed: 0.4 + _random.nextDouble() * 0.6,
+        size: 5 + _random.nextDouble() * 9,
+        color: [
+          challenge.color,
+          AppColors.primary,
+          AppColors.accent,
+          const Color(0xFFFFD700),
+          const Color(0xFF66BB6A),
+          const Color(0xFFAB47BC),
+          const Color(0xFF42A5F5),
+          const Color(0xFFFF8A65),
+        ][_random.nextInt(8)],
+        angle: _random.nextDouble() * pi * 2,
+        directionX: (_random.nextDouble() - 0.5) * 2,
+      ));
+    }
+  }
+
   @override
   void dispose() {
     _confettiController.dispose();
+    _daysController.dispose();
     super.dispose();
   }
 
@@ -89,18 +148,23 @@ class _ChallengeCompleteScreenState extends State<ChallengeCompleteScreen>
                   children: [
                     const Spacer(),
 
-                    // Challenge mascot
+                    // Challenge mascot in glowing circle
                     Container(
                       width: 120,
                       height: 120,
                       decoration: BoxDecoration(
-                        color: challenge.color.withValues(alpha: 0.12),
+                        gradient: LinearGradient(
+                          colors: [
+                            challenge.color.withValues(alpha: 0.2),
+                            challenge.color.withValues(alpha: 0.08),
+                          ],
+                        ),
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: challenge.color.withValues(alpha: 0.3),
-                            blurRadius: 24,
-                            spreadRadius: 4,
+                            color: challenge.color.withValues(alpha: 0.35),
+                            blurRadius: 28,
+                            spreadRadius: 6,
                           ),
                         ],
                       ),
@@ -125,7 +189,7 @@ class _ChallengeCompleteScreenState extends State<ChallengeCompleteScreen>
                         ),
                     const SizedBox(height: 32),
 
-                    // Title
+                    // "Challenge Complete!" title
                     Text(
                       'Challenge Complete!',
                       style: AppTextStyles.displayLarge.copyWith(
@@ -133,7 +197,7 @@ class _ChallengeCompleteScreenState extends State<ChallengeCompleteScreen>
                         color: challenge.color,
                       ),
                     ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
 
                     Text(
                       challenge.title,
@@ -145,7 +209,7 @@ class _ChallengeCompleteScreenState extends State<ChallengeCompleteScreen>
                     const SizedBox(height: 8),
 
                     Text(
-                      'You crushed it! 14 days of dedication.\nYou\'ve proven your commitment to healthier hydration.',
+                      'You crushed it! Pure dedication.\nYou\'ve proven your commitment to healthier hydration.',
                       style: AppTextStyles.bodyLarge.copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -154,45 +218,61 @@ class _ChallengeCompleteScreenState extends State<ChallengeCompleteScreen>
 
                     const SizedBox(height: 36),
 
-                    // Achievement stat
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 24, vertical: 16),
-                      decoration: BoxDecoration(
-                        color: challenge.color.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: challenge.color.withValues(alpha: 0.2),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.verified_rounded,
-                              color: challenge.color, size: 32),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                    // ── Days count-up badge (like streak in congrats) ──
+                    AnimatedBuilder(
+                      animation: _daysAnimation,
+                      builder: (context, _) {
+                        return Container(
+                          key: _daysKey,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 16),
+                          decoration: BoxDecoration(
+                            color: challenge.color.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: challenge.color.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
+                              Icon(Icons.verified_rounded,
+                                  color: challenge.color, size: 36),
+                              const SizedBox(width: 12),
                               Text(
-                                '14 Days Strong',
-                                style: AppTextStyles.labelLarge.copyWith(
+                                '${_daysAnimation.value}',
+                                style: AppTextStyles.displayLarge.copyWith(
+                                  fontSize: 48,
+                                  fontWeight: FontWeight.w800,
                                   color: challenge.color,
-                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
-                              Text(
-                                'New challenge unlocked in ducks & themes!',
-                                style: AppTextStyles.bodySmall.copyWith(
-                                  color: AppColors.textSecondary,
-                                ),
+                              const SizedBox(width: 6),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Days Strong',
+                                    style: AppTextStyles.labelLarge.copyWith(
+                                      color: challenge.color,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  Text(
+                                    'New reward unlocked!',
+                                    style: AppTextStyles.bodySmall.copyWith(
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
-                      ),
+                        );
+                      },
                     ).animate().fadeIn(delay: 1000.ms).scale(
-                          begin: const Offset(0.9, 0.9),
+                          begin: const Offset(0.8, 0.8),
+                          end: const Offset(1.0, 1.0),
                           delay: 1000.ms,
                           duration: 400.ms,
                           curve: Curves.easeOut,
@@ -216,7 +296,7 @@ class _ChallengeCompleteScreenState extends State<ChallengeCompleteScreen>
                         ),
                         child: const Text('Continue'),
                       ),
-                    ).animate().fadeIn(delay: 1200.ms),
+                    ).animate().fadeIn(delay: 1400.ms),
 
                     const SizedBox(height: 12),
                     Text(
@@ -224,14 +304,14 @@ class _ChallengeCompleteScreenState extends State<ChallengeCompleteScreen>
                       style: AppTextStyles.bodySmall.copyWith(
                         color: AppColors.textHint,
                       ),
-                    ).animate().fadeIn(delay: 1400.ms),
+                    ).animate().fadeIn(delay: 1600.ms),
                   ],
                 ),
               ),
             ),
           ),
 
-          // Confetti overlay
+          // Confetti overlay – bursts from badge position
           Positioned.fill(
             child: IgnorePointer(
               child: AnimatedBuilder(
@@ -286,19 +366,33 @@ class _ConfettiPainter extends CustomPainter {
     if (progress <= 0) return;
 
     for (final p in particles) {
-      final t = (progress * p.speed).clamp(0.0, 1.0);
-      final opacity = t < 0.7 ? 1.0 : (1.0 - (t - 0.7) / 0.3);
+      // Each particle cycles independently — wraps around for infinite loop
+      final rawT = (progress * p.speed + p.angle / (pi * 2)) % 1.0;
 
-      final x = p.x * size.width + p.directionX * t * size.width * 0.3;
-      final y = p.y * size.height + t * size.height;
+      // Diagonal upward burst then cascading fall
+      final upPhase = (rawT * 2.0).clamp(0.0, 1.0);
+      final fallPhase = ((rawT - 0.3) * 1.43).clamp(0.0, 1.0);
+
+      final burstX = p.directionX * upPhase * size.width * 0.45;
+      final burstY = -upPhase * size.height * 0.3;
+      final gravityY = fallPhase * fallPhase * size.height * 0.85;
+      final wobble = sin(rawT * pi * 6 + p.angle) * 12;
+
+      final x = p.x * size.width + burstX + wobble;
+      final y = p.y * size.height + burstY + gravityY;
+
+      // Fade in at start, fade out at end
+      final fadeIn = (rawT * 5.0).clamp(0.0, 1.0);
+      final fadeOut = (1.0 - rawT).clamp(0.0, 1.0);
+      final opacity = (fadeIn * fadeOut).clamp(0.0, 1.0);
 
       final paint = Paint()
-        ..color = p.color.withValues(alpha: opacity.clamp(0.0, 1.0))
+        ..color = p.color.withValues(alpha: opacity)
         ..style = PaintingStyle.fill;
 
       canvas.save();
       canvas.translate(x, y);
-      canvas.rotate(p.angle + t * 6);
+      canvas.rotate(p.angle + rawT * 8);
       canvas.drawRect(
         Rect.fromCenter(
             center: Offset.zero, width: p.size, height: p.size * 0.6),

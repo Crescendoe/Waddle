@@ -6,6 +6,52 @@ import 'package:waddle/presentation/blocs/hydration/hydration_cubit.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_state.dart';
 import 'package:waddle/presentation/widgets/floating_objects_overlay.dart';
 
+// ── Theme-aware color helper ────────────────────────────────────────
+
+/// Resolves the active theme's primary / accent colors from the widget tree.
+/// Falls back to the default [AppColors] palette when no theme is active.
+class ActiveThemeColors {
+  final Color primary;
+  final Color accent;
+
+  const ActiveThemeColors({required this.primary, required this.accent});
+
+  static const _default = ActiveThemeColors(
+    primary: AppColors.primary,
+    accent: AppColors.accent,
+  );
+
+  /// Read-only lookup — use inside `build()` methods. Does NOT subscribe to
+  /// changes; pair with a `BlocBuilder` ancestor if reactivity is needed.
+  static ActiveThemeColors of(BuildContext context) {
+    try {
+      final state = context.read<HydrationCubit>().state;
+      if (state is HydrationLoaded) {
+        final themeId = state.hydration.activeThemeId;
+        if (themeId != null) {
+          final theme = ThemeRewards.byId(themeId);
+          if (theme != null) {
+            return ActiveThemeColors(
+              primary: theme.primaryColor,
+              accent: theme.accentColor,
+            );
+          }
+        }
+      }
+    } catch (_) {}
+    return _default;
+  }
+
+  /// Resolve from a known [ThemeReward] (avoids context lookup).
+  static ActiveThemeColors fromTheme(ThemeReward? theme) {
+    if (theme == null) return _default;
+    return ActiveThemeColors(
+      primary: theme.primaryColor,
+      accent: theme.accentColor,
+    );
+  }
+}
+
 /// Gradient background used across the app.
 ///
 /// If [colors] is provided it is used directly.
@@ -130,6 +176,7 @@ class GlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc = ActiveThemeColors.of(context);
     return Container(
       margin: margin ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: padding ?? const EdgeInsets.all(20),
@@ -142,7 +189,7 @@ class GlassCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.08),
+            color: tc.primary.withValues(alpha: 0.08),
             blurRadius: 20,
             offset: const Offset(0, 4),
           ),
@@ -218,13 +265,14 @@ class WaddleLoader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc = ActiveThemeColors.of(context);
     return Center(
       child: SizedBox(
         width: size,
         height: size,
         child: CircularProgressIndicator(
           strokeWidth: 3,
-          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+          valueColor: AlwaysStoppedAnimation<Color>(tc.primary),
         ),
       ),
     );

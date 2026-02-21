@@ -971,6 +971,13 @@ class DrinkTypes {
     }
   }
 
+  /// Returns the list of drinks that are RESTRICTED (not allowed) for a given
+  /// challenge. This is the complement of [forChallenge].
+  static List<DrinkType> restrictedForChallenge(int challengeIndex) {
+    final allowed = forChallenge(challengeIndex).map((d) => d.name).toSet();
+    return all.where((d) => !allowed.contains(d.name)).toList();
+  }
+
   static DrinkType? byName(String name) {
     try {
       return all.firstWhere((d) => d.name == name);

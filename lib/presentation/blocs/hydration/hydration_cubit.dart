@@ -450,6 +450,29 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     await _hydrationRepository.saveHydrationState(_userId, newState);
   }
 
+  /// Toggle a duck on/off from the home-screen overlay (max 3).
+  Future<void> toggleHomeDuck(int duckIndex) async {
+    if (_realState != null) return;
+
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return;
+
+    final current = List<int>.from(currentState.hydration.homeDuckIndices);
+    if (current.contains(duckIndex)) {
+      current.remove(duckIndex);
+    } else {
+      if (current.length >= 3) return; // max 3 ducks
+      current.add(duckIndex);
+    }
+
+    final newState = currentState.hydration.copyWith(
+      homeDuckIndices: current,
+    );
+
+    emit(currentState.copyWith(hydration: newState));
+    await _hydrationRepository.saveHydrationState(_userId, newState);
+  }
+
   // ── Debug mode ────────────────────────────────────────────────────
 
   /// Saved copy of real state before debug mode was activated.

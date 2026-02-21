@@ -28,6 +28,7 @@ class HydrationState extends Equatable {
   final String? activeThemeId;
   final int? activeDuckIndex;
   final int? cupDuckIndex;
+  final List<int> homeDuckIndices;
 
   const HydrationState({
     this.waterConsumedOz = 0.0,
@@ -53,6 +54,7 @@ class HydrationState extends Equatable {
     this.activeThemeId,
     this.activeDuckIndex,
     this.cupDuckIndex,
+    this.homeDuckIndices = const [],
   });
 
   double get progressPercent =>
@@ -111,6 +113,7 @@ class HydrationState extends Equatable {
     bool clearActiveDuckIndex = false,
     int? cupDuckIndex,
     bool clearCupDuckIndex = false,
+    List<int>? homeDuckIndices,
   }) {
     return HydrationState(
       waterConsumedOz: waterConsumedOz ?? this.waterConsumedOz,
@@ -143,6 +146,7 @@ class HydrationState extends Equatable {
           : (activeDuckIndex ?? this.activeDuckIndex),
       cupDuckIndex:
           clearCupDuckIndex ? null : (cupDuckIndex ?? this.cupDuckIndex),
+      homeDuckIndices: homeDuckIndices ?? this.homeDuckIndices,
     );
   }
 
@@ -171,6 +175,7 @@ class HydrationState extends Equatable {
         activeThemeId,
         activeDuckIndex,
         cupDuckIndex,
+        homeDuckIndices,
       ];
 }
 

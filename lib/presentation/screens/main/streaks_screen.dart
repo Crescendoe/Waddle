@@ -9,6 +9,7 @@ import 'package:waddle/domain/entities/water_log.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_cubit.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_state.dart';
 import 'package:waddle/presentation/widgets/common.dart';
+import 'package:waddle/core/utils/session_animation_tracker.dart';
 
 class StreaksScreen extends StatefulWidget {
   const StreaksScreen({super.key});
@@ -23,6 +24,8 @@ class _StreaksScreenState extends State<StreaksScreen>
   DateTime _focusedMonth = DateTime.now();
   DateTime? _selectedDay;
   bool _calendarLoaded = false;
+  late final bool _animate =
+      SessionAnimationTracker.shouldAnimate(SessionAnimationTracker.streaks);
 
   @override
   void initState() {
@@ -64,7 +67,7 @@ class _StreaksScreenState extends State<StreaksScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Streaks', style: AppTextStyles.displaySmall)
-                          .animate()
+                          .animateOnce(_animate)
                           .fadeIn(),
                       const SizedBox(height: 12),
                       _buildStreakHero(hydration),
@@ -88,7 +91,9 @@ class _StreaksScreenState extends State<StreaksScreen>
                         borderRadius: BorderRadius.circular(10),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.primary.withValues(alpha: 0.1),
+                            color: ActiveThemeColors.of(context)
+                                .primary
+                                .withValues(alpha: 0.1),
                             blurRadius: 4,
                             offset: const Offset(0, 1),
                           ),
@@ -96,7 +101,7 @@ class _StreaksScreenState extends State<StreaksScreen>
                       ),
                       indicatorSize: TabBarIndicatorSize.tab,
                       dividerColor: Colors.transparent,
-                      labelColor: AppColors.primary,
+                      labelColor: ActiveThemeColors.of(context).primary,
                       unselectedLabelColor: AppColors.textHint,
                       labelStyle: AppTextStyles.labelMedium.copyWith(
                         fontWeight: FontWeight.w600,
@@ -232,7 +237,7 @@ class _StreaksScreenState extends State<StreaksScreen>
           ),
         ],
       ),
-    ).animate().fadeIn(delay: 200.ms);
+    ).animateOnce(_animate).fadeIn(delay: 200.ms);
   }
 
   // ── Calendar ─────────────────────────────────────────────────────
@@ -330,7 +335,9 @@ class _StreaksScreenState extends State<StreaksScreen>
                         margin: const EdgeInsets.all(1),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? AppColors.primary.withValues(alpha: 0.2)
+                              ? ActiveThemeColors.of(context)
+                                  .primary
+                                  .withValues(alpha: 0.2)
                               : goalMet == true
                                   ? AppColors.success.withValues(alpha: 0.15)
                                   : goalMet == false
@@ -338,10 +345,14 @@ class _StreaksScreenState extends State<StreaksScreen>
                                       : null,
                           borderRadius: BorderRadius.circular(8),
                           border: isToday
-                              ? Border.all(color: AppColors.primary, width: 1.5)
+                              ? Border.all(
+                                  color: ActiveThemeColors.of(context).primary,
+                                  width: 1.5)
                               : isSelected
                                   ? Border.all(
-                                      color: AppColors.primary, width: 1)
+                                      color:
+                                          ActiveThemeColors.of(context).primary,
+                                      width: 1)
                                   : null,
                         ),
                         child: Center(
@@ -359,7 +370,8 @@ class _StreaksScreenState extends State<StreaksScreen>
                                       ? AppColors.textHint
                                           .withValues(alpha: 0.4)
                                       : isSelected
-                                          ? AppColors.primary
+                                          ? ActiveThemeColors.of(context)
+                                              .primary
                                           : AppColors.textPrimary,
                                 ),
                               ),
@@ -385,12 +397,13 @@ class _StreaksScreenState extends State<StreaksScreen>
               const SizedBox(width: 16),
               _calendarLegendItem(AppColors.accent, 'Logged'),
               const SizedBox(width: 16),
-              _calendarLegendItem(AppColors.primary, 'Today'),
+              _calendarLegendItem(
+                  ActiveThemeColors.of(context).primary, 'Today'),
             ],
           ),
         ],
       ),
-    ).animate().fadeIn(delay: 500.ms);
+    ).animateOnce(_animate).fadeIn(delay: 500.ms);
   }
 
   Widget _calendarLegendItem(Color color, String label) {
@@ -435,7 +448,7 @@ class _StreaksScreenState extends State<StreaksScreen>
           Row(
             children: [
               Icon(Icons.calendar_today_rounded,
-                  size: 18, color: AppColors.primary),
+                  size: 18, color: ActiveThemeColors.of(context).primary),
               const SizedBox(width: 8),
               Text(
                 isToday
@@ -470,7 +483,7 @@ class _StreaksScreenState extends State<StreaksScreen>
             ...logs.map((log) => _buildLogEntry(log)),
         ],
       ),
-    ).animate().fadeIn(duration: 200.ms);
+    ).animateOnce(_animate).fadeIn(duration: 200.ms);
   }
 
   Widget _buildLogEntry(WaterLog log) {
@@ -577,12 +590,15 @@ class _StreaksScreenState extends State<StreaksScreen>
                           child: LinearProgressIndicator(
                             value: progress,
                             minHeight: 6,
-                            backgroundColor:
-                                AppColors.primary.withValues(alpha: 0.1),
+                            backgroundColor: ActiveThemeColors.of(context)
+                                .primary
+                                .withValues(alpha: 0.1),
                             valueColor: AlwaysStoppedAnimation(
                               achieved
                                   ? tier.$1.color
-                                  : AppColors.primary.withValues(alpha: 0.5),
+                                  : ActiveThemeColors.of(context)
+                                      .primary
+                                      .withValues(alpha: 0.5),
                             ),
                           ),
                         ),
@@ -595,7 +611,7 @@ class _StreaksScreenState extends State<StreaksScreen>
           }),
         ],
       ),
-    ).animate().fadeIn(delay: 600.ms);
+    ).animateOnce(_animate).fadeIn(delay: 600.ms);
   }
 
   Widget _buildTierLegend() {
@@ -614,7 +630,7 @@ class _StreaksScreenState extends State<StreaksScreen>
               'Higher streaks unlock rare duck companions!'),
         ],
       ),
-    ).animate().fadeIn(delay: 800.ms);
+    ).animateOnce(_animate).fadeIn(delay: 800.ms);
   }
 
   Widget _legendItem(IconData icon, String text) {
@@ -747,12 +763,12 @@ class _StreaksScreenState extends State<StreaksScreen>
                 ),
               ),
             ],
-          ).animate().fadeIn(),
+          ).animateOnce(_animate).fadeIn(),
           const SizedBox(height: 20),
 
           // Favourite drink
           Text('Most Logged', style: AppTextStyles.headlineSmall)
-              .animate()
+              .animateOnce(_animate)
               .fadeIn(delay: 100.ms),
           const SizedBox(height: 8),
           ...sortedEntries.take(8).map((entry) {
@@ -785,8 +801,9 @@ class _StreaksScreenState extends State<StreaksScreen>
                       child: LinearProgressIndicator(
                         value: fraction,
                         minHeight: 14,
-                        backgroundColor:
-                            AppColors.primary.withValues(alpha: 0.06),
+                        backgroundColor: ActiveThemeColors.of(context)
+                            .primary
+                            .withValues(alpha: 0.06),
                         valueColor: AlwaysStoppedAnimation(
                           drink?.color ?? AppColors.water,
                         ),
@@ -800,21 +817,21 @@ class _StreaksScreenState extends State<StreaksScreen>
                       '${entry.value.count}',
                       style: AppTextStyles.bodySmall.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
+                        color: ActiveThemeColors.of(context).primary,
                       ),
                       textAlign: TextAlign.end,
                     ),
                   ),
                 ],
               ),
-            ).animate().fadeIn(
+            ).animateOnce(_animate).fadeIn(
                 delay: (150 + sortedEntries.toList().indexOf(entry) * 50).ms);
           }),
           const SizedBox(height: 20),
 
           // Category breakdown
           Text('By Category', style: AppTextStyles.headlineSmall)
-              .animate()
+              .animateOnce(_animate)
               .fadeIn(delay: 200.ms),
           const SizedBox(height: 8),
           ...categoryMap.entries.map((entry) {
@@ -843,7 +860,7 @@ class _StreaksScreenState extends State<StreaksScreen>
                   ],
                 ),
               ),
-            ).animate().fadeIn(delay: 250.ms);
+            ).animateOnce(_animate).fadeIn(delay: 250.ms);
           }),
           const SizedBox(height: 100),
         ],
@@ -875,16 +892,16 @@ class _AnalyticCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc = ActiveThemeColors.of(context);
     return GlassCard(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       margin: EdgeInsets.zero,
       child: Column(
         children: [
-          Icon(icon, size: 22, color: AppColors.accent),
+          Icon(icon, size: 22, color: tc.accent),
           const SizedBox(height: 6),
           Text(value,
-              style: AppTextStyles.headlineSmall
-                  .copyWith(color: AppColors.primary)),
+              style: AppTextStyles.headlineSmall.copyWith(color: tc.primary)),
           const SizedBox(height: 2),
           Text(label,
               style: AppTextStyles.bodySmall

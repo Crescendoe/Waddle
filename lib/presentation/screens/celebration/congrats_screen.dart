@@ -35,10 +35,10 @@ class _CongratsScreenState extends State<CongratsScreen>
   void initState() {
     super.initState();
 
-    // --- Confetti (3 seconds, does NOT start yet) ---
+    // --- Confetti (repeats indefinitely) ---
     _confettiController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 3),
+      duration: const Duration(seconds: 4),
     );
     _generateParticles();
 
@@ -55,12 +55,12 @@ class _CongratsScreenState extends State<CongratsScreen>
       curve: Curves.easeOutCubic,
     ));
 
-    // When the count-up finishes → fire confetti burst
+    // When the count-up finishes → fire confetti burst (loops forever)
     _streakController.addStatusListener((status) {
       if (status == AnimationStatus.completed && !_confettiFired) {
         _confettiFired = true;
         _regenerateParticlesFromStreak();
-        _confettiController.forward();
+        _confettiController.repeat();
       }
     });
 
@@ -323,20 +323,29 @@ class _ConfettiPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     for (final p in particles) {
-      final t = (progress * p.speed).clamp(0.0, 1.0);
+      // Each particle has its own phase offset via speed — wraps around
+      final rawT = (progress * p.speed + p.angle / (pi * 2)) % 1.0;
 
-      // Burst outward from origin, then fall with gravity
+      // Burst upward and diagonally outward, then fall with gravity
       final originX = p.x * size.width;
       final originY = p.y * size.height;
-      final burstRadius = t * size.height * 0.6;
-      final x = originX +
-          cos(p.angle) * burstRadius * 0.5 +
-          sin(p.angle + progress * 6) * 20 +
-          p.directionX * burstRadius * 0.3;
-      final y = originY +
-          sin(p.angle) * burstRadius * 0.3 +
-          t * t * size.height * 0.5; // gravity curve
-      final opacity = (1.0 - t).clamp(0.0, 1.0);
+
+      // Diagonal upward burst then cascading fall
+      final upPhase = (rawT * 2.0).clamp(0.0, 1.0);
+      final fallPhase = ((rawT - 0.3) * 1.43).clamp(0.0, 1.0);
+
+      final burstX = p.directionX * upPhase * size.width * 0.45;
+      final burstY = -upPhase * size.height * 0.35; // upward
+      final gravityY = fallPhase * fallPhase * size.height * 0.9; // fall down
+      final wobble = sin(rawT * pi * 6 + p.angle) * 15;
+
+      final x = originX + burstX + wobble;
+      final y = originY + burstY + gravityY;
+
+      // Fade in at start, fade out at end
+      final fadeIn = (rawT * 5.0).clamp(0.0, 1.0);
+      final fadeOut = (1.0 - rawT).clamp(0.0, 1.0);
+      final opacity = (fadeIn * fadeOut).clamp(0.0, 1.0);
 
       final paint = Paint()
         ..color = p.color.withValues(alpha: opacity)
@@ -344,7 +353,7 @@ class _ConfettiPainter extends CustomPainter {
 
       canvas.save();
       canvas.translate(x, y);
-      canvas.rotate(p.angle + progress * 4);
+      canvas.rotate(p.angle + rawT * 8);
       canvas.drawRect(
         Rect.fromCenter(
             center: Offset.zero, width: p.size, height: p.size * 0.6),

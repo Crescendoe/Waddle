@@ -73,7 +73,8 @@ class WavePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (fillPercent <= 0) return;
 
-    final fillHeight = size.height * fillPercent.clamp(0.0, 1.0);
+    // Cap at 93% so the wave ripple is always visible at the top
+    final fillHeight = size.height * fillPercent.clamp(0.0, 0.93);
     final baseY = size.height - fillHeight;
 
     final path = Path();
@@ -155,7 +156,8 @@ class SegmentedWavePainter extends CustomPainter {
     final totalOz = segments.fold<double>(0, (s, seg) => s + seg.amountOz);
     if (totalOz <= 0) return;
 
-    final totalFillHeight = size.height * totalFillPercent.clamp(0.0, 1.0);
+    // Cap at 93% so the wave ripple is always visible at the top
+    final totalFillHeight = size.height * totalFillPercent.clamp(0.0, 0.93);
 
     // Draw each segment from bottom up
     double drawnHeight = 0;
@@ -288,7 +290,7 @@ class AnimatedWaterCup extends StatefulWidget {
   final bool showDetails;
   final VoidCallback? onTapToggle;
   final List<WaterLog> todayLogs;
-  final bool showCupDuck;
+  final int cupDuckCount;
 
   const AnimatedWaterCup({
     super.key,
@@ -300,7 +302,7 @@ class AnimatedWaterCup extends StatefulWidget {
     this.showDetails = false,
     this.onTapToggle,
     this.todayLogs = const [],
-    this.showCupDuck = false,
+    this.cupDuckCount = 0,
   });
 
   double get effectiveFillPercent {
@@ -322,6 +324,7 @@ class _AnimatedWaterCupState extends State<AnimatedWaterCup>
   late Animation<double> _detailsFade;
   late Animation<double> _detailsScale;
   late Animation<double> _defaultFade;
+  final Stopwatch _duckStopwatch = Stopwatch();
 
   @override
   void initState() {
@@ -330,6 +333,8 @@ class _AnimatedWaterCupState extends State<AnimatedWaterCup>
       vsync: this,
       duration: const Duration(seconds: 4),
     )..repeat();
+
+    _duckStopwatch.start();
 
     _detailsController = AnimationController(
       vsync: this,
@@ -419,37 +424,48 @@ class _AnimatedWaterCupState extends State<AnimatedWaterCup>
               ),
             ),
 
-            // Cup overlay image
-            Opacity(
-              opacity: 0.95,
-              child: Image.asset(
-                'lib/assets/images/cup.png',
-                width: widget.size,
-                height: cupHeight,
-                fit: BoxFit.contain,
-              ),
-            ),
-
-            // Floating duck on water surface
-            if (widget.showCupDuck && widget.effectiveFillPercent > 0.02)
+            // Floating ducks on water surface — rendered UNDER the cup image
+            // Up to 3 ducks, each with a different horizontal position & phase
+            for (int duckI = 0;
+                duckI < widget.cupDuckCount.clamp(0, 3);
+                duckI++)
               AnimatedBuilder(
                 animation: _waveController,
                 builder: (context, child) {
-                  final phase = _waveController.value * 2 * pi;
+                  final elapsedSec =
+                      _duckStopwatch.elapsedMilliseconds / 1000.0;
+                  final baseFreq = 2 * pi / 4.0;
+                  // Offset each duck's phase so they don't bob in sync
+                  final phaseOffset = duckI * 2.1;
+                  final phase = elapsedSec * baseFreq + phaseOffset;
+
                   final fillH =
-                      cupHeight * widget.effectiveFillPercent.clamp(0.0, 1.0);
+                      cupHeight * widget.effectiveFillPercent.clamp(0.0, 0.93);
                   final waterSurfaceY = cupHeight - fillH;
-                  // Bob with the wave — same frequency as water
                   final bobOffset = sin(phase) * 3.0;
-                  // Gentle tilt
                   final tilt = sin(phase * 0.7 + 0.5) * 0.12;
-                  // Slow horizontal drift
-                  final driftX = sin(phase * 0.3) * 6.0;
-                  final duckSize = widget.size * 0.14;
+                  final driftX = sin(phase * 0.3) * 5.0;
+                  final duckSize = widget.size * 0.13;
+
+                  // Spread ducks horizontally:
+                  // 1 duck  → centre-right
+                  // 2 ducks → left-of-centre, right-of-centre
+                  // 3 ducks → left, centre, right
+                  final double hBias;
+                  final count = widget.cupDuckCount.clamp(1, 3);
+                  if (count == 1) {
+                    hBias = widget.size * 0.18;
+                  } else if (count == 2) {
+                    hBias =
+                        duckI == 0 ? -widget.size * 0.12 : widget.size * 0.18;
+                  } else {
+                    // 3 ducks: -0.16, 0.04, 0.22
+                    hBias = widget.size * (-0.16 + duckI * 0.19);
+                  }
 
                   return Positioned(
                     top: waterSurfaceY + bobOffset - duckSize * 0.55,
-                    left: (widget.size / 2) - (duckSize / 2) + driftX,
+                    left: (widget.size / 2) - (duckSize / 2) + driftX + hBias,
                     child: Transform.rotate(
                       angle: tilt,
                       child: Text(
@@ -460,6 +476,17 @@ class _AnimatedWaterCupState extends State<AnimatedWaterCup>
                   );
                 },
               ),
+
+            // Cup overlay image — on top of both water and duck
+            Opacity(
+              opacity: 0.95,
+              child: Image.asset(
+                'lib/assets/images/cup.png',
+                width: widget.size,
+                height: cupHeight,
+                fit: BoxFit.contain,
+              ),
+            ),
 
             // Default label (fades out when details shown)
             // Positioned must be a direct child of Stack, so keep it outside
@@ -558,7 +585,7 @@ class _AnimatedWaterCupState extends State<AnimatedWaterCup>
 
   /// Pick white or dark text depending on what's behind the cup centre.
   Color _adaptiveLabelColor(List<DrinkSegment> segments, double cupHeight) {
-    final fillH = cupHeight * widget.effectiveFillPercent.clamp(0.0, 1.0);
+    final fillH = cupHeight * widget.effectiveFillPercent.clamp(0.0, 0.93);
     final cupCenterFromBottom = cupHeight / 2;
 
     // If the liquid doesn't reach the centre, text is over the empty cup
@@ -584,7 +611,7 @@ class _AnimatedWaterCupState extends State<AnimatedWaterCup>
   Widget _buildSegmentLabelsInner(
       List<DrinkSegment> segments, double cupHeight) {
     final totalFillHeight =
-        cupHeight * widget.effectiveFillPercent.clamp(0.0, 1.0);
+        cupHeight * widget.effectiveFillPercent.clamp(0.0, 0.93);
     if (totalFillHeight <= 0) return const SizedBox.shrink();
 
     final segHeights = <double>[];

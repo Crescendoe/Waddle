@@ -86,6 +86,14 @@ class _FloatingObjectsOverlayState extends State<FloatingObjectsOverlay>
         return 10;
       case ThemeEffect.sparkles:
         return 22;
+      case ThemeEffect.raindrops:
+        return 18;
+      case ThemeEffect.dust:
+        return 14;
+      case ThemeEffect.sunbeams:
+        return 8;
+      case ThemeEffect.blossoms:
+        return 16;
     }
   }
 
@@ -190,6 +198,18 @@ class _FloatingObjectsPainter extends CustomPainter {
           break;
         case ThemeEffect.sparkles:
           _drawSparkle(canvas, obj.size, alpha, t + obj.phase);
+          break;
+        case ThemeEffect.raindrops:
+          _drawRaindrop(canvas, obj.size, alpha);
+          break;
+        case ThemeEffect.dust:
+          _drawDust(canvas, obj.size, alpha, t + obj.phase);
+          break;
+        case ThemeEffect.sunbeams:
+          _drawSunbeam(canvas, obj.size, alpha, t + obj.phase);
+          break;
+        case ThemeEffect.blossoms:
+          _drawBlossom(canvas, obj.size, alpha);
           break;
         case ThemeEffect.none:
           break;
@@ -327,6 +347,88 @@ class _FloatingObjectsPainter extends CustomPainter {
     }
     path.close();
     canvas.drawPath(path, paint);
+  }
+
+  void _drawRaindrop(Canvas canvas, double size, double alpha) {
+    // Elongated teardrop shape
+    final paint = Paint()
+      ..color = const Color(0xFF81D4FA)
+          .withValues(alpha: (alpha * 1.2).clamp(0.0, 0.35))
+      ..style = PaintingStyle.fill;
+    final r = size * 0.2;
+    final path = Path()
+      ..moveTo(0, -r * 2.5)
+      ..quadraticBezierTo(r * 1.2, -r * 0.5, 0, r)
+      ..quadraticBezierTo(-r * 1.2, -r * 0.5, 0, -r * 2.5);
+    canvas.drawPath(path, paint);
+
+    // Subtle highlight
+    final hl = Paint()..color = Colors.white.withValues(alpha: alpha * 0.4);
+    canvas.drawCircle(Offset(-r * 0.2, -r * 0.3), r * 0.25, hl);
+  }
+
+  void _drawDust(Canvas canvas, double size, double alpha, double t) {
+    // Warm drifting dust mote with gentle pulse
+    final pulse = (sin(t * pi * 2) * 0.3 + 0.7);
+    final paint = Paint()
+      ..color = const Color(0xFFD7CCC8)
+          .withValues(alpha: (alpha * pulse * 1.5).clamp(0.0, 0.3))
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+    canvas.drawCircle(Offset.zero, size * 0.22 * pulse, paint);
+
+    // Bright core
+    final core = Paint()
+      ..color = const Color(0xFFFFE0B2)
+          .withValues(alpha: (alpha * pulse * 2).clamp(0.0, 0.25));
+    canvas.drawCircle(Offset.zero, size * 0.08, core);
+  }
+
+  void _drawSunbeam(Canvas canvas, double size, double alpha, double t) {
+    // Long diagonal ray of light
+    final pulse = (sin(t * pi * 1.5) * 0.5 + 0.5);
+    final length = size * 2.5;
+    final width = size * 0.3 * (0.6 + pulse * 0.4);
+    final paint = Paint()
+      ..color = const Color(0xFFFFD54F)
+          .withValues(alpha: (alpha * pulse * 1.5).clamp(0.0, 0.2))
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+
+    final path = Path()
+      ..moveTo(-width / 2, -length / 2)
+      ..lineTo(width / 2, -length / 2)
+      ..lineTo(width * 0.2, length / 2)
+      ..lineTo(-width * 0.2, length / 2)
+      ..close();
+    canvas.drawPath(path, paint);
+  }
+
+  void _drawBlossom(Canvas canvas, double size, double alpha) {
+    // 5-petal flower
+    final petalSize = size * 0.28;
+    final paint = Paint()
+      ..color = const Color(0xFFF8BBD0)
+          .withValues(alpha: (alpha * 1.2).clamp(0.0, 0.35))
+      ..style = PaintingStyle.fill;
+
+    for (int i = 0; i < 5; i++) {
+      final angle = i * 2 * pi / 5 - pi / 2;
+      final cx = cos(angle) * petalSize;
+      final cy = sin(angle) * petalSize;
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(cx, cy),
+          width: petalSize * 1.2,
+          height: petalSize * 0.7,
+        ),
+        paint,
+      );
+    }
+
+    // Centre dot
+    final centre = Paint()
+      ..color = const Color(0xFFFFF176)
+          .withValues(alpha: (alpha * 1.5).clamp(0.0, 0.4));
+    canvas.drawCircle(Offset.zero, petalSize * 0.35, centre);
   }
 
   @override

@@ -81,6 +81,10 @@ class HydrationRepositoryImpl implements HydrationRepository {
         activeThemeId: data['activeThemeId'] as String?,
         activeDuckIndex: (data['activeDuckIndex'] as num?)?.toInt(),
         cupDuckIndex: (data['cupDuckIndex'] as num?)?.toInt(),
+        homeDuckIndices: (data['homeDuckIndices'] as List<dynamic>?)
+                ?.map((e) => (e as num).toInt())
+                .toList() ??
+            const [],
       );
 
       // Cache locally
@@ -143,6 +147,7 @@ class HydrationRepositoryImpl implements HydrationRepository {
         'activeThemeId': state.activeThemeId,
         'activeDuckIndex': state.activeDuckIndex,
         'cupDuckIndex': state.cupDuckIndex,
+        'homeDuckIndices': state.homeDuckIndices,
       }, SetOptions(merge: true));
 
       _cacheState(state);
