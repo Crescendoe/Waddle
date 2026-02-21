@@ -39,7 +39,7 @@ class _FriendsScreenState extends State<FriendsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _friendService = GetIt.instance<FriendService>();
     _loadData();
   }
@@ -175,6 +175,16 @@ class _FriendsScreenState extends State<FriendsScreen>
                   ],
                 ),
               ),
+              const Tab(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.leaderboard_rounded, size: 16),
+                    SizedBox(width: 4),
+                    Text('Board'),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -184,6 +194,7 @@ class _FriendsScreenState extends State<FriendsScreen>
             _buildFriendsTab(),
             _buildRequestsTab(),
             _buildSearchTab(),
+            _buildLeaderboardTab(),
           ],
         ),
       ),
@@ -724,6 +735,136 @@ class _FriendsScreenState extends State<FriendsScreen>
         );
       }
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // LEADERBOARD TAB
+  // ═══════════════════════════════════════════════════════════════════
+  Widget _buildLeaderboardTab() {
+    if (_friends.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            MascotImage(assetPath: AppConstants.mascotSitting, size: 100),
+            const SizedBox(height: 16),
+            Text('Add friends to see the leaderboard!',
+                style: AppTextStyles.bodyMedium
+                    .copyWith(color: AppColors.textSecondary)),
+          ],
+        ),
+      );
+    }
+
+    // Sort by streak descending, use totalGoalsMet as tiebreaker
+    final sorted = List<FriendEntity>.from(_friends)
+      ..sort((a, b) {
+        final cmp = b.currentStreak.compareTo(a.currentStreak);
+        return cmp != 0 ? cmp : b.totalGoalsMet.compareTo(a.totalGoalsMet);
+      });
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: sorted.length,
+      itemBuilder: (context, index) {
+        final friend = sorted[index];
+        final rank = index + 1;
+
+        return GlassCard(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          margin: const EdgeInsets.only(bottom: 10),
+          child: Row(
+            children: [
+              // Rank badge
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: rank == 1
+                      ? const Color(0xFFFFD700)
+                      : rank == 2
+                          ? const Color(0xFFC0C0C0)
+                          : rank == 3
+                              ? const Color(0xFFCD7F32)
+                              : AppColors.primary.withValues(alpha: 0.1),
+                ),
+                child: Center(
+                  child: Text(
+                    '$rank',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: rank <= 3 ? Colors.white : AppColors.primary,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Avatar
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                backgroundImage: _resolveImage(friend.profileImageUrl),
+                child: _resolveImage(friend.profileImageUrl) == null
+                    ? Text(
+                        friend.username.isNotEmpty
+                            ? friend.username[0].toUpperCase()
+                            : '?',
+                        style: AppTextStyles.bodyLarge
+                            .copyWith(color: AppColors.primary),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              // Name & goals
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      friend.username,
+                      style: AppTextStyles.bodyMedium
+                          .copyWith(fontWeight: FontWeight.w600),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      '${friend.totalGoalsMet} goals met',
+                      style: AppTextStyles.bodySmall
+                          .copyWith(color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              // Streak
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('🔥', style: TextStyle(fontSize: 12)),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${friend.currentStreak}',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.accent,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ).animate().fadeIn(delay: (index * 60).ms).slideX(begin: 0.05);
+      },
+    );
   }
 
   // ═══════════════════════════════════════════════════════════════════

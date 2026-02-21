@@ -17,6 +17,7 @@ import 'package:waddle/presentation/screens/settings/privacy_policy_screen.dart'
 import 'package:waddle/presentation/screens/settings/settings_screen.dart';
 import 'package:waddle/presentation/screens/settings/terms_of_service_screen.dart';
 import 'package:waddle/presentation/screens/celebration/congrats_screen.dart';
+import 'package:waddle/presentation/screens/celebration/challenge_complete_screen.dart';
 import 'package:waddle/presentation/screens/splash/splash_screen.dart';
 
 class AppRouter {
@@ -98,7 +99,23 @@ class AppRouter {
         GoRoute(
           path: '/congrats',
           name: 'congrats',
-          builder: (context, state) => const CongratsScreen(),
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>? ?? {};
+            return CongratsScreen(
+              oldStreak: extra['oldStreak'] as int? ?? 0,
+              newStreak: extra['newStreak'] as int? ?? 1,
+            );
+          },
+        ),
+        GoRoute(
+          path: '/challenge-complete',
+          name: 'challengeComplete',
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>? ?? {};
+            return ChallengeCompleteScreen(
+              challengeIndex: extra['challengeIndex'] as int? ?? 0,
+            );
+          },
         ),
 
         // Settings

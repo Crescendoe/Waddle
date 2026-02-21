@@ -1,6 +1,21 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 
+// ── Theme floating effects ──────────────────────────────────────────
+
+/// Visual effect type for theme backgrounds — floating silhouettes, particles.
+enum ThemeEffect {
+  none,
+  bubbles,
+  leaves,
+  snowflakes,
+  stars,
+  fireflies,
+  petals,
+  waves,
+  sparkles,
+}
+
 // ── Unlock criteria ─────────────────────────────────────────────────
 
 /// How a theme reward is unlocked — covers every major app facet.
@@ -86,6 +101,7 @@ class ThemeReward extends Equatable {
   final List<Color> gradientColors;
   final IconData icon;
   final ThemeUnlockCondition unlockCondition;
+  final ThemeEffect effect;
 
   const ThemeReward({
     required this.id,
@@ -94,6 +110,7 @@ class ThemeReward extends Equatable {
     required this.gradientColors,
     required this.icon,
     required this.unlockCondition,
+    this.effect = ThemeEffect.none,
   });
 
   @override
@@ -113,6 +130,7 @@ class ThemeRewards {
       description: 'The classic Waddle look — cool and calming.',
       gradientColors: [Color(0xFFE8F4FC), Color(0xFFB8E4E8)],
       icon: Icons.water_drop_rounded,
+      effect: ThemeEffect.bubbles,
       unlockCondition: ThemeUnlockCondition(
         type: ThemeUnlockType.free,
         value: 0,
@@ -127,6 +145,7 @@ class ThemeRewards {
       description: 'A fresh green start to every day.',
       gradientColors: [Color(0xFFE8F5E9), Color(0xFFC8E6C9)],
       icon: Icons.grass_rounded,
+      effect: ThemeEffect.leaves,
       unlockCondition: ThemeUnlockCondition(
         type: ThemeUnlockType.totalDrinksLogged,
         value: 1,
@@ -139,6 +158,7 @@ class ThemeRewards {
       description: 'Warm peach skies after a well-hydrated day.',
       gradientColors: [Color(0xFFFFF3E0), Color(0xFFFFCCBC)],
       icon: Icons.wb_twilight_rounded,
+      effect: ThemeEffect.fireflies,
       unlockCondition: ThemeUnlockCondition(
         type: ThemeUnlockType.totalDrinksLogged,
         value: 25,
@@ -153,6 +173,7 @@ class ThemeRewards {
       description: 'Cool blue tones — like a walk along the coast.',
       gradientColors: [Color(0xFFE1F5FE), Color(0xFFB2EBF2)],
       icon: Icons.air_rounded,
+      effect: ThemeEffect.waves,
       unlockCondition: ThemeUnlockCondition(
         type: ThemeUnlockType.streak,
         value: 7,
@@ -165,6 +186,7 @@ class ThemeRewards {
       description: 'Soft purple tranquility as far as the eye can see.',
       gradientColors: [Color(0xFFEDE7F6), Color(0xFFD1C4E9)],
       icon: Icons.spa_rounded,
+      effect: ThemeEffect.petals,
       unlockCondition: ThemeUnlockCondition(
         type: ThemeUnlockType.streak,
         value: 14,
@@ -177,6 +199,7 @@ class ThemeRewards {
       description: 'Lush green and teal — nature in full bloom.',
       gradientColors: [Color(0xFFC8E6C9), Color(0xFF80CBC4)],
       icon: Icons.eco_rounded,
+      effect: ThemeEffect.leaves,
       unlockCondition: ThemeUnlockCondition(
         type: ThemeUnlockType.streak,
         value: 30,
@@ -189,6 +212,7 @@ class ThemeRewards {
       description: 'Platinum shimmer reserved for the most dedicated.',
       gradientColors: [Color(0xFFECEFF1), Color(0xFFF5F5F5)],
       icon: Icons.diamond_rounded,
+      effect: ThemeEffect.snowflakes,
       unlockCondition: ThemeUnlockCondition(
         type: ThemeUnlockType.streak,
         value: 60,
@@ -241,6 +265,7 @@ class ThemeRewards {
       description: 'Delicate pink petals celebrating your choices.',
       gradientColors: [Color(0xFFFCE4EC), Color(0xFFF8BBD0)],
       icon: Icons.filter_vintage_rounded,
+      effect: ThemeEffect.petals,
       unlockCondition: ThemeUnlockCondition(
         type: ThemeUnlockType.healthyPicks,
         value: 50,
@@ -253,6 +278,7 @@ class ThemeRewards {
       description: 'Deep space hues for a truly healthy explorer.',
       gradientColors: [Color(0xFFD1C4E9), Color(0xFFBBDEFB)],
       icon: Icons.auto_awesome_rounded,
+      effect: ThemeEffect.stars,
       unlockCondition: ThemeUnlockCondition(
         type: ThemeUnlockType.healthyPicks,
         value: 100,
@@ -279,6 +305,7 @@ class ThemeRewards {
       description: 'Cool indigo waters of consistent dedication.',
       gradientColors: [Color(0xFFE8EAF6), Color(0xFF9FA8DA)],
       icon: Icons.nightlight_round,
+      effect: ThemeEffect.stars,
       unlockCondition: ThemeUnlockCondition(
         type: ThemeUnlockType.goalsMet,
         value: 30,
@@ -293,6 +320,7 @@ class ThemeRewards {
       description: 'Ice-cold blue for serious hydration volume.',
       gradientColors: [Color(0xFFE3F2FD), Color(0xFFBBDEFB)],
       icon: Icons.ac_unit_rounded,
+      effect: ThemeEffect.snowflakes,
       unlockCondition: ThemeUnlockCondition(
         type: ThemeUnlockType.totalOzConsumed,
         value: 500,
@@ -331,6 +359,7 @@ class ThemeRewards {
       description: 'An aurora of green and purple — truly rare.',
       gradientColors: [Color(0xFFC8E6C9), Color(0xFFCE93D8)],
       icon: Icons.auto_awesome_rounded,
+      effect: ThemeEffect.sparkles,
       unlockCondition: ThemeUnlockCondition(
         type: ThemeUnlockType.challengesCompleted,
         value: 3,
@@ -343,6 +372,7 @@ class ThemeRewards {
       description: 'Magma meets amber — forged by every challenge.',
       gradientColors: [Color(0xFFFFCCBC), Color(0xFFFFECB3)],
       icon: Icons.local_fire_department_rounded,
+      effect: ThemeEffect.fireflies,
       unlockCondition: ThemeUnlockCondition(
         type: ThemeUnlockType.challengesCompleted,
         value: 6,

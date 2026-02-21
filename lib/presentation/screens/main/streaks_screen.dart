@@ -27,7 +27,7 @@ class _StreaksScreenState extends State<StreaksScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_calendarLoaded) {
         context.read<HydrationCubit>().loadCalendarData();
@@ -105,6 +105,7 @@ class _StreaksScreenState extends State<StreaksScreen>
                       tabs: const [
                         Tab(text: 'Calendar'),
                         Tab(text: 'Progress'),
+                        Tab(text: 'Drinks'),
                       ],
                     ),
                   ),
@@ -117,6 +118,7 @@ class _StreaksScreenState extends State<StreaksScreen>
                     children: [
                       _buildCalendarTab(state),
                       _buildProgressTab(hydration),
+                      _buildDrinksTab(state),
                     ],
                   ),
                 ),
@@ -654,5 +656,242 @@ class _StreaksScreenState extends State<StreaksScreen>
         time.hour > 12 ? time.hour - 12 : (time.hour == 0 ? 12 : time.hour);
     final period = time.hour >= 12 ? 'PM' : 'AM';
     return '$hour:${time.minute.toString().padLeft(2, '0')} $period';
+  }
+
+  // ── Drinks Analytics Tab ─────────────────────────────────────────
+
+  Widget _buildDrinksTab(HydrationLoaded state) {
+    final allLogs = <WaterLog>[
+      ...state.todayLogs,
+    ];
+
+    if (allLogs.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            MascotImage(assetPath: AppConstants.mascotSitting, size: 100),
+            const SizedBox(height: 16),
+            Text(
+              'Log some drinks to see analytics!',
+              style: AppTextStyles.bodyMedium
+                  .copyWith(color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Aggregate by drink name
+    final drinkMap = <String, _DrinkStats>{};
+    for (final log in allLogs) {
+      drinkMap.update(
+        log.drinkName,
+        (s) => _DrinkStats(
+          count: s.count + 1,
+          totalOz: s.totalOz + log.amountOz,
+        ),
+        ifAbsent: () => _DrinkStats(count: 1, totalOz: log.amountOz),
+      );
+    }
+
+    // Sort by count descending
+    final sortedEntries = drinkMap.entries.toList()
+      ..sort((a, b) => b.value.count.compareTo(a.value.count));
+
+    final topCount = sortedEntries.first.value.count;
+
+    // Category breakdown
+    final categoryMap = <String, double>{};
+    for (final entry in sortedEntries) {
+      final drink = DrinkTypes.byName(entry.key);
+      final category = drink?.category.name ?? 'Other';
+      final label = category[0].toUpperCase() + category.substring(1);
+      categoryMap.update(
+        label,
+        (v) => v + entry.value.totalOz,
+        ifAbsent: () => entry.value.totalOz,
+      );
+    }
+    final totalOzAll = categoryMap.values.fold<double>(0, (s, v) => s + v);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Summary cards
+          Row(
+            children: [
+              Expanded(
+                child: _AnalyticCard(
+                  icon: Icons.local_drink_rounded,
+                  label: 'Total Drinks',
+                  value: '${allLogs.length}',
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _AnalyticCard(
+                  icon: Icons.category_rounded,
+                  label: 'Unique Types',
+                  value: '${drinkMap.length}',
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _AnalyticCard(
+                  icon: Icons.water_drop_rounded,
+                  label: 'Total oz',
+                  value: totalOzAll.toStringAsFixed(0),
+                ),
+              ),
+            ],
+          ).animate().fadeIn(),
+          const SizedBox(height: 20),
+
+          // Favourite drink
+          Text('Most Logged', style: AppTextStyles.headlineSmall)
+              .animate()
+              .fadeIn(delay: 100.ms),
+          const SizedBox(height: 8),
+          ...sortedEntries.take(8).map((entry) {
+            final drink = DrinkTypes.byName(entry.key);
+            final fraction = entry.value.count / topCount;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Icon(
+                    drink?.icon ?? Icons.water_drop_rounded,
+                    size: 18,
+                    color: drink?.color ?? AppColors.water,
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 90,
+                    child: Text(
+                      entry.key,
+                      style: AppTextStyles.bodySmall
+                          .copyWith(fontWeight: FontWeight.w600),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: fraction,
+                        minHeight: 14,
+                        backgroundColor:
+                            AppColors.primary.withValues(alpha: 0.06),
+                        valueColor: AlwaysStoppedAnimation(
+                          drink?.color ?? AppColors.water,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 28,
+                    child: Text(
+                      '${entry.value.count}',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                      textAlign: TextAlign.end,
+                    ),
+                  ),
+                ],
+              ),
+            ).animate().fadeIn(
+                delay: (150 + sortedEntries.toList().indexOf(entry) * 50).ms);
+          }),
+          const SizedBox(height: 20),
+
+          // Category breakdown
+          Text('By Category', style: AppTextStyles.headlineSmall)
+              .animate()
+              .fadeIn(delay: 200.ms),
+          const SizedBox(height: 8),
+          ...categoryMap.entries.map((entry) {
+            final fraction = totalOzAll > 0 ? entry.value / totalOzAll : 0.0;
+            final pct = (fraction * 100).toStringAsFixed(0);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: GlassCard(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                margin: EdgeInsets.zero,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(entry.key,
+                          style: AppTextStyles.bodyMedium
+                              .copyWith(fontWeight: FontWeight.w600)),
+                    ),
+                    Text('$pct%',
+                        style: AppTextStyles.bodyMedium
+                            .copyWith(color: AppColors.accent)),
+                    const SizedBox(width: 8),
+                    Text('${entry.value.toStringAsFixed(0)} oz',
+                        style: AppTextStyles.bodySmall
+                            .copyWith(color: AppColors.textSecondary)),
+                  ],
+                ),
+              ),
+            ).animate().fadeIn(delay: 250.ms);
+          }),
+          const SizedBox(height: 100),
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Helper types for drink analytics
+// ═══════════════════════════════════════════════════════════════════════
+
+class _DrinkStats {
+  final int count;
+  final double totalOz;
+  const _DrinkStats({required this.count, required this.totalOz});
+}
+
+class _AnalyticCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _AnalyticCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      margin: EdgeInsets.zero,
+      child: Column(
+        children: [
+          Icon(icon, size: 22, color: AppColors.accent),
+          const SizedBox(height: 6),
+          Text(value,
+              style: AppTextStyles.headlineSmall
+                  .copyWith(color: AppColors.primary)),
+          const SizedBox(height: 2),
+          Text(label,
+              style: AppTextStyles.bodySmall
+                  .copyWith(color: AppColors.textSecondary),
+              textAlign: TextAlign.center),
+        ],
+      ),
+    );
   }
 }

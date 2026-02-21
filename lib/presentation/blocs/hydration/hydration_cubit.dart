@@ -151,6 +151,7 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
 
     // Check goal
     if (goalMet && !currentState.hydration.goalMetToday) {
+      final oldStreak = currentState.hydration.currentStreak;
       // Increment streak and total goals met
       final streakState = newState.copyWith(
         currentStreak: newState.currentStreak + 1,
@@ -161,18 +162,22 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
       );
       await _hydrationRepository.saveHydrationState(_userId, streakState);
 
-      // Brief delay then emit goal reached
+      // Brief delay for fill animation to finish, then show congrats
       await Future.delayed(const Duration(milliseconds: 1500));
-      emit(GoalReached(streakState));
+      final updatedLogs = [...currentState.todayLogs, log];
+      emit(GoalReached(
+        streakState,
+        oldStreak: oldStreak,
+        newStreak: streakState.currentStreak,
+      ));
 
       // Fire goal-reached local notification
       try {
         getIt<NotificationService>().showGoalReachedNotification();
       } catch (_) {}
 
-      // Then return to loaded state
-      await Future.delayed(const Duration(milliseconds: 500));
-      final updatedLogs = [...currentState.todayLogs, log];
+      // Immediately return to loaded state so the home screen rebuilds
+      // correctly when the user pops the congrats screen.
       emit(HydrationLoaded(
         hydration: streakState,
         todayLogs: updatedLogs,
@@ -413,6 +418,38 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     await _hydrationRepository.saveHydrationState(_userId, newState);
   }
 
+  /// Set the active duck badge (shown on profile avatar).
+  Future<void> setActiveDuck(int? duckIndex) async {
+    if (_realState != null) return;
+
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return;
+
+    final newState = currentState.hydration.copyWith(
+      activeDuckIndex: duckIndex,
+      clearActiveDuckIndex: duckIndex == null,
+    );
+
+    emit(currentState.copyWith(hydration: newState));
+    await _hydrationRepository.saveHydrationState(_userId, newState);
+  }
+
+  /// Set the duck that floats in the water cup.
+  Future<void> setCupDuck(int? duckIndex) async {
+    if (_realState != null) return;
+
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return;
+
+    final newState = currentState.hydration.copyWith(
+      cupDuckIndex: duckIndex,
+      clearCupDuckIndex: duckIndex == null,
+    );
+
+    emit(currentState.copyWith(hydration: newState));
+    await _hydrationRepository.saveHydrationState(_userId, newState);
+  }
+
   // ── Debug mode ────────────────────────────────────────────────────
 
   /// Saved copy of real state before debug mode was activated.
@@ -490,6 +527,42 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     // Resume background timers
     _startResetWatchdog();
     _scheduleDailyReset();
+  }
+
+  /// Override individual fields while in debug mode.
+  /// Does nothing if debug mode is not active.
+  void debugOverrideState({
+    int? currentStreak,
+    int? recordStreak,
+    double? waterConsumedOz,
+    double? waterGoalOz,
+    bool? goalMetToday,
+    int? completedChallenges,
+    double? totalWaterConsumedOz,
+    int? totalDaysLogged,
+    int? totalDrinksLogged,
+    int? totalGoalsMet,
+    bool clearNextEntryTime = false,
+  }) {
+    if (_realState == null) return; // not in debug mode
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return;
+
+    final patched = currentState.hydration.copyWith(
+      currentStreak: currentStreak,
+      recordStreak: recordStreak,
+      waterConsumedOz: waterConsumedOz,
+      waterGoalOz: waterGoalOz,
+      goalMetToday: goalMetToday,
+      completedChallenges: completedChallenges,
+      totalWaterConsumedOz: totalWaterConsumedOz,
+      totalDaysLogged: totalDaysLogged,
+      totalDrinksLogged: totalDrinksLogged,
+      totalGoalsMet: totalGoalsMet,
+      clearNextEntryTime: clearNextEntryTime,
+    );
+
+    emit(currentState.copyWith(hydration: patched));
   }
 
   /// Re-schedule the daily reset timer (call after changing reset hour).

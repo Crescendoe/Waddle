@@ -79,6 +79,8 @@ class HydrationRepositoryImpl implements HydrationRepository {
             const [],
         totalGoalsMet: (data['totalGoalsMet'] as num?)?.toInt() ?? 0,
         activeThemeId: data['activeThemeId'] as String?,
+        activeDuckIndex: (data['activeDuckIndex'] as num?)?.toInt(),
+        cupDuckIndex: (data['cupDuckIndex'] as num?)?.toInt(),
       );
 
       // Cache locally
@@ -139,6 +141,8 @@ class HydrationRepositoryImpl implements HydrationRepository {
         'uniqueDrinksLogged': state.uniqueDrinksLogged,
         'totalGoalsMet': state.totalGoalsMet,
         'activeThemeId': state.activeThemeId,
+        'activeDuckIndex': state.activeDuckIndex,
+        'cupDuckIndex': state.cupDuckIndex,
       }, SetOptions(merge: true));
 
       _cacheState(state);

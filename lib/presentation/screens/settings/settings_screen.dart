@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:waddle/core/constants/app_constants.dart';
 import 'package:waddle/core/di/injection.dart';
@@ -12,6 +15,7 @@ import 'package:waddle/presentation/blocs/auth/auth_cubit.dart';
 import 'package:waddle/presentation/blocs/auth/auth_state.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_cubit.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_state.dart';
+import 'package:waddle/presentation/screens/settings/debug_menu_sheet.dart';
 import 'package:waddle/presentation/widgets/common.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -94,6 +98,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     label: 'Recalculate Water Goal',
                     subtitle: 'Retake the questionnaire',
                     onTap: () => context.pushNamed('questions', extra: true),
+                  ),
+                  const Divider(height: 1, indent: 56),
+                  _settingsItem(
+                    icon: Icons.schedule_rounded,
+                    label: 'Daily Reset Hour',
+                    subtitle: _formatResetHour(_settings.dailyResetHour),
+                    onTap: () => _showResetHourPicker(),
                   ),
                 ],
               ),
@@ -182,6 +193,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const Divider(height: 1, indent: 56),
                   _settingsItem(
+                    icon: Icons.download_rounded,
+                    label: 'Export Data',
+                    subtitle: 'Download your hydration history',
+                    onTap: () => _exportData(),
+                  ),
+                  const Divider(height: 1, indent: 56),
+                  _settingsItem(
                     icon: Icons.delete_forever_rounded,
                     label: 'Delete Account',
                     subtitle: 'Permanently remove account & data',
@@ -208,6 +226,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ).animate().fadeIn(delay: 500.ms),
             const SizedBox(height: 16),
+
+            // ── Debug Mode Section (visible only when active) ──
+            if (getIt<DebugModeService>().isActive) ...[
+              _sectionLabel('Debug Mode'),
+              GlassCard(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  children: [
+                    _settingsItem(
+                      icon: Icons.bug_report_rounded,
+                      label: 'Open Debug Menu',
+                      subtitle: 'Screen triggers, state overrides, tools',
+                      onTap: _openDebugMenu,
+                    ),
+                    const Divider(height: 1, indent: 56),
+                    _settingsItem(
+                      icon: Icons.close_rounded,
+                      label: 'Deactivate Debug Mode',
+                      subtitle: 'Restore real state',
+                      onTap: () {
+                        final debugService = getIt<DebugModeService>();
+                        final cubit = context.read<HydrationCubit>();
+                        debugService.deactivate();
+                        cubit.deactivateDebugMode();
+                        setState(() {});
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Debug mode deactivated'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
+                      danger: true,
+                    ),
+                  ],
+                ),
+              ).animate().fadeIn(),
+              const SizedBox(height: 16),
+            ],
 
             Center(
               child: GestureDetector(
@@ -257,6 +314,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (debugService.isActive) {
       cubit.activateDebugMode();
+      setState(() {}); // refresh to show debug section
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -264,7 +322,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 const Text('\u{1F986} '),
                 const SizedBox(width: 8),
-                const Text('Debug mode activated — everything unlocked!'),
+                const Text('Debug mode activated!'),
               ],
             ),
             backgroundColor: AppColors.success,
@@ -272,9 +330,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             duration: const Duration(seconds: 2),
           ),
         );
+        // Automatically open the debug menu
+        Future.delayed(const Duration(milliseconds: 400), () {
+          if (mounted) _openDebugMenu();
+        });
       }
     } else {
       cubit.deactivateDebugMode();
+      setState(() {}); // refresh to hide debug section
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -286,6 +349,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       }
     }
+  }
+
+  void _openDebugMenu() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => BlocProvider.value(
+        value: context.read<HydrationCubit>(),
+        child: const DebugMenuSheet(),
+      ),
+    );
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -443,6 +518,118 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // Daily reset hour picker
+  // ═══════════════════════════════════════════════════════════
+
+  String _formatResetHour(int hour) {
+    if (hour == 0) return '12:00 AM (midnight)';
+    if (hour == 12) return '12:00 PM (noon)';
+    final h = hour > 12 ? hour - 12 : hour;
+    final period = hour >= 12 ? 'PM' : 'AM';
+    return '$h:00 $period';
+  }
+
+  void _showResetHourPicker() {
+    int hour = _settings.dailyResetHour;
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setD) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Daily Reset Hour'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _formatResetHour(hour),
+                style: AppTextStyles.displaySmall
+                    .copyWith(color: AppColors.primary),
+              ),
+              const SizedBox(height: 8),
+              Slider(
+                value: hour.toDouble(),
+                min: 0,
+                max: 23,
+                divisions: 23,
+                label: _formatResetHour(hour),
+                onChanged: (v) => setD(() => hour = v.toInt()),
+              ),
+              Text(
+                'Your daily progress resets at this hour. '
+                'Most people use midnight (12 AM) or early morning.',
+                style: AppTextStyles.bodySmall
+                    .copyWith(color: AppColors.textSecondary),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _settings.setDailyResetHour(hour);
+                setState(() {});
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // Data export
+  // ═══════════════════════════════════════════════════════════
+
+  Future<void> _exportData() async {
+    try {
+      final cubit = context.read<HydrationCubit>();
+      final state = cubit.state;
+      if (state is! HydrationLoaded) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No data to export')),
+        );
+        return;
+      }
+
+      // Build CSV
+      final buf = StringBuffer();
+      buf.writeln('Date,Drink,Amount (oz),Time');
+
+      // Today's logs
+      for (final log in state.todayLogs) {
+        final date = '${log.entryTime.year}-'
+            '${log.entryTime.month.toString().padLeft(2, '0')}-'
+            '${log.entryTime.day.toString().padLeft(2, '0')}';
+        final time = '${log.entryTime.hour.toString().padLeft(2, '0')}:'
+            '${log.entryTime.minute.toString().padLeft(2, '0')}';
+        buf.writeln('$date,${log.drinkName},${log.amountOz},$time');
+      }
+
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/waddle_export.csv');
+      await file.writeAsString(buf.toString());
+
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: 'My Waddle hydration data',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export failed: $e')),
+        );
+      }
+    }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -650,6 +837,61 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 children: [
+                  _changelogVersion(
+                    version: '0.9.2',
+                    date: 'February 2026',
+                    changes: [
+                      _ChangeEntry(
+                        icon: Icons.celebration_rounded,
+                        title: 'Challenge Celebrations',
+                        description:
+                            'Completing a challenge now opens a dedicated celebration screen with confetti, the challenge mascot, and haptic feedback.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.palette_rounded,
+                        title: 'Living Theme Backgrounds',
+                        description:
+                            'Themes now feature animated floating particles — bubbles, leaves, snowflakes, stars, fireflies, petals, waves, and sparkles.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.cruelty_free_rounded,
+                        title: 'Duck Badge & Cup Duck',
+                        description:
+                            'Set any unlocked duck as your profile badge, or float it in your water cup! Manage from the duck detail sheet.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.leaderboard_rounded,
+                        title: 'Friend Leaderboard',
+                        description:
+                            'New leaderboard tab on the Friends screen — see who has the highest streak among your friends.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.analytics_rounded,
+                        title: 'Drink Analytics',
+                        description:
+                            'New Drinks tab on the Streaks screen showing your most-logged drinks, category breakdown, and total stats.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.schedule_rounded,
+                        title: 'Daily Reset Hour',
+                        description:
+                            'Choose when your daily progress resets — midnight, early morning, or whenever suits your schedule.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.download_rounded,
+                        title: 'Data Export',
+                        description:
+                            'Export your full hydration history as a CSV file from Settings → Data Management.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.vibration_rounded,
+                        title: 'Haptic Feedback',
+                        description:
+                            'Subtle haptic feedback when logging drinks, reaching your goal, and completing challenges.',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
                   _changelogVersion(
                     version: '0.9.1',
                     date: 'February 18, 2026',

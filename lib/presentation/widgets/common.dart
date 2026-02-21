@@ -4,6 +4,7 @@ import 'package:waddle/core/theme/app_theme.dart';
 import 'package:waddle/domain/entities/app_theme_reward.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_cubit.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_state.dart';
+import 'package:waddle/presentation/widgets/floating_objects_overlay.dart';
 
 /// Gradient background used across the app.
 ///
@@ -23,17 +24,33 @@ class GradientBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final effectiveColors = colors ?? _resolveThemeColors(context);
-    return Container(
-      width: double.infinity,
-      height: double.infinity,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: effectiveColors,
+    final effect = _resolveThemeEffect(context);
+
+    return Stack(
+      children: [
+        // Base gradient
+        Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: effectiveColors,
+            ),
+          ),
         ),
-      ),
-      child: child,
+        // Floating objects overlay (when theme has an effect)
+        if (effect != ThemeEffect.none)
+          Positioned.fill(
+            child: FloatingObjectsOverlay(
+              effect: effect,
+              gradientColors: effectiveColors,
+            ),
+          ),
+        // Actual content
+        Positioned.fill(child: child),
+      ],
     );
   }
 
@@ -53,6 +70,23 @@ class GradientBackground extends StatelessWidget {
       // HydrationCubit not in widget tree — fall through
     }
     return const [AppColors.gradientTop, AppColors.gradientBottom];
+  }
+
+  /// Resolve the active theme's floating-object effect.
+  static ThemeEffect _resolveThemeEffect(BuildContext context) {
+    try {
+      final state = context.read<HydrationCubit>().state;
+      if (state is HydrationLoaded) {
+        final themeId = state.hydration.activeThemeId;
+        if (themeId != null) {
+          final theme = ThemeRewards.byId(themeId);
+          if (theme != null) return theme.effect;
+        }
+      }
+    } catch (_) {
+      // HydrationCubit not in widget tree — fall through
+    }
+    return ThemeEffect.none;
   }
 }
 

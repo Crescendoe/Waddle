@@ -22,7 +22,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     _Feature('Smart Reminders', Icons.notifications_active_rounded,
         'Get gentle reminders to stay hydrated throughout the day.'),
     _Feature('Track Any Drink', Icons.local_cafe_rounded,
-        '27 beverages tracked with accurate water equivalence ratios.'),
+        '70+ beverages tracked with accurate water equivalence ratios.'),
     _Feature('Build Streaks', Icons.local_fire_department_rounded,
         'Stay motivated with daily streaks and tier rewards.'),
     _Feature('Take Challenges', Icons.emoji_events_rounded,

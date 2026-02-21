@@ -172,85 +172,130 @@ class _DucksTab extends StatelessWidget {
 
   void _showDuckDetail(
       BuildContext context, DuckCompanion duck, bool isUnlocked) {
+    final duckIndex = DuckCompanions.all.indexOf(duck);
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.divider,
-                borderRadius: BorderRadius.circular(2),
-              ),
+      builder: (_) => BlocBuilder<HydrationCubit, HydrationBlocState>(
+        builder: (ctx, state) {
+          final hydration = state is HydrationLoaded ? state.hydration : null;
+          final isActiveBadge = hydration?.activeDuckIndex == duckIndex;
+          final isCupDuck = hydration?.cupDuckIndex == duckIndex;
+
+          return Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: isUnlocked
-                    ? duck.rarity.color.withValues(alpha: 0.12)
-                    : Colors.grey.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: isUnlocked
-                    ? const Text('🦆', style: TextStyle(fontSize: 40))
-                    : const Icon(Icons.egg_rounded,
-                        size: 36, color: Colors.grey),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              isUnlocked ? duck.name : '???',
-              style: AppTextStyles.headlineSmall,
-            ),
-            const SizedBox(height: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: duck.rarity.color.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                duck.rarity.label,
-                style: TextStyle(
-                  color: duck.rarity.color,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            if (isUnlocked)
-              Text(duck.description,
-                  style: AppTextStyles.bodyMedium, textAlign: TextAlign.center)
-            else
-              Column(
-                children: [
-                  const Icon(Icons.egg_rounded,
-                      size: 24, color: AppColors.textHint),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Unlock: ${duck.unlockCondition.displayText}',
-                    style: AppTextStyles.bodyMedium
-                        .copyWith(color: AppColors.textSecondary),
-                    textAlign: TextAlign.center,
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.divider,
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                ],
-              ),
-            const SizedBox(height: 16),
-          ],
-        ),
+                ),
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: isUnlocked
+                        ? duck.rarity.color.withValues(alpha: 0.12)
+                        : Colors.grey.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: isUnlocked
+                        ? const Text('🦆', style: TextStyle(fontSize: 40))
+                        : const Icon(Icons.egg_rounded,
+                            size: 36, color: Colors.grey),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  isUnlocked ? duck.name : '???',
+                  style: AppTextStyles.headlineSmall,
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: duck.rarity.color.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    duck.rarity.label,
+                    style: TextStyle(
+                      color: duck.rarity.color,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (isUnlocked) ...[
+                  Text(duck.description,
+                      style: AppTextStyles.bodyMedium,
+                      textAlign: TextAlign.center),
+                  const SizedBox(height: 16),
+                  // Action buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Badge button
+                      _ActionChip(
+                        icon: isActiveBadge
+                            ? Icons.star_rounded
+                            : Icons.star_border_rounded,
+                        label: isActiveBadge ? 'Badge ✓' : 'Set as Badge',
+                        isActive: isActiveBadge,
+                        onTap: () {
+                          context.read<HydrationCubit>().setActiveDuck(
+                                isActiveBadge ? null : duckIndex,
+                              );
+                        },
+                      ),
+                      const SizedBox(width: 10),
+                      // Cup button
+                      _ActionChip(
+                        icon: isCupDuck
+                            ? Icons.water_drop_rounded
+                            : Icons.water_drop_outlined,
+                        label: isCupDuck ? 'In Cup ✓' : 'Float in Cup',
+                        isActive: isCupDuck,
+                        onTap: () {
+                          context.read<HydrationCubit>().setCupDuck(
+                                isCupDuck ? null : duckIndex,
+                              );
+                        },
+                      ),
+                    ],
+                  ),
+                ] else
+                  Column(
+                    children: [
+                      const Icon(Icons.egg_rounded,
+                          size: 24, color: AppColors.textHint),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Unlock: ${duck.unlockCondition.displayText}',
+                        style: AppTextStyles.bodyMedium
+                            .copyWith(color: AppColors.textSecondary),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -621,6 +666,62 @@ class _ThemeCard extends StatelessWidget {
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Action chip for duck detail sheet
+// ═══════════════════════════════════════════════════════════════════════
+
+class _ActionChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _ActionChip({
+    required this.icon,
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isActive
+              ? AppColors.accent.withValues(alpha: 0.12)
+              : AppColors.primary.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isActive
+                ? AppColors.accent.withValues(alpha: 0.4)
+                : AppColors.primary.withValues(alpha: 0.15),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon,
+                size: 16,
+                color: isActive ? AppColors.accent : AppColors.primary),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: AppTextStyles.bodySmall.copyWith(
+                fontWeight: FontWeight.w600,
+                color: isActive ? AppColors.accent : AppColors.primary,
               ),
             ),
           ],

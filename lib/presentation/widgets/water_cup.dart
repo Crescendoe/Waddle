@@ -288,6 +288,7 @@ class AnimatedWaterCup extends StatefulWidget {
   final bool showDetails;
   final VoidCallback? onTapToggle;
   final List<WaterLog> todayLogs;
+  final bool showCupDuck;
 
   const AnimatedWaterCup({
     super.key,
@@ -299,6 +300,7 @@ class AnimatedWaterCup extends StatefulWidget {
     this.showDetails = false,
     this.onTapToggle,
     this.todayLogs = const [],
+    this.showCupDuck = false,
   });
 
   double get effectiveFillPercent {
@@ -427,6 +429,37 @@ class _AnimatedWaterCupState extends State<AnimatedWaterCup>
                 fit: BoxFit.contain,
               ),
             ),
+
+            // Floating duck on water surface
+            if (widget.showCupDuck && widget.effectiveFillPercent > 0.02)
+              AnimatedBuilder(
+                animation: _waveController,
+                builder: (context, child) {
+                  final phase = _waveController.value * 2 * pi;
+                  final fillH =
+                      cupHeight * widget.effectiveFillPercent.clamp(0.0, 1.0);
+                  final waterSurfaceY = cupHeight - fillH;
+                  // Bob with the wave — same frequency as water
+                  final bobOffset = sin(phase) * 3.0;
+                  // Gentle tilt
+                  final tilt = sin(phase * 0.7 + 0.5) * 0.12;
+                  // Slow horizontal drift
+                  final driftX = sin(phase * 0.3) * 6.0;
+                  final duckSize = widget.size * 0.14;
+
+                  return Positioned(
+                    top: waterSurfaceY + bobOffset - duckSize * 0.55,
+                    left: (widget.size / 2) - (duckSize / 2) + driftX,
+                    child: Transform.rotate(
+                      angle: tilt,
+                      child: Text(
+                        '🦆',
+                        style: TextStyle(fontSize: duckSize),
+                      ),
+                    ),
+                  );
+                },
+              ),
 
             // Default label (fades out when details shown)
             // Positioned must be a direct child of Stack, so keep it outside

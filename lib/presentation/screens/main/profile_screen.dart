@@ -195,6 +195,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             size: 10, color: Colors.white),
                       ),
                     ),
+                    // Duck badge (bottom-left)
+                    if (hydration?.activeDuckIndex != null)
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                          child:
+                              const Text('🦆', style: TextStyle(fontSize: 14)),
+                        ),
+                      ),
                   ],
                 ),
               ),

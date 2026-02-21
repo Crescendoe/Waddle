@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:waddle/core/constants/app_constants.dart';
@@ -573,6 +574,7 @@ class _DrinkSelectionSheetState extends State<DrinkSelectionSheet> {
             height: 52,
             child: ElevatedButton(
               onPressed: () {
+                HapticFeedback.mediumImpact();
                 widget.onDrinkSelected(drink.name, _amountOz, drink.waterRatio);
                 Navigator.pop(context);
               },

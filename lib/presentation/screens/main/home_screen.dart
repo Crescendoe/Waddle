@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +10,7 @@ import 'package:waddle/domain/entities/drink_type.dart';
 import 'package:waddle/domain/entities/hydration_state.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_cubit.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_state.dart';
+import 'package:waddle/presentation/widgets/challenge_failure_sheet.dart';
 import 'package:waddle/presentation/widgets/common.dart';
 import 'package:waddle/presentation/widgets/water_cup.dart';
 import 'package:waddle/presentation/screens/main/drink_selection_sheet.dart';
@@ -59,25 +61,34 @@ class _HomeScreenState extends State<HomeScreen> {
     return BlocConsumer<HydrationCubit, HydrationBlocState>(
       listener: (context, state) {
         if (state is GoalReached) {
-          context.pushNamed('congrats');
+          HapticFeedback.heavyImpact();
+          context.pushNamed(
+            'congrats',
+            extra: {
+              'oldStreak': state.oldStreak,
+              'newStreak': state.newStreak,
+            },
+          );
         }
         if (state is ChallengeCompleted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Challenge completed! 🎉'),
-              backgroundColor: Colors.green,
-            ),
+          HapticFeedback.heavyImpact();
+          context.pushNamed(
+            'challengeComplete',
+            extra: {'challengeIndex': state.challengeIndex},
           );
-          context.read<HydrationCubit>().acknowledgeChallengeResult();
         }
         if (state is ChallengeFailed) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Challenge failed. Try again!'),
-              backgroundColor: Colors.red,
+          HapticFeedback.mediumImpact();
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (_) => BlocProvider.value(
+              value: context.read<HydrationCubit>(),
+              child:
+                  ChallengeFailureSheet(challengeIndex: state.challengeIndex),
             ),
           );
-          context.read<HydrationCubit>().acknowledgeChallengeResult();
         }
       },
       builder: (context, state) {
@@ -289,6 +300,7 @@ class _HomeScreenState extends State<HomeScreen> {
           size: cupSize.clamp(240.0, 380.0),
           showDetails: _showDrinkDetails,
           todayLogs: state.todayLogs,
+          showCupDuck: hydration.cupDuckIndex != null,
           onTapToggle: () =>
               setState(() => _showDrinkDetails = !_showDrinkDetails),
         ),

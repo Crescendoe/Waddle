@@ -93,10 +93,13 @@ class HydrationError extends HydrationBlocState {
 
 class GoalReached extends HydrationBlocState {
   final HydrationState hydration;
-  const GoalReached(this.hydration);
+  final int oldStreak;
+  final int newStreak;
+  const GoalReached(this.hydration,
+      {required this.oldStreak, required this.newStreak});
 
   @override
-  List<Object?> get props => [hydration];
+  List<Object?> get props => [hydration, oldStreak, newStreak];
 }
 
 class ChallengeCompleted extends HydrationBlocState {
