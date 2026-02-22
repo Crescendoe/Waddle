@@ -9,6 +9,7 @@ import 'package:waddle/domain/entities/drink_type.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_cubit.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_state.dart';
 import 'package:waddle/presentation/widgets/common.dart';
+import 'package:waddle/presentation/widgets/daily_quests_card.dart';
 
 class ChallengesScreen extends StatelessWidget {
   const ChallengesScreen({super.key});
@@ -43,6 +44,12 @@ class ChallengesScreen extends StatelessWidget {
                     ),
                   ).animateOnce(_animate).fadeIn(delay: 100.ms),
                   const SizedBox(height: 24),
+
+                  // ── Daily Quests (above challenges) ──
+                  const DailyQuestsCard()
+                      .animateOnce(_animate)
+                      .fadeIn(delay: 150.ms),
+                  const SizedBox(height: 20),
 
                   // Active challenge card
                   if (hydration.hasActiveChallenge)
@@ -474,6 +481,73 @@ class ChallengesScreen extends StatelessWidget {
                               MaterialTapTargetSize.shrinkWrap,
                         );
                       }).toList(),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // ── Rewards ──
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFFFFF8E1),
+                      const Color(0xFFFFF3E0),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: const Color(0xFFFFE082),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.emoji_events_rounded,
+                            color: Color(0xFFFFA000), size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Completion Rewards',
+                          style: AppTextStyles.labelLarge.copyWith(
+                            color: const Color(0xFFFFA000),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.star_rounded,
+                            size: 16, color: Color(0xFFFFA000)),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${challenge.xpReward} XP',
+                          style: const TextStyle(
+                            color: Color(0xFFFFA000),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                        const Icon(Icons.water_drop,
+                            size: 16, color: Color(0xFF42A5F5)),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${challenge.dropsReward} drops',
+                          style: const TextStyle(
+                            color: Color(0xFF42A5F5),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

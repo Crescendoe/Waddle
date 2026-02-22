@@ -8,8 +8,8 @@ import 'package:waddle/presentation/blocs/hydration/hydration_state.dart'
     as bloc;
 import 'package:waddle/presentation/widgets/common.dart';
 
-/// Collapsible daily quests widget — slim summary by default, expands to show
-/// full quest list on tap.
+/// Daily quests section — shows all quests directly (no dropdown).
+/// Completed-but-unclaimed quests show a "Claim" button.
 class DailyQuestsCard extends StatefulWidget {
   const DailyQuestsCard({super.key});
 
@@ -18,8 +18,6 @@ class DailyQuestsCard extends StatefulWidget {
 }
 
 class _DailyQuestsCardState extends State<DailyQuestsCard> {
-  bool _expanded = false;
-
   @override
   void initState() {
     super.initState();
@@ -41,100 +39,81 @@ class _DailyQuestsCardState extends State<DailyQuestsCard> {
         if (quests.isEmpty) return const SizedBox.shrink();
 
         final tc = ActiveThemeColors.of(context);
-        final done = quests.where((q) => q.completed).length;
+        final claimed = quests.where((q) => q.claimed).length;
         final total = quests.length;
-        final allDone = done == total;
+        final allClaimed = claimed == total;
 
         return GlassCard(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // ── Tappable summary row ──
-              GestureDetector(
-                onTap: () => setState(() => _expanded = !_expanded),
-                behavior: HitTestBehavior.opaque,
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  child: Row(
-                    children: [
-                      Icon(
-                        allDone
-                            ? Icons.check_circle_rounded
-                            : Icons.task_alt_rounded,
-                        color: allDone ? const Color(0xFF66BB6A) : tc.primary,
-                        size: 18,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Header row ──
+                Row(
+                  children: [
+                    Icon(
+                      allClaimed
+                          ? Icons.check_circle_rounded
+                          : Icons.task_alt_rounded,
+                      color: allClaimed ? const Color(0xFF66BB6A) : tc.primary,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Daily Quests',
+                      style: AppTextStyles.labelLarge.copyWith(
+                        color: AppColors.textPrimary,
+                        fontSize: 14,
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Daily Quests',
-                        style: AppTextStyles.labelLarge.copyWith(
-                          color: AppColors.textPrimary,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Completion dots
-                      ...List.generate(total, (i) {
-                        final isDone = i < done;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 4),
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: isDone
-                                  ? const Color(0xFF66BB6A)
-                                  : tc.primary.withValues(alpha: 0.20),
-                            ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Completion dots
+                    ...List.generate(total, (i) {
+                      final isClaimed = quests[i].claimed;
+                      final isDone = quests[i].completed;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isClaimed
+                                ? const Color(0xFF66BB6A)
+                                : isDone
+                                    ? const Color(0xFFFFA726)
+                                    : tc.primary.withValues(alpha: 0.20),
                           ),
-                        );
-                      }),
-                      const Spacer(),
-                      Text(
-                        '$done/$total',
-                        style: TextStyle(
-                          color: allDone
-                              ? const Color(0xFF66BB6A)
-                              : AppColors.textSecondary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
                         ),
+                      );
+                    }),
+                    const Spacer(),
+                    Text(
+                      '$claimed/$total',
+                      style: TextStyle(
+                        color: allClaimed
+                            ? const Color(0xFF66BB6A)
+                            : AppColors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
                       ),
-                      const SizedBox(width: 4),
-                      AnimatedRotation(
-                        turns: _expanded ? 0.5 : 0,
-                        duration: const Duration(milliseconds: 200),
-                        child: Icon(
-                          Icons.expand_more_rounded,
-                          size: 18,
-                          color: AppColors.textHint,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ),
+                const SizedBox(height: 12),
 
-              // ── Expanded quest list ──
-              AnimatedCrossFade(
-                firstChild: const SizedBox.shrink(),
-                secondChild: Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-                  child: Column(
-                    children: quests
-                        .map((qp) =>
-                            _QuestRow(questProgress: qp, themeColor: tc))
-                        .toList(),
-                  ),
-                ),
-                crossFadeState: _expanded
-                    ? CrossFadeState.showSecond
-                    : CrossFadeState.showFirst,
-                duration: const Duration(milliseconds: 200),
-              ),
-            ],
+                // ── Quest list (always visible) ──
+                ...quests.asMap().entries.map((entry) {
+                  return _QuestRow(
+                    questProgress: entry.value,
+                    questIndex: entry.key,
+                    themeColor: tc,
+                  );
+                }),
+              ],
+            ),
           ),
         );
       },
@@ -144,10 +123,12 @@ class _DailyQuestsCardState extends State<DailyQuestsCard> {
 
 class _QuestRow extends StatelessWidget {
   final DailyQuestProgress questProgress;
+  final int questIndex;
   final ActiveThemeColors themeColor;
 
   const _QuestRow({
     required this.questProgress,
+    required this.questIndex,
     required this.themeColor,
   });
 
@@ -160,223 +141,177 @@ class _QuestRow extends StatelessWidget {
         ? (questProgress.current / tmpl.target).clamp(0.0, 1.0)
         : 0.0;
     final isComplete = questProgress.completed;
+    final isClaimed = questProgress.claimed;
+    final isClaimable = isComplete && !isClaimed;
 
-    return GestureDetector(
-      onTap: () => _showQuestDetail(context, tmpl, questProgress, themeColor),
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: Row(
-          children: [
-            // Icon
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: isComplete
-                    ? const Color(0xFF66BB6A).withValues(alpha: 0.15)
-                    : themeColor.primary.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                isComplete ? Icons.check_rounded : tmpl.icon,
-                size: 18,
-                color:
-                    isComplete ? const Color(0xFF66BB6A) : themeColor.primary,
-              ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          // Icon
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: isClaimed
+                  ? const Color(0xFF66BB6A).withValues(alpha: 0.15)
+                  : isClaimable
+                      ? const Color(0xFFFFA726).withValues(alpha: 0.15)
+                      : themeColor.primary.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(10),
             ),
-            const SizedBox(width: 10),
-            // Text + progress bar
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    tmpl.title,
-                    style: TextStyle(
-                      color: isComplete
-                          ? AppColors.textSecondary
-                          : AppColors.textPrimary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                      decoration:
-                          isComplete ? TextDecoration.lineThrough : null,
+            child: Icon(
+              isClaimed
+                  ? Icons.check_rounded
+                  : isClaimable
+                      ? Icons.card_giftcard_rounded
+                      : tmpl.icon,
+              size: 18,
+              color: isClaimed
+                  ? const Color(0xFF66BB6A)
+                  : isClaimable
+                      ? const Color(0xFFFFA726)
+                      : themeColor.primary,
+            ),
+          ),
+          const SizedBox(width: 10),
+          // Text + progress bar
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  tmpl.title,
+                  style: TextStyle(
+                    color: isClaimed
+                        ? AppColors.textSecondary
+                        : AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    decoration: isClaimed ? TextDecoration.lineThrough : null,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(3),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 5,
+                    backgroundColor: themeColor.primary.withValues(alpha: 0.12),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      isClaimed
+                          ? const Color(0xFF66BB6A)
+                          : isClaimable
+                              ? const Color(0xFFFFA726)
+                              : themeColor.primary,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(3),
-                    child: LinearProgressIndicator(
-                      value: progress,
-                      minHeight: 5,
-                      backgroundColor:
-                          themeColor.primary.withValues(alpha: 0.12),
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        isComplete
-                            ? const Color(0xFF66BB6A)
-                            : themeColor.primary,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            // Progress text
+          ),
+          const SizedBox(width: 8),
+          // Claim button or status
+          if (isClaimable)
+            _ClaimButton(
+              questIndex: questIndex,
+              xpReward: tmpl.xpReward,
+              dropsReward: tmpl.dropsReward,
+            )
+          else if (isClaimed)
             SizedBox(
-              width: 48,
+              width: 52,
               child: Text(
-                isComplete
-                    ? '+${tmpl.xpReward} XP'
-                    : '${questProgress.current}/${tmpl.target}',
+                '+${tmpl.xpReward} XP',
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                  color: Color(0xFF66BB6A),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            )
+          else
+            SizedBox(
+              width: 52,
+              child: Text(
+                '${questProgress.current}/${tmpl.target}',
                 textAlign: TextAlign.right,
                 style: TextStyle(
-                  color: isComplete
-                      ? const Color(0xFF66BB6A)
-                      : AppColors.textSecondary,
+                  color: AppColors.textSecondary,
                   fontSize: 11,
-                  fontWeight: isComplete ? FontWeight.w600 : FontWeight.normal,
                 ),
               ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
+}
 
-  static void _showQuestDetail(
-    BuildContext context,
-    DailyQuestTemplate tmpl,
-    DailyQuestProgress progress,
-    ActiveThemeColors tc,
-  ) {
-    final isComplete = progress.completed;
-    final progressFraction = tmpl.target > 0
-        ? (progress.current / tmpl.target).clamp(0.0, 1.0)
-        : 0.0;
+class _ClaimButton extends StatelessWidget {
+  final int questIndex;
+  final int xpReward;
+  final int dropsReward;
 
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Icon badge
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: isComplete
-                    ? const Color(0xFF66BB6A).withValues(alpha: 0.15)
-                    : tc.primary.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                isComplete ? Icons.check_rounded : tmpl.icon,
-                size: 28,
-                color: isComplete ? const Color(0xFF66BB6A) : tc.primary,
-              ),
-            ),
-            const SizedBox(height: 12),
-            // Title
-            Text(
-              tmpl.title,
-              style: AppTextStyles.headlineSmall.copyWith(fontSize: 18),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 6),
-            // Description
-            Text(
-              tmpl.description,
-              style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.textSecondary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            // Progress bar
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: progressFraction,
-                minHeight: 8,
-                backgroundColor: tc.primary.withValues(alpha: 0.12),
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  isComplete ? const Color(0xFF66BB6A) : tc.primary,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              isComplete
-                  ? 'Completed!'
-                  : '${progress.current} / ${tmpl.target}',
-              style: TextStyle(
-                color: isComplete
-                    ? const Color(0xFF66BB6A)
-                    : AppColors.textSecondary,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Rewards row
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: tc.primary.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+  const _ClaimButton({
+    required this.questIndex,
+    required this.xpReward,
+    required this.dropsReward,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () async {
+        final cubit = context.read<HydrationCubit>();
+        final success = await cubit.claimQuest(questIndex);
+        if (success && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
                 children: [
-                  Icon(Icons.star_rounded, size: 16, color: tc.primary),
-                  const SizedBox(width: 4),
+                  const Icon(Icons.celebration_rounded,
+                      color: Colors.white, size: 20),
+                  const SizedBox(width: 8),
                   Text(
-                    '${tmpl.xpReward} XP',
-                    style: TextStyle(
-                      color: tc.primary,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Container(
-                      width: 3,
-                      height: 3,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.textHint,
-                      ),
-                    ),
-                  ),
-                  Icon(Icons.water_drop, size: 16, color: tc.accent),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${tmpl.dropsReward} drops',
-                    style: TextStyle(
-                      color: tc.accent,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                    ),
+                    'Claimed +$xpReward XP & +$dropsReward drops!',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Got it'),
+              backgroundColor: const Color(0xFF66BB6A),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFFA726), Color(0xFFFF9800)],
+          ),
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFFFA726).withValues(alpha: 0.3),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
             ),
           ],
+        ),
+        child: const Text(
+          'Claim',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+          ),
         ),
       ),
     );

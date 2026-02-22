@@ -19,6 +19,7 @@ import 'package:waddle/presentation/screens/settings/terms_of_service_screen.dar
 import 'package:waddle/presentation/screens/celebration/congrats_screen.dart';
 import 'package:waddle/presentation/screens/celebration/challenge_complete_screen.dart';
 import 'package:waddle/presentation/screens/celebration/challenge_failed_screen.dart';
+import 'package:waddle/presentation/screens/celebration/level_up_screen.dart';
 import 'package:waddle/presentation/screens/celebration/unlock_reward_screen.dart';
 import 'package:waddle/presentation/screens/splash/splash_screen.dart';
 
@@ -126,6 +127,18 @@ class AppRouter {
             final extra = state.extra as Map<String, dynamic>? ?? {};
             return ChallengeFailedScreen(
               challengeIndex: extra['challengeIndex'] as int? ?? 0,
+            );
+          },
+        ),
+        GoRoute(
+          path: '/level-up',
+          name: 'levelUp',
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>? ?? {};
+            return LevelUpScreen(
+              oldLevel: extra['oldLevel'] as int? ?? 1,
+              newLevel: extra['newLevel'] as int? ?? 2,
+              dropsAwarded: extra['dropsAwarded'] as int? ?? 30,
             );
           },
         ),

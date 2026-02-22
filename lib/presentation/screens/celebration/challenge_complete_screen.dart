@@ -260,6 +260,66 @@ class _ChallengeCompleteScreenState extends State<ChallengeCompleteScreen>
                           curve: Curves.easeOut,
                         ),
 
+                    const SizedBox(height: 20),
+
+                    // ── Reward chips ──
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color:
+                                const Color(0xFFFFA000).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.star_rounded,
+                                  size: 16, color: Color(0xFFFFA000)),
+                              const SizedBox(width: 4),
+                              Text(
+                                '+${challenge.xpReward} XP',
+                                style: const TextStyle(
+                                  color: Color(0xFFFFA000),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color:
+                                const Color(0xFF42A5F5).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.water_drop,
+                                  size: 16, color: Color(0xFF42A5F5)),
+                              const SizedBox(width: 4),
+                              Text(
+                                '+${challenge.dropsReward} drops',
+                                style: const TextStyle(
+                                  color: Color(0xFF42A5F5),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ).animate().fadeIn(delay: 1200.ms).slideY(begin: 0.3),
+
                     const Spacer(),
 
                     // Continue button

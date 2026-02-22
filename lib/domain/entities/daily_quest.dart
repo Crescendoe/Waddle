@@ -73,24 +73,30 @@ class DailyQuestProgress extends Equatable {
   final String questId;
   final int current;
   final bool completed;
+
+  /// Whether the user has manually claimed the reward for this quest.
+  final bool claimed;
   final DateTime? completedAt;
 
   const DailyQuestProgress({
     required this.questId,
     this.current = 0,
     this.completed = false,
+    this.claimed = false,
     this.completedAt,
   });
 
   DailyQuestProgress copyWith({
     int? current,
     bool? completed,
+    bool? claimed,
     DateTime? completedAt,
   }) {
     return DailyQuestProgress(
       questId: questId,
       current: current ?? this.current,
       completed: completed ?? this.completed,
+      claimed: claimed ?? this.claimed,
       completedAt: completedAt ?? this.completedAt,
     );
   }
@@ -99,6 +105,7 @@ class DailyQuestProgress extends Equatable {
         'questId': questId,
         'current': current,
         'completed': completed,
+        'claimed': claimed,
         'completedAt': completedAt?.toIso8601String(),
       };
 
@@ -107,6 +114,7 @@ class DailyQuestProgress extends Equatable {
       questId: map['questId'] as String? ?? '',
       current: (map['current'] as num?)?.toInt() ?? 0,
       completed: map['completed'] as bool? ?? false,
+      claimed: map['claimed'] as bool? ?? false,
       completedAt: map['completedAt'] != null
           ? DateTime.tryParse(map['completedAt'] as String)
           : null,
@@ -114,7 +122,7 @@ class DailyQuestProgress extends Equatable {
   }
 
   @override
-  List<Object?> get props => [questId, current, completed];
+  List<Object?> get props => [questId, current, completed, claimed];
 }
 
 // ═══════════════════════════════════════════════════════════════════════
