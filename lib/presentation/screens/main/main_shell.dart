@@ -76,15 +76,28 @@ class _MainShellState extends State<MainShell> {
       },
       builder: (context, _) {
         final tc = ActiveThemeColors.of(context);
+        final topRadius = const Radius.circular(24);
         return ClipRRect(
+          borderRadius: BorderRadius.only(
+            topLeft: topRadius,
+            topRight: topRadius,
+          ),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.72),
+                color: Colors.white.withValues(alpha: 0.78),
                 border: Border(
                   top: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.4),
+                    color: Colors.white.withValues(alpha: 0.55),
+                    width: 0.5,
+                  ),
+                  left: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.35),
+                    width: 0.5,
+                  ),
+                  right: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.35),
                     width: 0.5,
                   ),
                 ),
@@ -97,49 +110,53 @@ class _MainShellState extends State<MainShell> {
                 ],
               ),
               child: SafeArea(
+                top: false,
                 child: SizedBox(
                   height: 64,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      _NavItem(
-                        icon: Icons.local_fire_department_rounded,
-                        label: 'Streaks',
-                        isSelected: _currentIndex == 0,
-                        onTap: () => _onTabTapped(0),
-                        themeColors: tc,
-                      ),
-                      _NavItem(
-                        icon: Icons.emoji_events_rounded,
-                        label: 'Challenges',
-                        isSelected: _currentIndex == 1,
-                        onTap: () => _onTabTapped(1),
-                        themeColors: tc,
-                      ),
-                      _NavItem(
-                        icon: Icons.water_drop_rounded,
-                        label: '',
-                        isSelected: _currentIndex == 2,
-                        onTap: () => _onTabTapped(2),
-                        isCenter: true,
-                        themeColors: tc,
-                      ),
-                      _NavItem(
-                        icon: Icons.egg_rounded,
-                        label: 'Collection',
-                        isSelected: _currentIndex == 3,
-                        onTap: () => _onTabTapped(3),
-                        themeColors: tc,
-                      ),
-                      _NavItem(
-                        icon: Icons.person_rounded,
-                        label: 'Profile',
-                        isSelected: _currentIndex == 4,
-                        onTap: () => _onTabTapped(4),
-                        themeColors: tc,
-                      ),
-                    ],
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        _NavItem(
+                          icon: Icons.local_fire_department_rounded,
+                          label: 'Streaks',
+                          isSelected: _currentIndex == 0,
+                          onTap: () => _onTabTapped(0),
+                          themeColors: tc,
+                        ),
+                        _NavItem(
+                          icon: Icons.emoji_events_rounded,
+                          label: 'Challenges',
+                          isSelected: _currentIndex == 1,
+                          onTap: () => _onTabTapped(1),
+                          themeColors: tc,
+                        ),
+                        _NavItem(
+                          icon: Icons.water_drop_rounded,
+                          label: '',
+                          isSelected: _currentIndex == 2,
+                          onTap: () => _onTabTapped(2),
+                          isCenter: true,
+                          themeColors: tc,
+                        ),
+                        _NavItem(
+                          icon: Icons.egg_rounded,
+                          label: 'Collection',
+                          isSelected: _currentIndex == 3,
+                          onTap: () => _onTabTapped(3),
+                          themeColors: tc,
+                        ),
+                        _NavItem(
+                          icon: Icons.person_rounded,
+                          label: 'Profile',
+                          isSelected: _currentIndex == 4,
+                          onTap: () => _onTabTapped(4),
+                          themeColors: tc,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

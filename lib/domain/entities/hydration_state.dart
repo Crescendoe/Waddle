@@ -1,5 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
+import 'package:waddle/domain/entities/daily_quest.dart';
+import 'package:waddle/domain/entities/shop_item.dart';
+import 'package:waddle/domain/entities/xp_level.dart';
 
 /// Hydration tracking state for the current day and overall stats
 class HydrationState extends Equatable {
@@ -30,6 +33,23 @@ class HydrationState extends Equatable {
   final int? cupDuckIndex;
   final List<int> homeDuckIndices;
 
+  // ── XP & Leveling ─────────────────────────────────────────────────
+  final int totalXp;
+
+  // ── Virtual currency ──────────────────────────────────────────────
+  final int drops;
+
+  // ── Daily quests ──────────────────────────────────────────────────
+  final List<DailyQuestProgress> dailyQuests;
+  final String? dailyQuestsDate; // ISO date string, e.g. "2026-02-21"
+
+  // ── Inventory / Shop ──────────────────────────────────────────────
+  final UserInventory inventory;
+
+  // ── Seen unlock rewards (prevent re-showing popups) ───────────────
+  final List<int> seenDuckIndices;
+  final List<String> seenThemeIds;
+
   const HydrationState({
     this.waterConsumedOz = 0.0,
     this.waterGoalOz = 80.0,
@@ -55,6 +75,13 @@ class HydrationState extends Equatable {
     this.activeDuckIndex,
     this.cupDuckIndex,
     this.homeDuckIndices = const [],
+    this.totalXp = 0,
+    this.drops = 0,
+    this.dailyQuests = const [],
+    this.dailyQuestsDate,
+    this.inventory = const UserInventory(),
+    this.seenDuckIndices = const [],
+    this.seenThemeIds = const [],
   });
 
   double get progressPercent =>
@@ -75,6 +102,16 @@ class HydrationState extends Equatable {
     final diff = nextEntryTime!.difference(DateTime.now());
     return diff.isNegative ? Duration.zero : diff;
   }
+
+  // ── XP derived getters ──────────────────────────────────────────
+  int get level => XpLevel.levelForXp(totalXp);
+  double get levelProgress => XpLevel.progressForXp(totalXp);
+  int get xpToNext => XpLevel.xpToNextLevel(level);
+  int get xpIntoLevel => totalXp - XpLevel.xpForLevel(level);
+
+  /// Whether all 3 daily quests are completed.
+  bool get allDailyQuestsComplete =>
+      dailyQuests.isNotEmpty && dailyQuests.every((q) => q.completed);
 
   StreakTier get streakTier {
     if (currentStreak >= 30) return StreakTier.platinum;
@@ -114,6 +151,14 @@ class HydrationState extends Equatable {
     int? cupDuckIndex,
     bool clearCupDuckIndex = false,
     List<int>? homeDuckIndices,
+    int? totalXp,
+    int? drops,
+    List<DailyQuestProgress>? dailyQuests,
+    String? dailyQuestsDate,
+    bool clearDailyQuestsDate = false,
+    UserInventory? inventory,
+    List<int>? seenDuckIndices,
+    List<String>? seenThemeIds,
   }) {
     return HydrationState(
       waterConsumedOz: waterConsumedOz ?? this.waterConsumedOz,
@@ -147,6 +192,15 @@ class HydrationState extends Equatable {
       cupDuckIndex:
           clearCupDuckIndex ? null : (cupDuckIndex ?? this.cupDuckIndex),
       homeDuckIndices: homeDuckIndices ?? this.homeDuckIndices,
+      totalXp: totalXp ?? this.totalXp,
+      drops: drops ?? this.drops,
+      dailyQuests: dailyQuests ?? this.dailyQuests,
+      dailyQuestsDate: clearDailyQuestsDate
+          ? null
+          : (dailyQuestsDate ?? this.dailyQuestsDate),
+      inventory: inventory ?? this.inventory,
+      seenDuckIndices: seenDuckIndices ?? this.seenDuckIndices,
+      seenThemeIds: seenThemeIds ?? this.seenThemeIds,
     );
   }
 
@@ -176,6 +230,13 @@ class HydrationState extends Equatable {
         activeDuckIndex,
         cupDuckIndex,
         homeDuckIndices,
+        totalXp,
+        drops,
+        dailyQuests,
+        dailyQuestsDate,
+        inventory,
+        seenDuckIndices,
+        seenThemeIds,
       ];
 }
 

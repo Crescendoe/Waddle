@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:flutter/material.dart';
 
 /// A collectible duck companion with unlock conditions
 class DuckCompanion extends Equatable {
@@ -8,12 +9,16 @@ class DuckCompanion extends Equatable {
   final DuckUnlockCondition unlockCondition;
   final DuckRarity rarity;
 
+  /// The color used to tint wade_floating.png for this duck.
+  final Color tintColor;
+
   const DuckCompanion({
     required this.index,
     required this.name,
     required this.description,
     required this.unlockCondition,
     required this.rarity,
+    required this.tintColor,
   });
 
   @override
@@ -86,6 +91,7 @@ class DuckCompanions {
         displayText: 'Reach a 5-day streak',
       ),
       rarity: DuckRarity.common,
+      tintColor: Color(0xFF90CAF9), // light blue
     ),
     DuckCompanion(
       index: 1,
@@ -97,6 +103,7 @@ class DuckCompanions {
         displayText: 'Reach a 10-day streak',
       ),
       rarity: DuckRarity.common,
+      tintColor: Color(0xFF80CBC4), // teal
     ),
     DuckCompanion(
       index: 2,
@@ -108,6 +115,7 @@ class DuckCompanions {
         displayText: 'Reach a 20-day streak',
       ),
       rarity: DuckRarity.uncommon,
+      tintColor: Color(0xFF4FC3F7), // sky blue
     ),
     DuckCompanion(
       index: 3,
@@ -119,6 +127,7 @@ class DuckCompanions {
         displayText: 'Reach a 30-day streak',
       ),
       rarity: DuckRarity.rare,
+      tintColor: Color(0xFF1E88E5), // vivid blue
     ),
     DuckCompanion(
       index: 4,
@@ -130,6 +139,7 @@ class DuckCompanions {
         displayText: 'Reach a 60-day streak',
       ),
       rarity: DuckRarity.epic,
+      tintColor: Color(0xFF7C4DFF), // deep purple
     ),
     DuckCompanion(
       index: 5,
@@ -141,6 +151,7 @@ class DuckCompanions {
         displayText: 'Reach a 120-day streak',
       ),
       rarity: DuckRarity.legendary,
+      tintColor: Color(0xFF00BFA5), // aqua gold-green
     ),
     DuckCompanion(
       index: 6,
@@ -152,6 +163,7 @@ class DuckCompanions {
         displayText: 'Reach a 365-day streak',
       ),
       rarity: DuckRarity.legendary,
+      tintColor: Color(0xFFFFD700), // pure gold
     ),
 
     // Consecutive days ducks
@@ -165,6 +177,7 @@ class DuckCompanions {
         displayText: 'Log water for 7 days',
       ),
       rarity: DuckRarity.common,
+      tintColor: Color(0xFFA5D6A7), // soft green
     ),
     DuckCompanion(
       index: 8,
@@ -176,6 +189,7 @@ class DuckCompanions {
         displayText: 'Log water for 14 days',
       ),
       rarity: DuckRarity.common,
+      tintColor: Color(0xFFBCAAA4), // warm taupe
     ),
     DuckCompanion(
       index: 9,
@@ -187,6 +201,7 @@ class DuckCompanions {
         displayText: 'Log water for 21 days',
       ),
       rarity: DuckRarity.uncommon,
+      tintColor: Color(0xFF66BB6A), // bright green
     ),
     DuckCompanion(
       index: 10,
@@ -198,6 +213,7 @@ class DuckCompanions {
         displayText: 'Log water for 28 days',
       ),
       rarity: DuckRarity.rare,
+      tintColor: Color(0xFF5C6BC0), // indigo
     ),
     DuckCompanion(
       index: 11,
@@ -209,6 +225,7 @@ class DuckCompanions {
         displayText: 'Log water for 50 days',
       ),
       rarity: DuckRarity.epic,
+      tintColor: Color(0xFFAB47BC), // purple
     ),
 
     // Challenge ducks
@@ -222,6 +239,7 @@ class DuckCompanions {
         displayText: 'Complete 1 challenge',
       ),
       rarity: DuckRarity.uncommon,
+      tintColor: Color(0xFFE0F7FA), // crystal / ice white-blue
     ),
     DuckCompanion(
       index: 13,
@@ -233,6 +251,7 @@ class DuckCompanions {
         displayText: 'Complete 3 challenges',
       ),
       rarity: DuckRarity.rare,
+      tintColor: Color(0xFFEF5350), // bold red
     ),
     DuckCompanion(
       index: 14,
@@ -244,6 +263,7 @@ class DuckCompanions {
         displayText: 'Complete all 6 challenges',
       ),
       rarity: DuckRarity.legendary,
+      tintColor: Color(0xFFFF6F00), // fiery amber
     ),
 
     // Total oz consumed ducks
@@ -257,6 +277,7 @@ class DuckCompanions {
         displayText: 'Drink 100 oz total',
       ),
       rarity: DuckRarity.common,
+      tintColor: Color(0xFFB3E5FC), // pale cyan
     ),
     DuckCompanion(
       index: 16,
@@ -268,6 +289,7 @@ class DuckCompanions {
         displayText: 'Drink 500 oz total',
       ),
       rarity: DuckRarity.uncommon,
+      tintColor: Color(0xFF26A69A), // deep teal
     ),
     DuckCompanion(
       index: 17,
@@ -279,6 +301,7 @@ class DuckCompanions {
         displayText: 'Drink 1,000 oz total',
       ),
       rarity: DuckRarity.rare,
+      tintColor: Color(0xFF42A5F5), // calm blue
     ),
     DuckCompanion(
       index: 18,
@@ -290,6 +313,7 @@ class DuckCompanions {
         displayText: 'Drink 3,000 oz total',
       ),
       rarity: DuckRarity.epic,
+      tintColor: Color(0xFF0D47A1), // navy
     ),
     DuckCompanion(
       index: 19,
@@ -301,6 +325,7 @@ class DuckCompanions {
         displayText: 'Drink 5,000 oz total',
       ),
       rarity: DuckRarity.epic,
+      tintColor: Color(0xFF00ACC1), // cyan
     ),
     DuckCompanion(
       index: 20,
@@ -312,6 +337,7 @@ class DuckCompanions {
         displayText: 'Drink 10,000 oz total',
       ),
       rarity: DuckRarity.legendary,
+      tintColor: Color(0xFF1A237E), // midnight blue
     ),
 
     // Bonus rare ducks
@@ -325,6 +351,7 @@ class DuckCompanions {
         displayText: 'Reach a 100-day streak',
       ),
       rarity: DuckRarity.legendary,
+      tintColor: Color(0xFFFFB300), // golden amber
     ),
     DuckCompanion(
       index: 22,
@@ -336,6 +363,7 @@ class DuckCompanions {
         displayText: 'Drink 2,000 oz total',
       ),
       rarity: DuckRarity.rare,
+      tintColor: Color(0xFFF48FB1), // bubblegum pink
     ),
     DuckCompanion(
       index: 23,
@@ -347,6 +375,7 @@ class DuckCompanions {
         displayText: 'Complete 4 challenges',
       ),
       rarity: DuckRarity.epic,
+      tintColor: Color(0xFF8E24AA), // magenta purple
     ),
   ];
 

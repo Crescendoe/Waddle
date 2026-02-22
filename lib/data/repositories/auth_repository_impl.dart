@@ -43,6 +43,12 @@ class AuthRepositoryImpl implements AuthRepository {
     if (data['friendCount'] == null) {
       updates['friendCount'] = 0;
     }
+    // Backfill createdAt for users registered before this field was added
+    if (data['createdAt'] == null) {
+      final authUser = _auth.currentUser;
+      final creationTime = authUser?.metadata.creationTime;
+      updates['createdAt'] = Timestamp.fromDate(creationTime ?? DateTime.now());
+    }
 
     if (updates.isNotEmpty) {
       try {

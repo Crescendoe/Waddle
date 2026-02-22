@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:waddle/core/theme/app_theme.dart';
 import 'package:waddle/domain/entities/drink_type.dart';
 import 'package:waddle/domain/entities/water_log.dart';
+import 'package:waddle/presentation/widgets/duck_avatar.dart';
 
 /// A segment of the cup fill representing one drink type
 class DrinkSegment {
@@ -291,6 +292,7 @@ class AnimatedWaterCup extends StatefulWidget {
   final VoidCallback? onTapToggle;
   final List<WaterLog> todayLogs;
   final int cupDuckCount;
+  final List<int> cupDuckIndices;
 
   const AnimatedWaterCup({
     super.key,
@@ -303,6 +305,7 @@ class AnimatedWaterCup extends StatefulWidget {
     this.onTapToggle,
     this.todayLogs = const [],
     this.cupDuckCount = 0,
+    this.cupDuckIndices = const [],
   });
 
   double get effectiveFillPercent {
@@ -322,7 +325,7 @@ class _AnimatedWaterCupState extends State<AnimatedWaterCup>
   late AnimationController _waveController;
   late AnimationController _detailsController;
   late Animation<double> _detailsFade;
-  late Animation<double> _detailsScale;
+  late Animation<double> _detailsSlide;
   late Animation<double> _defaultFade;
   final Stopwatch _duckStopwatch = Stopwatch();
 
@@ -345,8 +348,8 @@ class _AnimatedWaterCupState extends State<AnimatedWaterCup>
       parent: _detailsController,
       curve: Curves.easeOut,
     );
-    _detailsScale = Tween<double>(begin: 0.85, end: 1.0).animate(
-      CurvedAnimation(parent: _detailsController, curve: Curves.easeOutBack),
+    _detailsSlide = Tween<double>(begin: 12.0, end: 0.0).animate(
+      CurvedAnimation(parent: _detailsController, curve: Curves.easeOutCubic),
     );
     _defaultFade = Tween<double>(begin: 1.0, end: 0.0).animate(
       CurvedAnimation(
@@ -468,10 +471,17 @@ class _AnimatedWaterCupState extends State<AnimatedWaterCup>
                     left: (widget.size / 2) - (duckSize / 2) + driftX + hBias,
                     child: Transform.rotate(
                       angle: tilt,
-                      child: Text(
-                        '🦆',
-                        style: TextStyle(fontSize: duckSize),
-                      ),
+                      child: duckI < widget.cupDuckIndices.length
+                          ? DuckAvatar.fromIndex(
+                              index: widget.cupDuckIndices[duckI],
+                              size: duckSize,
+                            )
+                          : Image.asset(
+                              'lib/assets/images/wade_floating.png',
+                              width: duckSize,
+                              height: duckSize,
+                              fit: BoxFit.contain,
+                            ),
                     ),
                   );
                 },
@@ -515,8 +525,8 @@ class _AnimatedWaterCupState extends State<AnimatedWaterCup>
                     }
                     return Opacity(
                       opacity: _detailsFade.value,
-                      child: Transform.scale(
-                        scale: _detailsScale.value,
+                      child: Transform.translate(
+                        offset: Offset(0, _detailsSlide.value),
                         child: _buildSegmentLabelsInner(segments, cupHeight),
                       ),
                     );
@@ -562,6 +572,7 @@ class _AnimatedWaterCupState extends State<AnimatedWaterCup>
           Text(
             'oz',
             style: AppTextStyles.labelLarge.copyWith(
+              fontSize: 18,
               color: labelColor,
               fontWeight: FontWeight.w600,
               shadows: [

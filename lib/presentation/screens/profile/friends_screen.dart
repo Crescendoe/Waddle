@@ -120,9 +120,12 @@ class _FriendsScreenState extends State<FriendsScreen>
           ),
           bottom: TabBar(
             controller: _tabController,
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
             labelColor: AppColors.primary,
             unselectedLabelColor: AppColors.textHint,
             indicatorColor: AppColors.primary,
+            labelPadding: const EdgeInsets.symmetric(horizontal: 12),
             labelStyle:
                 AppTextStyles.labelMedium.copyWith(fontWeight: FontWeight.w600),
             tabs: [

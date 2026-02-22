@@ -7,6 +7,8 @@ import 'package:intl/intl.dart';
 import 'package:waddle/core/theme/app_theme.dart';
 import 'package:waddle/data/services/friend_service.dart';
 import 'package:waddle/domain/entities/duck_companion.dart';
+import 'package:waddle/domain/entities/hydration_state.dart';
+import 'package:waddle/domain/entities/xp_level.dart';
 import 'package:waddle/presentation/widgets/common.dart';
 
 class FriendProfileScreen extends StatefulWidget {
@@ -103,11 +105,13 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
     final totalDaysLogged = s['totalDaysLogged'] as int? ?? 0;
     final completedChallenges = s['completedChallenges'] as int? ?? 0;
     final totalDrinksLogged = s['totalDrinksLogged'] as int? ?? 0;
-    final totalHealthyPicks = s['totalHealthyPicks'] as int? ?? 0;
     final uniqueDrinks = s['uniqueDrinksLogged'] as List? ?? [];
     final waterGoal = (s['waterGoal'] as num?)?.toDouble() ?? 80.0;
     final friendCount = s['friendCount'] as int? ?? 0;
     final createdAt = s['createdAt'] as DateTime?;
+    final totalXp = s['totalXp'] as int? ?? 0;
+    final level = XpLevel.levelForXp(totalXp);
+    final streakTier = _streakTierFor(currentStreak);
     final memberSince =
         createdAt != null ? DateFormat('MMM yyyy').format(createdAt) : '';
 
@@ -135,59 +139,159 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // ── Header card ──
+          // ── Header card (matches own profile layout) ──
           GlassCard(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(14),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CircleAvatar(
-                  radius: 48,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                  backgroundImage: _resolveImage(profileImage),
-                  child: _resolveImage(profileImage) == null
-                      ? Text(
-                          username.isNotEmpty ? username[0].toUpperCase() : '?',
-                          style: AppTextStyles.displaySmall.copyWith(
-                            color: AppColors.primary,
-                          ),
-                        )
-                      : null,
-                ),
-                const SizedBox(height: 14),
-                Text(username, style: AppTextStyles.headlineMedium),
-                if (bio != null && bio.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    bio,
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 3,
-                  ),
-                ],
-                const SizedBox(height: 10),
+                // Row 1: Avatar + Name / Bio / Meta
                 Row(
-                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (memberSince.isNotEmpty) ...[
-                      Icon(Icons.calendar_today_rounded,
-                          size: 13, color: AppColors.textHint),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Joined $memberSince',
-                        style: AppTextStyles.bodySmall
-                            .copyWith(color: AppColors.textHint),
+                    // Avatar
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: streakTier.color.withValues(alpha: 0.6),
+                          width: 2.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: streakTier.color.withValues(alpha: 0.25),
+                            blurRadius: 10,
+                            spreadRadius: 1,
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 14),
-                    ],
-                    Icon(Icons.people_rounded,
-                        size: 13, color: AppColors.textHint),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$friendCount friends',
-                      style: AppTextStyles.bodySmall
-                          .copyWith(color: AppColors.textHint),
+                      child: CircleAvatar(
+                        radius: 32,
+                        backgroundColor: ActiveThemeColors.of(context)
+                            .primary
+                            .withValues(alpha: 0.1),
+                        backgroundImage: _resolveImage(profileImage),
+                        child: _resolveImage(profileImage) == null
+                            ? Text(
+                                username.isNotEmpty
+                                    ? username[0].toUpperCase()
+                                    : '?',
+                                style: AppTextStyles.displaySmall.copyWith(
+                                  color: ActiveThemeColors.of(context).primary,
+                                ),
+                              )
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Name + bio + meta
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            username,
+                            style: AppTextStyles.headlineSmall
+                                .copyWith(fontSize: 20),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (bio != null && bio.isNotEmpty) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              bio,
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: AppColors.textSecondary,
+                                fontSize: 13,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                          const SizedBox(height: 5),
+                          Row(
+                            children: [
+                              if (memberSince.isNotEmpty) ...[
+                                Icon(Icons.calendar_today_rounded,
+                                    size: 12, color: AppColors.textHint),
+                                const SizedBox(width: 3),
+                                Text(
+                                  memberSince,
+                                  style: AppTextStyles.bodySmall.copyWith(
+                                    color: AppColors.textHint,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                              ],
+                              Icon(Icons.people_rounded,
+                                  size: 12, color: AppColors.textHint),
+                              const SizedBox(width: 3),
+                              Text(
+                                '$friendCount friends',
+                                style: AppTextStyles.bodySmall.copyWith(
+                                  color: AppColors.textHint,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                // Row 2: Badges
+                Row(
+                  children: [
+                    // Level badge
+                    Container(
+                      width: 22,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: ActiveThemeColors.of(context).primary,
+                      ),
+                      child: Center(
+                        child: Text(
+                          '$level',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    // Streak tier badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: streakTier.color.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: streakTier.color.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(streakTier.icon,
+                              size: 12, color: streakTier.color),
+                          const SizedBox(width: 3),
+                          Text(
+                            streakTier.label,
+                            style: AppTextStyles.bodySmall.copyWith(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: streakTier.color,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -222,8 +326,8 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                   AppColors.duckLegendary),
               _statTile(Icons.local_drink_rounded, '${uniqueDrinks.length}',
                   'Drinks Tried', AppColors.primaryLight),
-              _statTile(Icons.favorite_rounded, '$totalHealthyPicks',
-                  'Healthy Picks', AppColors.error),
+              _statTile(Icons.bolt_rounded, '$totalXp', 'Total XP',
+                  ActiveThemeColors.of(context).primary),
             ],
           ),
           const SizedBox(height: 12),
@@ -493,6 +597,14 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
   String _formatWater(double oz) {
     if (oz >= 1000) return '${(oz / 128).toStringAsFixed(1)}gal';
     return '${oz.toInt()}oz';
+  }
+
+  StreakTier _streakTierFor(int streak) {
+    if (streak >= 30) return StreakTier.platinum;
+    if (streak >= 20) return StreakTier.gold;
+    if (streak >= 15) return StreakTier.silver;
+    if (streak >= 10) return StreakTier.bronze;
+    return StreakTier.normal;
   }
 
   ImageProvider? _resolveImage(String? url) {

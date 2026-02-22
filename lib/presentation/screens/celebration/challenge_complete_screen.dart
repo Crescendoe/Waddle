@@ -148,37 +148,19 @@ class _ChallengeCompleteScreenState extends State<ChallengeCompleteScreen>
                   children: [
                     const Spacer(),
 
-                    // Challenge mascot in glowing circle
-                    Container(
+                    // Challenge mascot
+                    SizedBox(
                       width: 120,
                       height: 120,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            challenge.color.withValues(alpha: 0.2),
-                            challenge.color.withValues(alpha: 0.08),
-                          ],
-                        ),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: challenge.color.withValues(alpha: 0.35),
-                            blurRadius: 28,
-                            spreadRadius: 6,
-                          ),
-                        ],
-                      ),
-                      child: ClipOval(
-                        child: Image.asset(
-                          challenge.imagePath,
-                          width: 120,
-                          height: 120,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Icon(
-                            Icons.emoji_events_rounded,
-                            size: 64,
-                            color: challenge.color,
-                          ),
+                      child: Image.asset(
+                        challenge.imagePath,
+                        width: 120,
+                        height: 120,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Icon(
+                          Icons.emoji_events_rounded,
+                          size: 64,
+                          color: challenge.color,
                         ),
                       ),
                     ).animate().scale(

@@ -838,6 +838,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 children: [
                   _changelogVersion(
+                    version: '0.9.3',
+                    date: 'February 21, 2026',
+                    changes: [
+                      _ChangeEntry(
+                        icon: Icons.egg_rounded,
+                        title: 'Duck Avatars',
+                        description:
+                            'Ducks now display as uniquely tinted versions of Wade instead of emojis — in the collection, profile badge, home overlay, and water cup.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.lock_open_rounded,
+                        title: 'Unlock Celebrations',
+                        description:
+                            'A brand-new celebration screen with sparkle effects pops up whenever you unlock a new duck companion or theme.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.auto_awesome_rounded,
+                        title: 'Frosted Glass Nav Bar',
+                        description:
+                            'The bottom navigation bar now has a frosted glass look with rounded top corners and a subtle blur effect.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.auto_graph_rounded,
+                        title: 'XP & Leveling System',
+                        description:
+                            'Earn XP from logging drinks, healthy picks, daily quests, and meeting your goal. Level up to earn bonus drops.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.task_alt_rounded,
+                        title: 'Daily Quests',
+                        description:
+                            'Three rotating daily challenges that reward XP and drops — log specific drinks, hit hydration milestones, and more.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.storefront_rounded,
+                        title: 'Shop & Inventory',
+                        description:
+                            'Spend drops in the new shop on boosters like Double XP. Items are tracked in your inventory.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.bug_report_rounded,
+                        title: 'Bug Fixes',
+                        description:
+                            'Fixed profile stats (total days logged, days since joined) showing zero. Fixed createdAt backfill for existing accounts.',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  _changelogVersion(
                     version: '0.9.2',
                     date: 'February 2026',
                     changes: [

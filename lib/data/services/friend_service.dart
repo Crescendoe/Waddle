@@ -378,6 +378,7 @@ class FriendService {
       'waterGoal': (data['waterGoal'] as num?)?.toDouble() ?? 80.0,
       'friendCount': data['friendCount'] as int? ?? 0,
       'createdAt': (data['createdAt'] as Timestamp?)?.toDate(),
+      'totalXp': data['totalXp'] as int? ?? 0,
     };
   }
 

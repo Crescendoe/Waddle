@@ -103,41 +103,14 @@ class ChallengesScreen extends StatelessWidget {
         children: [
           Row(
             children: [
-              // Larger art render with gradient circle
-              Container(
+              // Challenge mascot art
+              Image.asset(
+                challenge.imagePath,
                 width: 64,
                 height: 64,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      challenge.color.withValues(alpha: 0.2),
-                      challenge.color.withValues(alpha: 0.08),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: challenge.color.withValues(alpha: 0.15),
-                      blurRadius: 10,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Image.asset(
-                    challenge.imagePath,
-                    width: 64,
-                    height: 64,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Icon(
-                        Icons.emoji_events_rounded,
-                        size: 40,
-                        color: challenge.color),
-                  ),
-                ),
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Icon(Icons.emoji_events_rounded,
+                    size: 40, color: challenge.color),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -306,32 +279,15 @@ class ChallengesScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     // Large challenge mascot art
-                    Container(
+                    Image.asset(
+                      challenge.imagePath,
                       width: 120,
                       height: 120,
-                      decoration: BoxDecoration(
-                        color: challenge.color.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: challenge.color.withValues(alpha: 0.2),
-                            blurRadius: 20,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: ClipOval(
-                        child: Image.asset(
-                          challenge.imagePath,
-                          width: 120,
-                          height: 120,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Icon(
-                            Icons.emoji_events_rounded,
-                            size: 64,
-                            color: challenge.color,
-                          ),
-                        ),
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Icon(
+                        Icons.emoji_events_rounded,
+                        size: 64,
+                        color: challenge.color,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -585,91 +541,154 @@ class _ChallengeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locked = hasActiveChallenge && !isActive && !isCompleted;
+
     return GestureDetector(
       onTap: onTap,
-      child: GlassCard(
-        margin: EdgeInsets.zero,
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    challenge.color.withValues(alpha: 0.18),
-                    challenge.color.withValues(alpha: 0.06),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: challenge.color.withValues(alpha: 0.12),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.none,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                challenge.color.withValues(alpha: 0.14),
+                challenge.color.withValues(alpha: 0.04),
+              ],
+            ),
+          ),
+          child: Row(
+            children: [
+              // Large Wade image
+              Image.asset(
+                challenge.imagePath,
+                width: 80,
+                height: 80,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Icon(Icons.emoji_events_rounded,
+                    color: challenge.color, size: 40),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Status pill
+                    if (isActive)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: challenge.color,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'ACTIVE',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 9,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      )
+                    else if (isCompleted)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.green,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.check_rounded,
+                                size: 10, color: Colors.white),
+                            const SizedBox(width: 3),
+                            Text(
+                              'COMPLETED',
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 9,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    Text(
+                      challenge.title,
+                      style: AppTextStyles.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 19,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    // Description + action on same row
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            challenge.shortDescription,
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: locked
+                                ? AppColors.textHint.withValues(alpha: 0.1)
+                                : challenge.color.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            isCompleted
+                                ? '✅'
+                                : isActive
+                                    ? 'View'
+                                    : locked
+                                        ? '🔒'
+                                        : 'Start',
+                            style: TextStyle(
+                              color:
+                                  locked ? AppColors.textHint : challenge.color,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: challenge.color.withValues(alpha: 0.1),
-                    blurRadius: 6,
-                  ),
-                ],
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: Image.asset(
-                  challenge.imagePath,
-                  width: 56,
-                  height: 56,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Icon(Icons.emoji_events_rounded,
-                      color: challenge.color, size: 28),
-                ),
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    challenge.title,
-                    style: AppTextStyles.bodyLarge.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    challenge.shortDescription,
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            if (isCompleted)
-              const Icon(Icons.check_circle_rounded,
-                  color: Colors.green, size: 24)
-            else if (isActive)
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: challenge.color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  'Active',
-                  style: TextStyle(
-                    color: challenge.color,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              )
-            else
-              const Icon(Icons.chevron_right_rounded,
-                  color: AppColors.textHint),
-          ],
+            ],
+          ),
         ),
       ),
     );

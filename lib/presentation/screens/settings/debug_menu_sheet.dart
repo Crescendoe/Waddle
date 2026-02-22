@@ -30,6 +30,8 @@ class _DebugMenuSheetState extends State<DebugMenuSheet> {
   int _totalDrinks = 0;
   int _totalGoalsMet = 0;
   int _completedChallenges = 0;
+  double _totalXp = 0;
+  double _drops = 0;
 
   @override
   void initState() {
@@ -46,6 +48,8 @@ class _DebugMenuSheetState extends State<DebugMenuSheet> {
       _totalDrinks = h.totalDrinksLogged;
       _totalGoalsMet = h.totalGoalsMet;
       _completedChallenges = h.completedChallenges;
+      _totalXp = h.totalXp.toDouble();
+      _drops = h.drops.toDouble();
     }
   }
 
@@ -126,6 +130,24 @@ class _DebugMenuSheetState extends State<DebugMenuSheet> {
                       subtitle: 'Simulate midnight reset (clears today data)',
                       onTap: _forceDailyReset,
                     ),
+                    _triggerTile(
+                      icon: Icons.star_rounded,
+                      label: 'Award XP (+50)',
+                      subtitle: 'Add 50 XP to trigger bar animation & toast',
+                      onTap: _awardDebugXp,
+                    ),
+                    _triggerTile(
+                      icon: Icons.water_drop_rounded,
+                      label: 'Award Drops (+25)',
+                      subtitle: 'Add 25 drops to trigger count-up & toast',
+                      onTap: _awardDebugDrops,
+                    ),
+                    _triggerTile(
+                      icon: Icons.auto_awesome_rounded,
+                      label: 'Award XP + Drops',
+                      subtitle: 'Add 50 XP & 25 drops simultaneously',
+                      onTap: _awardDebugBoth,
+                    ),
                     const SizedBox(height: 12),
                     _section('Notifications'),
                     _triggerTile(
@@ -199,6 +221,24 @@ class _DebugMenuSheetState extends State<DebugMenuSheet> {
                       max: 6,
                       onChanged: (v) =>
                           setState(() => _completedChallenges = v),
+                    ),
+                    _sliderTile(
+                      label: 'Total XP',
+                      value: _totalXp.clamp(0, 50000),
+                      min: 0,
+                      max: 50000,
+                      divisions: 500,
+                      display: '${_totalXp.toInt()} XP',
+                      onChanged: (v) => setState(() => _totalXp = v),
+                    ),
+                    _sliderTile(
+                      label: 'Drops Balance',
+                      value: _drops.clamp(0, 5000),
+                      min: 0,
+                      max: 5000,
+                      divisions: 500,
+                      display: '${_drops.toInt()} 💧',
+                      onChanged: (v) => setState(() => _drops = v),
                     ),
                     const SizedBox(height: 8),
                     SizedBox(
@@ -580,6 +620,8 @@ class _DebugMenuSheetState extends State<DebugMenuSheet> {
       totalDrinksLogged: _totalDrinks,
       totalGoalsMet: _totalGoalsMet,
       completedChallenges: _completedChallenges,
+      totalXp: _totalXp.toInt(),
+      drops: _drops.toInt(),
     );
     _showSnack('Overrides applied ✓');
   }
@@ -613,6 +655,8 @@ class _DebugMenuSheetState extends State<DebugMenuSheet> {
                 totalDrinksLogged: 0,
                 totalGoalsMet: 0,
                 completedChallenges: 0,
+                totalXp: 0,
+                drops: 0,
                 goalMetToday: false,
                 clearNextEntryTime: true,
               );
@@ -625,6 +669,8 @@ class _DebugMenuSheetState extends State<DebugMenuSheet> {
                 _totalDrinks = 0;
                 _totalGoalsMet = 0;
                 _completedChallenges = 0;
+                _totalXp = 0;
+                _drops = 0;
               });
               _showSnack('All stats reset to zero ✓');
             },
@@ -649,6 +695,45 @@ class _DebugMenuSheetState extends State<DebugMenuSheet> {
         duration: Duration(seconds: 2),
       ),
     );
+  }
+
+  // ── XP / Drops debug triggers ──────────────────────────────────
+
+  void _awardDebugXp() {
+    final cubit = context.read<HydrationCubit>();
+    final state = cubit.state;
+    if (state is HydrationLoaded) {
+      final newXp = state.hydration.totalXp + 50;
+      cubit.debugOverrideState(totalXp: newXp);
+      setState(() => _totalXp = newXp.toDouble());
+      _showSnack('+50 XP awarded ✓');
+    }
+  }
+
+  void _awardDebugDrops() {
+    final cubit = context.read<HydrationCubit>();
+    final state = cubit.state;
+    if (state is HydrationLoaded) {
+      final newDrops = state.hydration.drops + 25;
+      cubit.debugOverrideState(drops: newDrops);
+      setState(() => _drops = newDrops.toDouble());
+      _showSnack('+25 drops awarded ✓');
+    }
+  }
+
+  void _awardDebugBoth() {
+    final cubit = context.read<HydrationCubit>();
+    final state = cubit.state;
+    if (state is HydrationLoaded) {
+      final newXp = state.hydration.totalXp + 50;
+      final newDrops = state.hydration.drops + 25;
+      cubit.debugOverrideState(totalXp: newXp, drops: newDrops);
+      setState(() {
+        _totalXp = newXp.toDouble();
+        _drops = newDrops.toDouble();
+      });
+      _showSnack('+50 XP & +25 drops awarded ✓');
+    }
   }
 
   void _showSnack(String msg) {

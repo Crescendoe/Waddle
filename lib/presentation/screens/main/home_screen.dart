@@ -10,9 +10,12 @@ import 'package:waddle/domain/entities/drink_type.dart';
 import 'package:waddle/domain/entities/hydration_state.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_cubit.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_state.dart';
+import 'package:waddle/presentation/screens/celebration/unlock_reward_screen.dart';
 import 'package:waddle/presentation/widgets/common.dart';
 import 'package:waddle/presentation/widgets/water_cup.dart';
 import 'package:waddle/presentation/screens/main/drink_selection_sheet.dart';
+import 'package:waddle/presentation/widgets/daily_quests_card.dart';
+
 import 'package:waddle/core/utils/session_animation_tracker.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -29,9 +32,18 @@ class _HomeScreenState extends State<HomeScreen> {
   late final bool _animate =
       SessionAnimationTracker.shouldAnimate(SessionAnimationTracker.home);
 
+  // ── XP / Drops animation tracking ──────────────────────────────
+  int _prevTotalXp = -1;
+  int _prevDrops = -1;
+  int _toastXp = 0;
+  int _toastDrops = 0;
+  bool _showToast = false;
+  Timer? _toastTimer;
+
   @override
   void dispose() {
     _cooldownTimer?.cancel();
+    _toastTimer?.cancel();
     super.dispose();
   }
 
@@ -86,6 +98,48 @@ class _HomeScreenState extends State<HomeScreen> {
             extra: {'challengeIndex': state.challengeIndex},
           );
         }
+        if (state is RewardUnlocked) {
+          HapticFeedback.mediumImpact();
+          // Show the first unlocked duck, or first unlocked theme
+          if (state.newDuckIndices.isNotEmpty) {
+            context.pushNamed(
+              'unlockReward',
+              extra: {
+                'type': UnlockRewardType.duck,
+                'duckIndex': state.newDuckIndices.first,
+              },
+            );
+          } else if (state.newThemeIds.isNotEmpty) {
+            context.pushNamed(
+              'unlockReward',
+              extra: {
+                'type': UnlockRewardType.theme,
+                'themeId': state.newThemeIds.first,
+              },
+            );
+          }
+        }
+        // Track XP / drops changes for animated toast
+        if (state is HydrationLoaded) {
+          final h = state.hydration;
+          if (_prevTotalXp >= 0) {
+            final xpDelta = h.totalXp - _prevTotalXp;
+            final dropsDelta = h.drops - _prevDrops;
+            if (xpDelta > 0 || dropsDelta > 0) {
+              setState(() {
+                _toastXp = xpDelta;
+                _toastDrops = dropsDelta;
+                _showToast = true;
+              });
+              _toastTimer?.cancel();
+              _toastTimer = Timer(const Duration(seconds: 2), () {
+                if (mounted) setState(() => _showToast = false);
+              });
+            }
+          }
+          _prevTotalXp = h.totalXp;
+          _prevDrops = h.drops;
+        }
       },
       builder: (context, state) {
         if (state is HydrationLoading || state is HydrationInitial) {
@@ -132,20 +186,27 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(
                     children: [
                       _buildHeader(hydration, loaded),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 6),
+                      _buildXpStrip(hydration),
+                      const SizedBox(height: 14),
                       _buildWaterCupSection(loaded),
                       const SizedBox(height: 20),
                       _buildDrinkButton(hydration),
                       const SizedBox(height: 20),
                       _buildTodayLogs(loaded),
-                      const SizedBox(height: 20),
-                      if (hydration.hasActiveChallenge)
+                      const SizedBox(height: 14),
+                      const DailyQuestsCard(),
+                      if (hydration.hasActiveChallenge) ...[
+                        const SizedBox(height: 14),
                         _buildChallengeCard(hydration),
+                      ],
                     ],
                   ),
                 ),
               ),
             ),
+            // Reward toast overlay
+            _buildRewardToastOverlay(),
           ],
         );
       },
@@ -290,6 +351,166 @@ class _HomeScreenState extends State<HomeScreen> {
     ).animateOnce(_animate).fadeIn();
   }
 
+  /// Ultra-slim XP strip — level label, progress bar with XP count, drops counter.
+  Widget _buildXpStrip(HydrationState hydration) {
+    final tc = ActiveThemeColors.of(context);
+    final level = hydration.level;
+    final progress = hydration.levelProgress;
+    final xpInto = hydration.xpIntoLevel;
+    final xpNeeded = hydration.xpToNext;
+
+    return Row(
+      children: [
+        // Level label
+        Text(
+          'Lvl $level',
+          style: TextStyle(
+            color: tc.primary,
+            fontWeight: FontWeight.w800,
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Thin progress bar (animated)
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(end: progress),
+              duration: const Duration(milliseconds: 800),
+              curve: Curves.easeOutCubic,
+              builder: (context, animatedProgress, _) =>
+                  LinearProgressIndicator(
+                value: animatedProgress,
+                minHeight: 5,
+                backgroundColor: tc.primary.withValues(alpha: 0.12),
+                valueColor: AlwaysStoppedAnimation<Color>(tc.primary),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        // XP count
+        Text(
+          '$xpInto/$xpNeeded',
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(width: 10),
+        // Drops balance
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: tc.accent.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.water_drop, size: 15, color: tc.accent),
+              const SizedBox(width: 3),
+              TweenAnimationBuilder<double>(
+                tween: Tween<double>(end: hydration.drops.toDouble()),
+                duration: const Duration(milliseconds: 800),
+                curve: Curves.easeOutCubic,
+                builder: (context, animatedDrops, _) => Text(
+                  '${animatedDrops.round()}',
+                  style: TextStyle(
+                    color: tc.accent,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Floating reward toast that appears just below the XP strip.
+  Widget _buildRewardToastOverlay() {
+    final tc = ActiveThemeColors.of(context);
+    return Positioned(
+      top: MediaQuery.of(context).padding.top + 82,
+      left: 0,
+      right: 0,
+      child: IgnorePointer(
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.12),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+              border: Border.all(
+                color: tc.primary.withValues(alpha: 0.2),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_toastXp > 0) ...[
+                  Icon(Icons.star_rounded, size: 16, color: tc.primary),
+                  const SizedBox(width: 4),
+                  Text(
+                    '+$_toastXp XP',
+                    style: TextStyle(
+                      color: tc.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+                if (_toastXp > 0 && _toastDrops > 0)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Container(
+                      width: 3,
+                      height: 3,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.textHint,
+                      ),
+                    ),
+                  ),
+                if (_toastDrops > 0) ...[
+                  Icon(Icons.water_drop, size: 16, color: tc.accent),
+                  const SizedBox(width: 4),
+                  Text(
+                    '+$_toastDrops',
+                    style: TextStyle(
+                      color: tc.accent,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          )
+              .animate(target: _showToast ? 1 : 0)
+              .fadeIn(duration: 300.ms, curve: Curves.easeOutCubic)
+              .slideY(
+                  begin: -0.5,
+                  end: 0,
+                  duration: 300.ms,
+                  curve: Curves.easeOutCubic),
+        ),
+      ),
+    );
+  }
+
   Widget _buildWaterCupSection(HydrationLoaded state) {
     final hydration = state.hydration;
     final cupSize = MediaQuery.of(context).size.width * 0.78;
@@ -303,6 +524,7 @@ class _HomeScreenState extends State<HomeScreen> {
           showDetails: _showDrinkDetails,
           todayLogs: state.todayLogs,
           cupDuckCount: hydration.homeDuckIndices.length,
+          cupDuckIndices: hydration.homeDuckIndices,
           onTapToggle: () =>
               setState(() => _showDrinkDetails = !_showDrinkDetails),
         ),
