@@ -121,3 +121,23 @@ class ChallengeFailed extends HydrationBlocState {
   @override
   List<Object?> get props => [challengeIndex, hydration];
 }
+
+/// Emitted when a duck or theme is newly unlocked.
+class RewardUnlocked extends HydrationBlocState {
+  final HydrationState hydration;
+
+  /// Indices of newly-unlocked ducks (may be empty).
+  final List<int> newDuckIndices;
+
+  /// IDs of newly-unlocked themes (may be empty).
+  final List<String> newThemeIds;
+
+  const RewardUnlocked({
+    required this.hydration,
+    this.newDuckIndices = const [],
+    this.newThemeIds = const [],
+  });
+
+  @override
+  List<Object?> get props => [hydration, newDuckIndices, newThemeIds];
+}

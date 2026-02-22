@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:waddle/presentation/widgets/duck_avatar.dart';
 
 /// Overlay widget that displays up to 3 animated ducks on the home screen.
 ///
@@ -318,7 +319,10 @@ class _AnimatedDuckState extends State<_AnimatedDuck>
           ),
         );
       },
-      child: const Text('🦆', style: TextStyle(fontSize: _sz)),
+      child: DuckAvatar.fromIndex(
+        index: widget.duckIndex,
+        size: _sz,
+      ),
     );
   }
 

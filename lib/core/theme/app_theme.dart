@@ -173,7 +173,7 @@ class AppTextStyles {
       );
 
   static TextStyle get waterAmount => GoogleFonts.cherryBombOne(
-        fontSize: 48,
+        fontSize: 56,
         color: AppColors.primary,
       );
 

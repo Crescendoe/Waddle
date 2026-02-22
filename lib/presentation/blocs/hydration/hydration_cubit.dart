@@ -4,9 +4,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:waddle/core/constants/app_constants.dart';
 import 'package:waddle/core/di/injection.dart';
 import 'package:waddle/data/services/notification_service.dart';
+import 'package:waddle/domain/entities/app_theme_reward.dart';
+import 'package:waddle/domain/entities/daily_quest.dart';
 import 'package:waddle/domain/entities/drink_type.dart';
+import 'package:waddle/domain/entities/duck_companion.dart';
 import 'package:waddle/domain/entities/hydration_state.dart';
+import 'package:waddle/domain/entities/shop_item.dart';
 import 'package:waddle/domain/entities/water_log.dart';
+import 'package:waddle/domain/entities/xp_level.dart';
 import 'package:waddle/domain/repositories/health_repository.dart';
 import 'package:waddle/domain/repositories/hydration_repository.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_state.dart';
@@ -40,6 +45,12 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
       (hydrationState) async {
         // Check if daily reset needed
         final checkedState = _checkDailyReset(hydrationState);
+
+        // Persist to Firestore if the reset changed the state (e.g.
+        // totalDaysLogged incremented, daily water zeroed, quests refreshed)
+        if (checkedState != hydrationState) {
+          _hydrationRepository.saveHydrationState(userId, checkedState);
+        }
 
         // Load today's logs
         final logsResult = await _hydrationRepository.getLogsForDate(
@@ -104,7 +115,60 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
             ? currentState.hydration.uniqueDrinksLogged
             : [...currentState.hydration.uniqueDrinksLogged, drinkName];
 
-    final newState = currentState.hydration.copyWith(
+    // ── XP calculation ──────────────────────────────────────────────
+    final isFirstDrink = currentState.todayLogs.isEmpty;
+    final xpMultiplier =
+        currentState.hydration.inventory.doubleXpActive ? 2 : 1;
+    int earnedXp = XpEvent.logDrink.xp * xpMultiplier;
+    if (isHealthy) earnedXp += XpEvent.healthyPick.xp * xpMultiplier;
+    if (isFirstDrink) earnedXp += XpEvent.firstDrinkOfDay.xp * xpMultiplier;
+
+    // ── Daily quest progress ────────────────────────────────────────
+    final questState = _ensureDailyQuests(currentState.hydration, now);
+    final updatedQuests = _advanceQuests(
+      quests: questState.dailyQuests,
+      todayLogs: [...currentState.todayLogs, log],
+      hydration: questState,
+      newDrinkName: drinkName,
+      isHealthy: isHealthy,
+      goalMet: goalMet,
+      logTime: now,
+    );
+
+    // Award XP + drops for any newly-completed quests
+    int questXp = 0;
+    int questDrops = 0;
+    final prevQuests = questState.dailyQuests;
+    for (int i = 0; i < updatedQuests.length; i++) {
+      if (updatedQuests[i].completed && !prevQuests[i].completed) {
+        final tmpl = DailyQuests.byId(updatedQuests[i].questId);
+        if (tmpl != null) {
+          questXp += tmpl.xpReward * xpMultiplier;
+          questDrops += tmpl.dropsReward;
+        }
+      }
+    }
+
+    // Bonus for completing ALL 3 quests
+    final allQuestsNow = updatedQuests.every((q) => q.completed);
+    final allQuestsBefore = prevQuests.every((q) => q.completed);
+    if (allQuestsNow && !allQuestsBefore) {
+      questXp += XpEvent.allDailyQuests.xp * xpMultiplier;
+      questDrops += 20; // bonus drops
+    }
+
+    final totalEarnedXp = earnedXp + questXp;
+
+    // ── Check level-up for drops reward ─────────────────────────────
+    final prevLevel = XpLevel.levelForXp(questState.totalXp);
+    final newTotalXp = questState.totalXp + totalEarnedXp;
+    final newLevel = XpLevel.levelForXp(newTotalXp);
+    int levelUpDrops = 0;
+    if (newLevel > prevLevel) {
+      levelUpDrops = (newLevel - prevLevel) * 50;
+    }
+
+    final newState = questState.copyWith(
       waterConsumedOz: newConsumed,
       goalMetToday: goalMet,
       nextEntryTime:
@@ -116,6 +180,9 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
           ? currentState.hydration.totalHealthyPicks + 1
           : currentState.hydration.totalHealthyPicks,
       uniqueDrinksLogged: updatedUnique,
+      totalXp: newTotalXp,
+      drops: questState.drops + questDrops + levelUpDrops,
+      dailyQuests: updatedQuests,
     );
 
     // Start fill animation
@@ -150,25 +217,55 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     }
 
     // Check goal
+    HydrationState latestState = newState;
     if (goalMet && !currentState.hydration.goalMetToday) {
       final oldStreak = currentState.hydration.currentStreak;
+      final xpMul = currentState.hydration.inventory.doubleXpActive ? 2 : 1;
+
+      // XP + Drops for meeting goal
+      int goalXp = XpEvent.dailyGoalMet.xp * xpMul;
+      int goalDrops = 5;
+
       // Increment streak and total goals met
+      final newStreakVal = newState.currentStreak + 1;
       final streakState = newState.copyWith(
-        currentStreak: newState.currentStreak + 1,
-        recordStreak: (newState.currentStreak + 1) > newState.recordStreak
-            ? newState.currentStreak + 1
+        currentStreak: newStreakVal,
+        recordStreak: newStreakVal > newState.recordStreak
+            ? newStreakVal
             : newState.recordStreak,
         totalGoalsMet: newState.totalGoalsMet + 1,
       );
-      await _hydrationRepository.saveHydrationState(_userId, streakState);
+
+      // Check streak milestone bonus
+      if (StreakMilestones.isMilestone(newStreakVal)) {
+        goalXp += XpEvent.streakMilestone.xp * xpMul;
+        goalDrops += 30;
+      }
+
+      // Update quest progress for meetGoal type
+      final goalQuests = _advanceQuests(
+        quests: streakState.dailyQuests,
+        todayLogs: [...currentState.todayLogs, log],
+        hydration: streakState,
+        goalMet: true,
+        logTime: now,
+      );
+
+      final goalState = streakState.copyWith(
+        totalXp: streakState.totalXp + goalXp,
+        drops: streakState.drops + goalDrops,
+        dailyQuests: goalQuests,
+      );
+
+      await _hydrationRepository.saveHydrationState(_userId, goalState);
 
       // Brief delay for fill animation to finish, then show congrats
       await Future.delayed(const Duration(milliseconds: 1500));
       final updatedLogs = [...currentState.todayLogs, log];
       emit(GoalReached(
-        streakState,
+        goalState,
         oldStreak: oldStreak,
-        newStreak: streakState.currentStreak,
+        newStreak: goalState.currentStreak,
       ));
 
       // Fire goal-reached local notification
@@ -179,10 +276,15 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
       // Immediately return to loaded state so the home screen rebuilds
       // correctly when the user pops the congrats screen.
       emit(HydrationLoaded(
-        hydration: streakState,
+        hydration: goalState,
         todayLogs: updatedLogs,
       ));
+
+      latestState = goalState;
     }
+
+    // Check for new duck / theme unlocks after every drink
+    await _checkNewUnlocks(latestState, [...currentState.todayLogs, log]);
   }
 
   /// Remove a water log entry
@@ -534,6 +636,13 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
       uniqueDrinksLogged: allDrinks,
       totalGoalsMet: 300,
       clearNextEntryTime: true,
+      totalXp: 25000,
+      drops: 999,
+      inventory: const UserInventory(
+        streakFreezes: 3,
+        doubleXpTokens: 2,
+        cooldownSkips: 5,
+      ),
     );
 
     emit(currentState.copyWith(hydration: debugState));
@@ -565,6 +674,8 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     int? totalDaysLogged,
     int? totalDrinksLogged,
     int? totalGoalsMet,
+    int? totalXp,
+    int? drops,
     bool clearNextEntryTime = false,
   }) {
     if (_realState == null) return; // not in debug mode
@@ -582,6 +693,8 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
       totalDaysLogged: totalDaysLogged,
       totalDrinksLogged: totalDrinksLogged,
       totalGoalsMet: totalGoalsMet,
+      totalXp: totalXp,
+      drops: drops,
       clearNextEntryTime: clearNextEntryTime,
     );
 
@@ -592,6 +705,64 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
   void rescheduleDailyReset() => _scheduleDailyReset();
 
   // ── Private helpers ────────────────────────────────────────────────
+
+  /// Checks whether any duck companions or themes have just become unlocked
+  /// that the user hasn't seen yet. If so, emits [RewardUnlocked] followed by
+  /// [HydrationLoaded] and persists the updated seen-lists.
+  Future<void> _checkNewUnlocks(
+      HydrationState hydration, List<WaterLog> todayLogs) async {
+    final newDuckIndices = <int>[];
+    for (final duck in DuckCompanions.all) {
+      if (duck.unlockCondition.isUnlocked(
+            currentStreak: hydration.currentStreak,
+            recordStreak: hydration.recordStreak,
+            completedChallenges: hydration.completedChallenges,
+            totalWaterConsumed: hydration.totalWaterConsumedOz,
+            totalDaysLogged: hydration.totalDaysLogged,
+          ) &&
+          !hydration.seenDuckIndices.contains(duck.index)) {
+        newDuckIndices.add(duck.index);
+      }
+    }
+
+    final newThemeIds = <String>[];
+    for (final theme in ThemeRewards.all) {
+      if (theme.unlockCondition.isUnlocked(
+            recordStreak: hydration.recordStreak,
+            totalDaysLogged: hydration.totalDaysLogged,
+            completedChallenges: hydration.completedChallenges,
+            totalOzConsumed: hydration.totalWaterConsumedOz,
+            totalHealthyPicks: hydration.totalHealthyPicks,
+            uniqueDrinks: hydration.uniqueDrinksLogged.length,
+            totalGoalsMet: hydration.totalGoalsMet,
+            totalDrinksLogged: hydration.totalDrinksLogged,
+          ) &&
+          !hydration.seenThemeIds.contains(theme.id)) {
+        newThemeIds.add(theme.id);
+      }
+    }
+
+    if (newDuckIndices.isEmpty && newThemeIds.isEmpty) return;
+
+    final updated = hydration.copyWith(
+      seenDuckIndices: [...hydration.seenDuckIndices, ...newDuckIndices],
+      seenThemeIds: [...hydration.seenThemeIds, ...newThemeIds],
+    );
+
+    await _hydrationRepository.saveHydrationState(_userId, updated);
+
+    emit(RewardUnlocked(
+      hydration: updated,
+      newDuckIndices: newDuckIndices,
+      newThemeIds: newThemeIds,
+    ));
+
+    // Return to loaded state so the home screen can rebuild correctly.
+    emit(HydrationLoaded(
+      hydration: updated,
+      todayLogs: todayLogs,
+    ));
+  }
 
   void _animateWaterFill({
     required double from,
@@ -658,11 +829,29 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     if (lastReset.isBefore(today)) {
       // New day — reset
       int newStreak = state.currentStreak;
+      bool usedFreeze = false;
+
+      // Count the previous day as a logged day if any water was consumed
+      final int addDay = state.waterConsumedOz > 0 ? 1 : 0;
+
       if (state.goalMetToday) {
         // Keep streak (already incremented when goal met)
       } else if (state.waterConsumedOz > 0) {
-        newStreak = 0; // Didn't meet goal
+        // Didn't meet goal — try streak freeze
+        if (state.inventory.streakFreezes > 0) {
+          usedFreeze = true;
+          // Streak preserved, freeze consumed
+        } else {
+          newStreak = 0; // Didn't meet goal
+        }
       }
+
+      // Reset daily quests + doubleXp flag for new day
+      final newQuests = DailyQuests.pickForDay(now);
+      final todayStr =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final questProgress =
+          newQuests.map((q) => DailyQuestProgress(questId: q.id)).toList();
 
       return state.copyWith(
         waterConsumedOz: 0.0,
@@ -670,6 +859,15 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
         lastResetDate: now,
         clearNextEntryTime: true,
         currentStreak: newStreak,
+        totalDaysLogged: state.totalDaysLogged + addDay,
+        dailyQuests: questProgress,
+        dailyQuestsDate: todayStr,
+        inventory: usedFreeze
+            ? state.inventory.copyWith(
+                streakFreezes: state.inventory.streakFreezes - 1,
+                doubleXpActive: false,
+              )
+            : state.inventory.copyWith(doubleXpActive: false),
       );
     }
 
@@ -737,6 +935,186 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
       }
       _scheduleDailyReset(); // Reschedule
     });
+  }
+
+  // ── Shop & Inventory ──────────────────────────────────────────────
+
+  /// Purchase a shop item. Returns false if insufficient drops or at max.
+  Future<bool> purchaseShopItem(ShopItem item) async {
+    if (_realState != null) return false;
+
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return false;
+
+    final hydration = currentState.hydration;
+    if (hydration.drops < item.price) return false;
+    if (!hydration.inventory.canPurchase(item)) return false;
+
+    UserInventory newInventory;
+    switch (item.id) {
+      case 'streak_freeze':
+        newInventory = hydration.inventory.copyWith(
+          streakFreezes: hydration.inventory.streakFreezes + 1,
+        );
+        break;
+      case 'double_xp':
+        newInventory = hydration.inventory.copyWith(
+          doubleXpTokens: hydration.inventory.doubleXpTokens + 1,
+        );
+        break;
+      case 'cooldown_skip':
+        newInventory = hydration.inventory.copyWith(
+          cooldownSkips: hydration.inventory.cooldownSkips + 1,
+        );
+        break;
+      default:
+        return false;
+    }
+
+    final newState = hydration.copyWith(
+      drops: hydration.drops - item.price,
+      inventory: newInventory,
+    );
+
+    emit(currentState.copyWith(hydration: newState));
+    await _hydrationRepository.saveHydrationState(_userId, newState);
+    return true;
+  }
+
+  /// Activate a Double-XP token (consumed immediately, lasts until midnight).
+  Future<bool> activateDoubleXp() async {
+    if (_realState != null) return false;
+
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return false;
+
+    final hydration = currentState.hydration;
+    if (hydration.inventory.doubleXpTokens <= 0) return false;
+    if (hydration.inventory.doubleXpActive) return false;
+
+    final newInventory = hydration.inventory.copyWith(
+      doubleXpTokens: hydration.inventory.doubleXpTokens - 1,
+      doubleXpActive: true,
+    );
+
+    final newState = hydration.copyWith(inventory: newInventory);
+    emit(currentState.copyWith(hydration: newState));
+    await _hydrationRepository.saveHydrationState(_userId, newState);
+    return true;
+  }
+
+  /// Use a cooldown-skip item to clear the drink-logging timer.
+  Future<bool> useCooldownSkip() async {
+    if (_realState != null) return false;
+
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return false;
+
+    final hydration = currentState.hydration;
+    if (hydration.inventory.cooldownSkips <= 0) return false;
+
+    final newInventory = hydration.inventory.copyWith(
+      cooldownSkips: hydration.inventory.cooldownSkips - 1,
+    );
+
+    final newState = hydration.copyWith(
+      clearNextEntryTime: true,
+      inventory: newInventory,
+    );
+
+    emit(currentState.copyWith(hydration: newState));
+    await _hydrationRepository.saveHydrationState(_userId, newState);
+    return true;
+  }
+
+  // ── Daily Quests helpers ──────────────────────────────────────────
+
+  /// Ensures daily quests are initialised for today. If the stored
+  /// `dailyQuestsDate` differs from today, picks new quests.
+  HydrationState _ensureDailyQuests(HydrationState h, DateTime now) {
+    final todayStr =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    if (h.dailyQuestsDate == todayStr && h.dailyQuests.isNotEmpty) return h;
+
+    final quests = DailyQuests.pickForDay(now);
+    final progress =
+        quests.map((q) => DailyQuestProgress(questId: q.id)).toList();
+    return h.copyWith(
+      dailyQuests: progress,
+      dailyQuestsDate: todayStr,
+    );
+  }
+
+  /// Recompute progress for each quest slot given updated state.
+  List<DailyQuestProgress> _advanceQuests({
+    required List<DailyQuestProgress> quests,
+    required List<WaterLog> todayLogs,
+    required HydrationState hydration,
+    String? newDrinkName,
+    bool isHealthy = false,
+    bool goalMet = false,
+    DateTime? logTime,
+  }) {
+    return quests.map((qp) {
+      if (qp.completed) return qp; // already done
+
+      final tmpl = DailyQuests.byId(qp.questId);
+      if (tmpl == null) return qp;
+
+      int progress;
+      switch (tmpl.type) {
+        case DailyQuestType.logDrinks:
+          progress = todayLogs.length;
+          break;
+        case DailyQuestType.drinkOz:
+          progress = hydration.waterConsumedOz.round();
+          break;
+        case DailyQuestType.healthyPicks:
+          progress = todayLogs.where((l) {
+            final d = DrinkTypes.byName(l.drinkName);
+            return d != null &&
+                (d.healthTier == HealthTier.excellent ||
+                    d.healthTier == HealthTier.good);
+          }).length;
+          break;
+        case DailyQuestType.earlyBird:
+          // target is hour threshold — progress is 1 if any log before that hour
+          final hasBefore =
+              todayLogs.any((l) => l.entryTime.hour < tmpl.target);
+          progress = hasBefore ? 1 : 0;
+          break;
+        case DailyQuestType.uniqueDrinks:
+          progress = todayLogs.map((l) => l.drinkName).toSet().length;
+          break;
+        case DailyQuestType.meetGoal:
+          progress = goalMet ? 1 : 0;
+          break;
+        case DailyQuestType.spreadHydration:
+          progress = todayLogs.map((l) => l.entryTime.hour).toSet().length;
+          break;
+      }
+
+      final isNowComplete = progress >= tmpl.target;
+      return qp.copyWith(
+        current: progress,
+        completed: isNowComplete,
+        completedAt: isNowComplete && !qp.completed ? DateTime.now() : null,
+      );
+    }).toList();
+  }
+
+  /// Public method to refresh quest display (e.g. when opening quests UI).
+  void refreshDailyQuests() {
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return;
+
+    final now = DateTime.now();
+    final updated = _ensureDailyQuests(currentState.hydration, now);
+
+    if (updated != currentState.hydration) {
+      emit(currentState.copyWith(hydration: updated));
+      _hydrationRepository.saveHydrationState(_userId, updated);
+    }
   }
 
   @override

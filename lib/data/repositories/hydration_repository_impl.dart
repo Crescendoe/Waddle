@@ -3,7 +3,9 @@ import 'package:dartz/dartz.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:waddle/core/constants/app_constants.dart';
 import 'package:waddle/core/error/failures.dart';
+import 'package:waddle/domain/entities/daily_quest.dart';
 import 'package:waddle/domain/entities/hydration_state.dart';
+import 'package:waddle/domain/entities/shop_item.dart';
 import 'package:waddle/domain/entities/water_log.dart';
 import 'package:waddle/domain/repositories/hydration_repository.dart';
 
@@ -85,6 +87,31 @@ class HydrationRepositoryImpl implements HydrationRepository {
                 ?.map((e) => (e as num).toInt())
                 .toList() ??
             const [],
+        // XP & Leveling
+        totalXp: (data['totalXp'] as num?)?.toInt() ?? 0,
+        // Currency
+        drops: (data['drops'] as num?)?.toInt() ?? 0,
+        // Daily Quests
+        dailyQuests: (data['dailyQuests'] as List<dynamic>?)
+                ?.map((e) => DailyQuestProgress.fromMap(
+                    Map<String, dynamic>.from(e as Map)))
+                .toList() ??
+            const [],
+        dailyQuestsDate: data['dailyQuestsDate'] as String?,
+        // Inventory
+        inventory: data['inventory'] != null
+            ? UserInventory.fromMap(
+                Map<String, dynamic>.from(data['inventory'] as Map))
+            : const UserInventory(),
+        // Seen unlock rewards
+        seenDuckIndices: (data['seenDuckIndices'] as List<dynamic>?)
+                ?.map((e) => (e as num).toInt())
+                .toList() ??
+            const [],
+        seenThemeIds: (data['seenThemeIds'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            const [],
       );
 
       // Cache locally
@@ -148,6 +175,18 @@ class HydrationRepositoryImpl implements HydrationRepository {
         'activeDuckIndex': state.activeDuckIndex,
         'cupDuckIndex': state.cupDuckIndex,
         'homeDuckIndices': state.homeDuckIndices,
+        // XP & Leveling
+        'totalXp': state.totalXp,
+        // Currency
+        'drops': state.drops,
+        // Daily Quests
+        'dailyQuests': state.dailyQuests.map((q) => q.toMap()).toList(),
+        'dailyQuestsDate': state.dailyQuestsDate,
+        // Inventory
+        'inventory': state.inventory.toMap(),
+        // Seen unlock rewards
+        'seenDuckIndices': state.seenDuckIndices,
+        'seenThemeIds': state.seenThemeIds,
       }, SetOptions(merge: true));
 
       _cacheState(state);

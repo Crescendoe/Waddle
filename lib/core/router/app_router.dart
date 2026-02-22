@@ -19,6 +19,7 @@ import 'package:waddle/presentation/screens/settings/terms_of_service_screen.dar
 import 'package:waddle/presentation/screens/celebration/congrats_screen.dart';
 import 'package:waddle/presentation/screens/celebration/challenge_complete_screen.dart';
 import 'package:waddle/presentation/screens/celebration/challenge_failed_screen.dart';
+import 'package:waddle/presentation/screens/celebration/unlock_reward_screen.dart';
 import 'package:waddle/presentation/screens/splash/splash_screen.dart';
 
 class AppRouter {
@@ -125,6 +126,18 @@ class AppRouter {
             final extra = state.extra as Map<String, dynamic>? ?? {};
             return ChallengeFailedScreen(
               challengeIndex: extra['challengeIndex'] as int? ?? 0,
+            );
+          },
+        ),
+        GoRoute(
+          path: '/unlock-reward',
+          name: 'unlockReward',
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>? ?? {};
+            return UnlockRewardScreen(
+              type: extra['type'] as UnlockRewardType? ?? UnlockRewardType.duck,
+              duckIndex: extra['duckIndex'] as int?,
+              themeId: extra['themeId'] as String?,
             );
           },
         ),

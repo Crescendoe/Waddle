@@ -31,7 +31,6 @@ class _QuestionsScreenState extends State<QuestionsScreen>
 
   // Wheel animation
   late AnimationController _scaleAnimController;
-  late Animation<double> _scaleAnim;
 
   // Current values from wheels
   double _heightFeet = 5;
@@ -56,9 +55,6 @@ class _QuestionsScreenState extends State<QuestionsScreen>
     _scaleAnimController = AnimationController(
       duration: const Duration(milliseconds: 1200),
       vsync: this,
-    );
-    _scaleAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _scaleAnimController, curve: Curves.elasticOut),
     );
     _scaleAnimController.forward();
   }

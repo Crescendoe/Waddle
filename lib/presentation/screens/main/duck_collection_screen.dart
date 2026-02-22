@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
@@ -6,7 +7,9 @@ import 'package:waddle/core/theme/app_theme.dart';
 import 'package:waddle/data/services/debug_mode_service.dart';
 import 'package:waddle/domain/entities/app_theme_reward.dart';
 import 'package:waddle/domain/entities/duck_companion.dart';
+import 'package:waddle/domain/entities/shop_item.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_cubit.dart';
+import 'package:waddle/presentation/widgets/duck_avatar.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_state.dart';
 import 'package:waddle/presentation/widgets/common.dart';
 import 'package:waddle/core/utils/session_animation_tracker.dart';
@@ -27,7 +30,7 @@ class DuckCollectionScreen extends StatelessWidget {
 
         return GradientBackground(
           child: DefaultTabController(
-            length: 2,
+            length: 3,
             child: SafeArea(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -66,6 +69,7 @@ class DuckCollectionScreen extends StatelessWidget {
                         tabs: const [
                           Tab(text: 'Ducks'),
                           Tab(text: 'Themes'),
+                          Tab(text: 'Market'),
                         ],
                       ),
                     ),
@@ -79,6 +83,7 @@ class DuckCollectionScreen extends StatelessWidget {
                       children: [
                         _DucksTab(loaded: state, animate: _animate),
                         _ThemesTab(loaded: state, animate: _animate),
+                        _MarketTab(loaded: state, animate: _animate),
                       ],
                     ),
                   ),
@@ -222,10 +227,11 @@ class _DucksTab extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                   child: Center(
-                    child: isUnlocked
-                        ? const Text('🦆', style: TextStyle(fontSize: 40))
-                        : const Icon(Icons.egg_rounded,
-                            size: 36, color: Colors.grey),
+                    child: DuckAvatar(
+                      duck: duck,
+                      size: 70,
+                      locked: !isUnlocked,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -585,10 +591,11 @@ class _DuckCard extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               child: Center(
-                child: isUnlocked
-                    ? const Text('🦆', style: TextStyle(fontSize: 24))
-                    : const Icon(Icons.egg_rounded,
-                        size: 24, color: Colors.grey),
+                child: DuckAvatar(
+                  duck: duck,
+                  size: 42,
+                  locked: !isUnlocked,
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -759,6 +766,425 @@ class _ActionChip extends StatelessWidget {
                     : isActive
                         ? tc.accent
                         : tc.primary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Market tab — vibrant shop with personality
+// ═══════════════════════════════════════════════════════════════════════
+
+class _MarketTab extends StatelessWidget {
+  final HydrationLoaded loaded;
+  final bool animate;
+  const _MarketTab({required this.loaded, required this.animate});
+
+  @override
+  Widget build(BuildContext context) {
+    final hydration = loaded.hydration;
+    final tc = ActiveThemeColors.of(context);
+    final drops = hydration.drops;
+    final inventory = hydration.inventory;
+
+    return CustomScrollView(
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+          sliver: SliverList(
+            delegate: SliverChildListDelegate([
+              // ── Wallet strip ──
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      tc.primary,
+                      tc.primary.withValues(alpha: 0.82),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: tc.primary.withValues(alpha: 0.25),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.20),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.water_drop_rounded,
+                          color: Colors.white, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      '$drops',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 22,
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'drops',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.70),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (inventory.doubleXpActive)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color:
+                              const Color(0xFFFFD54F).withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.bolt_rounded,
+                                color: Color(0xFFFFD54F), size: 16),
+                            SizedBox(width: 3),
+                            Text(
+                              '2× XP',
+                              style: TextStyle(
+                                color: Color(0xFFFFD54F),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      Icon(Icons.storefront_rounded,
+                          color: Colors.white.withValues(alpha: 0.30),
+                          size: 28),
+                  ],
+                ),
+              )
+                  .animateOnce(animate)
+                  .fadeIn(duration: 400.ms)
+                  .slideY(begin: -0.06, end: 0),
+
+              const SizedBox(height: 14),
+
+              // ── Item cards ──
+              ...List.generate(ShopItems.all.length, (i) {
+                final item = ShopItems.all[i];
+                return Padding(
+                  padding: EdgeInsets.only(
+                      bottom: i < ShopItems.all.length - 1 ? 10 : 0),
+                  child: _MarketItemCard(
+                    item: item,
+                    drops: drops,
+                    inventory: inventory,
+                    themeColors: tc,
+                  ),
+                )
+                    .animateOnce(animate)
+                    .fadeIn(delay: (150 + i * 80).ms, duration: 400.ms)
+                    .slideY(begin: 0.05, end: 0, duration: 350.ms);
+              }),
+            ]),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Individual item card ────────────────────────────────────────────
+
+class _MarketItemCard extends StatelessWidget {
+  final ShopItem item;
+  final int drops;
+  final UserInventory inventory;
+  final ActiveThemeColors themeColors;
+
+  const _MarketItemCard({
+    required this.item,
+    required this.drops,
+    required this.inventory,
+    required this.themeColors,
+  });
+
+  Color get _darkColor {
+    final hsl = HSLColor.fromColor(item.color);
+    return hsl.withLightness((hsl.lightness - 0.25).clamp(0.0, 1.0)).toColor();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final owned = inventory.countOf(item.id);
+    final canAfford = drops >= item.price;
+    final canBuy = canAfford && inventory.canPurchase(item);
+    final isDoubleXp = item.id == 'double_xp';
+    final canActivate =
+        isDoubleXp && inventory.doubleXpTokens > 0 && !inventory.doubleXpActive;
+    final maxed = !inventory.canPurchase(item);
+
+    final dark = _darkColor;
+
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: item.color.withValues(alpha: 0.16),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ── Colored side strip with icon ──
+            Container(
+              width: 64,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    item.color.withValues(alpha: 0.30),
+                    item.color.withValues(alpha: 0.12),
+                  ],
+                ),
+              ),
+              child: Center(
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        item.color.withValues(alpha: 0.50),
+                        item.color.withValues(alpha: 0.22),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: item.color.withValues(alpha: 0.25),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Icon(item.icon, color: dark, size: 22),
+                ),
+              ),
+            ),
+
+            // ── Content ──
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Name + owned + price row
+                    Row(
+                      children: [
+                        Text(
+                          item.name,
+                          style: TextStyle(
+                            color: dark,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                          ),
+                        ),
+                        if (owned > 0) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: dark.withValues(alpha: 0.10),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '×$owned',
+                              style: TextStyle(
+                                color: dark,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                        const Spacer(),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.water_drop, size: 13, color: dark),
+                            const SizedBox(width: 2),
+                            Text(
+                              '${item.price}',
+                              style: TextStyle(
+                                color: dark,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+
+                    // Description
+                    Text(
+                      item.description,
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12.5,
+                        height: 1.3,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+
+                    // ── Action row ──
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: canBuy
+                                ? () async {
+                                    HapticFeedback.mediumImpact();
+                                    await context
+                                        .read<HydrationCubit>()
+                                        .purchaseShopItem(item);
+                                  }
+                                : null,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(vertical: 9),
+                              decoration: BoxDecoration(
+                                gradient: canBuy
+                                    ? LinearGradient(
+                                        colors: [item.color, dark],
+                                      )
+                                    : null,
+                                color: canBuy ? null : AppColors.surfaceLight,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: canBuy
+                                    ? [
+                                        BoxShadow(
+                                          color: item.color
+                                              .withValues(alpha: 0.30),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  maxed
+                                      ? 'Max Owned'
+                                      : canAfford
+                                          ? 'Buy Now'
+                                          : 'Not enough drops',
+                                  style: TextStyle(
+                                    color: canBuy
+                                        ? Colors.white
+                                        : AppColors.textHint,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (canActivate) ...[
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () async {
+                              HapticFeedback.lightImpact();
+                              await context
+                                  .read<HydrationCubit>()
+                                  .activateDoubleXp();
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 9),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFFFFD54F),
+                                    Color(0xFFF9A825),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFFFFD54F)
+                                        .withValues(alpha: 0.30),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.bolt_rounded,
+                                      color: Colors.white, size: 16),
+                                  SizedBox(width: 3),
+                                  Text(
+                                    'Use',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

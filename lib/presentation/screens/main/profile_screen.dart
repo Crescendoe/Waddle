@@ -25,6 +25,7 @@ import 'package:waddle/presentation/blocs/auth/auth_state.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_cubit.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_state.dart';
 import 'package:waddle/presentation/widgets/common.dart';
+import 'package:waddle/presentation/widgets/duck_avatar.dart';
 import 'package:waddle/core/utils/session_animation_tracker.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -146,8 +147,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return GlassCard(
       padding: const EdgeInsets.all(14),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top row: avatar + info + edit
+          // ── Row 1: Avatar + Name / Bio / Meta ──
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -199,7 +201,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             size: 10, color: Colors.white),
                       ),
                     ),
-                    // Duck badge (bottom-left)
                     if (hydration?.activeDuckIndex != null)
                       Positioned(
                         bottom: 0,
@@ -216,63 +217,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                             ],
                           ),
-                          child:
-                              const Text('🦆', style: TextStyle(fontSize: 14)),
+                          child: DuckAvatar.fromIndex(
+                            index: hydration!.activeDuckIndex!,
+                            size: 18,
+                          ),
                         ),
                       ),
                   ],
                 ),
               ),
               const SizedBox(width: 12),
-              // Name, bio, meta
+              // Name + bio + meta — gets full remaining width
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            user?.username ?? 'Hydration Hero',
-                            style: AppTextStyles.headlineSmall
-                                .copyWith(fontSize: 20),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        // Streak tier badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: streakTier.color.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: streakTier.color.withValues(alpha: 0.4),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(streakTier.icon,
-                                  size: 12, color: streakTier.color),
-                              const SizedBox(width: 3),
-                              Text(
-                                streakTier.label,
-                                style: AppTextStyles.bodySmall.copyWith(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: streakTier.color,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                    // Username — full width, no badges competing
+                    Text(
+                      user?.username ?? 'Hydration Hero',
+                      style: AppTextStyles.headlineSmall.copyWith(fontSize: 20),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     if (user?.bio != null && user!.bio!.isNotEmpty) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 3),
                       Text(
                         user.bio!,
                         style: AppTextStyles.bodySmall.copyWith(
@@ -283,13 +251,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
-                    const SizedBox(height: 6),
-                    // Meta row: member since, friends count
+                    const SizedBox(height: 5),
+                    // Meta row
                     Row(
                       children: [
                         Icon(Icons.calendar_today_rounded,
                             size: 12, color: AppColors.textHint),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 3),
                         Text(
                           memberSince,
                           style: AppTextStyles.bodySmall.copyWith(
@@ -297,10 +265,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             fontSize: 11,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 10),
                         Icon(Icons.people_rounded,
                             size: 12, color: AppColors.textHint),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 3),
                         Text(
                           '${_friends.length} friends',
                           style: AppTextStyles.bodySmall.copyWith(
@@ -316,44 +284,74 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
           const SizedBox(height: 10),
-          // Action buttons row
+          // ── Row 2: Badges + Actions strip ──
           Row(
             children: [
-              Expanded(
-                child: _outlinedButton(
-                  icon: Icons.edit_rounded,
-                  label: 'Edit Profile',
-                  onTap: () => context.pushNamed('editProfile'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _filledButton(
-                  icon: Icons.share_rounded,
-                  label: 'Share Stats',
-                  onTap: () => _shareStats(context),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                decoration: BoxDecoration(
-                  color: ActiveThemeColors.of(context)
-                      .primary
-                      .withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: ActiveThemeColors.of(context)
-                        .primary
-                        .withValues(alpha: 0.2),
+              // Level badge
+              if (hydration != null)
+                Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: ActiveThemeColors.of(context).primary,
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${hydration.level}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10,
+                      ),
+                    ),
                   ),
                 ),
-                child: IconButton(
-                  onPressed: () => context.pushNamed('settings'),
-                  icon: const Icon(Icons.settings_rounded, size: 20),
-                  color: ActiveThemeColors.of(context).primary,
-                  padding: const EdgeInsets.all(10),
-                  constraints: const BoxConstraints(),
+              if (hydration != null) const SizedBox(width: 6),
+              // Streak tier badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: streakTier.color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: streakTier.color.withValues(alpha: 0.4),
+                  ),
                 ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(streakTier.icon, size: 12, color: streakTier.color),
+                    const SizedBox(width: 3),
+                    Text(
+                      streakTier.label,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: streakTier.color,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              // Actions
+              _compactActionChip(
+                icon: Icons.edit_rounded,
+                label: 'Edit',
+                onTap: () => context.pushNamed('editProfile'),
+              ),
+              const SizedBox(width: 6),
+              _compactActionChip(
+                icon: Icons.share_rounded,
+                label: 'Share',
+                onTap: () => _shareStats(context),
+                filled: true,
+              ),
+              const SizedBox(width: 6),
+              _compactIconButton(
+                icon: Icons.settings_rounded,
+                onTap: () => context.pushNamed('settings'),
               ),
             ],
           ),
@@ -421,10 +419,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         color: AppColors.primaryLight,
       ),
       _StatData(
-        icon: Icons.favorite_rounded,
-        value: '${hydration.totalHealthyPicks}',
-        label: 'Healthy Picks',
-        color: AppColors.error,
+        icon: Icons.bolt_rounded,
+        value: '${hydration.totalXp}',
+        label: 'Total XP',
+        color: ActiveThemeColors.of(context).primary,
       ),
     ];
 
@@ -484,7 +482,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
-              '${stat.value}${stat.suffix}',
+              stat.value,
               style: AppTextStyles.labelMedium.copyWith(
                 fontWeight: FontWeight.bold,
                 color: stat.color,
@@ -897,44 +895,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // ═══════════════════════════════════════════════════════════════════
-  // SHARED BUTTON WIDGETS
+  // COMPACT BUTTON WIDGETS
   // ═══════════════════════════════════════════════════════════════════
-  Widget _outlinedButton({
+  Widget _compactActionChip({
     required IconData icon,
     required String label,
     required VoidCallback onTap,
+    bool filled = false,
   }) {
-    return OutlinedButton.icon(
-      onPressed: onTap,
-      icon: Icon(icon, size: 16),
-      label: Text(label, style: const TextStyle(fontSize: 13)),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: ActiveThemeColors.of(context).primary,
-        side: BorderSide(
-          color: ActiveThemeColors.of(context).primary.withValues(alpha: 0.3),
+    final tc = ActiveThemeColors.of(context);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: filled ? tc.primary : tc.primary.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(20),
+          border: filled
+              ? null
+              : Border.all(color: tc.primary.withValues(alpha: 0.25)),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: filled ? Colors.white : tc.primary),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: filled ? Colors.white : tc.primary,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _filledButton({
+  Widget _compactIconButton({
     required IconData icon,
-    required String label,
     required VoidCallback onTap,
   }) {
-    return ElevatedButton.icon(
-      onPressed: onTap,
-      icon: Icon(icon, size: 16),
-      label: Text(label, style: const TextStyle(fontSize: 13)),
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+    final tc = ActiveThemeColors.of(context);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: tc.primary.withValues(alpha: 0.06),
+          shape: BoxShape.circle,
+          border: Border.all(color: tc.primary.withValues(alpha: 0.25)),
         ),
+        child: Icon(icon, size: 16, color: tc.primary),
       ),
     );
   }
@@ -1109,13 +1123,11 @@ class _StatData {
   final String value;
   final String label;
   final Color color;
-  final String suffix;
 
   const _StatData({
     required this.icon,
     required this.value,
     required this.label,
     required this.color,
-    this.suffix = '',
   });
 }
