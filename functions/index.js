@@ -1,5 +1,6 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
+const escape = require("escape-html");
 admin.initializeApp();
 
 // Your helper function to send FCM messages
@@ -105,5 +106,5 @@ exports.testSendFCM = functions.https.onRequest(async (req, res) => {
   }
 
   await sendFcmMessage(targetToken, title, body);
-  res.send(`Attempted to send message to token: ${targetToken}`);
+  res.send(`Attempted to send message to token: ${escape(targetToken)}`);
 });
