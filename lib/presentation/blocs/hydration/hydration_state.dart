@@ -122,6 +122,24 @@ class ChallengeFailed extends HydrationBlocState {
   List<Object?> get props => [challengeIndex, hydration];
 }
 
+/// Emitted when the user reaches a new XP level.
+class LeveledUp extends HydrationBlocState {
+  final HydrationState hydration;
+  final int oldLevel;
+  final int newLevel;
+  final int dropsAwarded;
+
+  const LeveledUp({
+    required this.hydration,
+    required this.oldLevel,
+    required this.newLevel,
+    required this.dropsAwarded,
+  });
+
+  @override
+  List<Object?> get props => [hydration, oldLevel, newLevel, dropsAwarded];
+}
+
 /// Emitted when a duck or theme is newly unlocked.
 class RewardUnlocked extends HydrationBlocState {
   final HydrationState hydration;

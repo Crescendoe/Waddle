@@ -14,7 +14,6 @@ import 'package:waddle/presentation/screens/celebration/unlock_reward_screen.dar
 import 'package:waddle/presentation/widgets/common.dart';
 import 'package:waddle/presentation/widgets/water_cup.dart';
 import 'package:waddle/presentation/screens/main/drink_selection_sheet.dart';
-import 'package:waddle/presentation/widgets/daily_quests_card.dart';
 
 import 'package:waddle/core/utils/session_animation_tracker.dart';
 
@@ -96,6 +95,17 @@ class _HomeScreenState extends State<HomeScreen> {
           context.pushNamed(
             'challengeFailed',
             extra: {'challengeIndex': state.challengeIndex},
+          );
+        }
+        if (state is LeveledUp) {
+          HapticFeedback.heavyImpact();
+          context.pushNamed(
+            'levelUp',
+            extra: {
+              'oldLevel': state.oldLevel,
+              'newLevel': state.newLevel,
+              'dropsAwarded': state.dropsAwarded,
+            },
           );
         }
         if (state is RewardUnlocked) {
@@ -194,8 +204,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       _buildDrinkButton(hydration),
                       const SizedBox(height: 20),
                       _buildTodayLogs(loaded),
-                      const SizedBox(height: 14),
-                      const DailyQuestsCard(),
                       if (hydration.hasActiveChallenge) ...[
                         const SizedBox(height: 14),
                         _buildChallengeCard(hydration),

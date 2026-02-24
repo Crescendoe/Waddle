@@ -5,6 +5,7 @@ import 'package:waddle/core/constants/app_constants.dart';
 import 'package:waddle/core/di/injection.dart';
 import 'package:waddle/data/services/notification_service.dart';
 import 'package:waddle/domain/entities/app_theme_reward.dart';
+import 'package:waddle/domain/entities/challenge.dart';
 import 'package:waddle/domain/entities/daily_quest.dart';
 import 'package:waddle/domain/entities/drink_type.dart';
 import 'package:waddle/domain/entities/duck_companion.dart';
@@ -135,29 +136,9 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
       logTime: now,
     );
 
-    // Award XP + drops for any newly-completed quests
-    int questXp = 0;
-    int questDrops = 0;
-    final prevQuests = questState.dailyQuests;
-    for (int i = 0; i < updatedQuests.length; i++) {
-      if (updatedQuests[i].completed && !prevQuests[i].completed) {
-        final tmpl = DailyQuests.byId(updatedQuests[i].questId);
-        if (tmpl != null) {
-          questXp += tmpl.xpReward * xpMultiplier;
-          questDrops += tmpl.dropsReward;
-        }
-      }
-    }
-
-    // Bonus for completing ALL 3 quests
-    final allQuestsNow = updatedQuests.every((q) => q.completed);
-    final allQuestsBefore = prevQuests.every((q) => q.completed);
-    if (allQuestsNow && !allQuestsBefore) {
-      questXp += XpEvent.allDailyQuests.xp * xpMultiplier;
-      questDrops += 20; // bonus drops
-    }
-
-    final totalEarnedXp = earnedXp + questXp;
+    // NOTE: Quest rewards are now claimed manually on the challenges screen.
+    // Only base XP from the drink itself is awarded here.
+    final totalEarnedXp = earnedXp;
 
     // ── Check level-up for drops reward ─────────────────────────────
     final prevLevel = XpLevel.levelForXp(questState.totalXp);
@@ -165,7 +146,7 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     final newLevel = XpLevel.levelForXp(newTotalXp);
     int levelUpDrops = 0;
     if (newLevel > prevLevel) {
-      levelUpDrops = (newLevel - prevLevel) * 50;
+      levelUpDrops = (newLevel - prevLevel) * 30;
     }
 
     final newState = questState.copyWith(
@@ -181,7 +162,7 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
           : currentState.hydration.totalHealthyPicks,
       uniqueDrinksLogged: updatedUnique,
       totalXp: newTotalXp,
-      drops: questState.drops + questDrops + levelUpDrops,
+      drops: questState.drops + levelUpDrops,
       dailyQuests: updatedQuests,
     );
 
@@ -281,6 +262,21 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
       ));
 
       latestState = goalState;
+    }
+
+    // Check for level-up celebration
+    if (newLevel > prevLevel) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      emit(LeveledUp(
+        hydration: latestState,
+        oldLevel: prevLevel,
+        newLevel: newLevel,
+        dropsAwarded: levelUpDrops,
+      ));
+      emit(HydrationLoaded(
+        hydration: latestState,
+        todayLogs: [...currentState.todayLogs, log],
+      ));
     }
 
     // Check for new duck / theme unlocks after every drink
@@ -877,9 +873,18 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
   void _checkChallengeStatus(HydrationState hydrationState) {
     if (hydrationState.challengeCompleted &&
         hydrationState.activeChallengeIndex != null) {
+      // Award challenge completion XP + drops
+      final challenge =
+          Challenges.getByIndex(hydrationState.activeChallengeIndex!);
+      final xpMul = hydrationState.inventory.doubleXpActive ? 2 : 1;
+      final rewardedState = hydrationState.copyWith(
+        totalXp: hydrationState.totalXp + challenge.xpReward * xpMul,
+        drops: hydrationState.drops + challenge.dropsReward,
+      );
+      _hydrationRepository.saveHydrationState(_userId, rewardedState);
       emit(ChallengeCompleted(
         challengeIndex: hydrationState.activeChallengeIndex!,
-        hydration: hydrationState,
+        hydration: rewardedState,
       ));
     } else if (hydrationState.challengeFailed &&
         hydrationState.activeChallengeIndex != null) {
@@ -1115,6 +1120,71 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
       emit(currentState.copyWith(hydration: updated));
       _hydrationRepository.saveHydrationState(_userId, updated);
     }
+  }
+
+  /// Manually claim a completed daily quest reward.
+  /// Returns true if the claim was successful.
+  Future<bool> claimQuest(int questIndex) async {
+    if (_realState != null) return false;
+
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return false;
+
+    final quests = currentState.hydration.dailyQuests;
+    if (questIndex < 0 || questIndex >= quests.length) return false;
+
+    final quest = quests[questIndex];
+    if (!quest.completed || quest.claimed) return false;
+
+    final tmpl = DailyQuests.byId(quest.questId);
+    if (tmpl == null) return false;
+
+    final xpMul = currentState.hydration.inventory.doubleXpActive ? 2 : 1;
+    int claimedXp = tmpl.xpReward * xpMul;
+    int claimedDrops = tmpl.dropsReward;
+
+    // Mark this quest as claimed
+    final updatedQuests = List<DailyQuestProgress>.from(quests);
+    updatedQuests[questIndex] = quest.copyWith(claimed: true);
+
+    // Check if ALL quests are now claimed → bonus
+    final allClaimed = updatedQuests.every((q) => q.claimed);
+    if (allClaimed) {
+      claimedXp += XpEvent.allDailyQuests.xp * xpMul;
+      claimedDrops += 20; // bonus drops
+    }
+
+    final newState = currentState.hydration.copyWith(
+      totalXp: currentState.hydration.totalXp + claimedXp,
+      drops: currentState.hydration.drops + claimedDrops,
+      dailyQuests: updatedQuests,
+    );
+
+    emit(currentState.copyWith(hydration: newState));
+    await _hydrationRepository.saveHydrationState(_userId, newState);
+
+    // Check level-up after claim
+    final prevLevel = XpLevel.levelForXp(currentState.hydration.totalXp);
+    final newLevel = XpLevel.levelForXp(newState.totalXp);
+    if (newLevel > prevLevel) {
+      final levelUpDrops = (newLevel - prevLevel) * 30;
+      final levelState = newState.copyWith(
+        drops: newState.drops + levelUpDrops,
+      );
+      await _hydrationRepository.saveHydrationState(_userId, levelState);
+      emit(LeveledUp(
+        hydration: levelState,
+        oldLevel: prevLevel,
+        newLevel: newLevel,
+        dropsAwarded: levelUpDrops,
+      ));
+      emit(HydrationLoaded(
+        hydration: levelState,
+        todayLogs: currentState.todayLogs,
+      ));
+    }
+
+    return true;
   }
 
   @override

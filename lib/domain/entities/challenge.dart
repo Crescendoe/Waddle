@@ -13,6 +13,12 @@ class Challenge extends Equatable {
   final Color color;
   final int durationDays;
 
+  /// XP awarded on completion.
+  final int xpReward;
+
+  /// Drops (currency) awarded on completion.
+  final int dropsReward;
+
   const Challenge({
     required this.index,
     required this.title,
@@ -23,6 +29,8 @@ class Challenge extends Equatable {
     required this.imagePath,
     required this.color,
     this.durationDays = 14,
+    this.xpReward = 400,
+    this.dropsReward = 150,
   });
 
   @override

@@ -181,9 +181,20 @@ class _ShopItemTile extends StatelessWidget {
     final owned = inventory.countOf(item.id);
     final canAfford = drops >= item.price;
     final canBuy = canAfford && inventory.canPurchase(item);
-    final isDoubleXp = item.id == 'double_xp';
-    final canActivate =
-        isDoubleXp && inventory.doubleXpTokens > 0 && !inventory.doubleXpActive;
+
+    // Determine if the item can be activated / used right now
+    final bool canActivate;
+    switch (item.id) {
+      case 'double_xp':
+        canActivate = inventory.doubleXpTokens > 0 && !inventory.doubleXpActive;
+        break;
+      case 'cooldown_skip':
+        canActivate = inventory.cooldownSkips > 0;
+        break;
+      // streak_freeze is auto-used, no manual activation
+      default:
+        canActivate = false;
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
@@ -251,9 +262,8 @@ class _ShopItemTile extends StatelessWidget {
                     style: TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 11,
+                      height: 1.35,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -305,28 +315,69 @@ class _ShopItemTile extends StatelessWidget {
                   ),
                 ),
                 // Activate button (for consumables that have a "use" action)
-                if (canActivate) ...[
+                if (canActivate && owned > 0) ...[
                   const SizedBox(height: 4),
                   GestureDetector(
                     onTap: () async {
                       HapticFeedback.lightImpact();
-                      await context.read<HydrationCubit>().activateDoubleXp();
+                      final cubit = context.read<HydrationCubit>();
+                      bool success = false;
+                      String message = '';
+
+                      switch (item.id) {
+                        case 'double_xp':
+                          success = await cubit.activateDoubleXp();
+                          message = 'Double XP activated until midnight!';
+                          break;
+                        case 'cooldown_skip':
+                          success = await cubit.useCooldownSkip();
+                          message =
+                              'Cooldown cleared — log your next drink now!';
+                          break;
+                      }
+
+                      if (success && context.mounted) {
+                        Navigator.of(context).pop(); // close the shop sheet
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                Icon(item.icon, color: Colors.white, size: 20),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    message,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            backgroundColor: item.color,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                      }
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFD54F).withValues(alpha: 0.15),
+                        color: item.color.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color:
-                              const Color(0xFFFFD54F).withValues(alpha: 0.30),
+                          color: item.color.withValues(alpha: 0.30),
                         ),
                       ),
-                      child: const Text(
+                      child: Text(
                         'Use',
                         style: TextStyle(
-                          color: Color(0xFFFFD54F),
+                          color: item.color,
                           fontWeight: FontWeight.w600,
                           fontSize: 11,
                         ),
