@@ -121,7 +121,7 @@ class _DailyQuestsCardState extends State<DailyQuestsCard> {
   }
 }
 
-class _QuestRow extends StatelessWidget {
+class _QuestRow extends StatefulWidget {
   final DailyQuestProgress questProgress;
   final int questIndex;
   final ActiveThemeColors themeColor;
@@ -133,117 +133,184 @@ class _QuestRow extends StatelessWidget {
   });
 
   @override
+  State<_QuestRow> createState() => _QuestRowState();
+}
+
+class _QuestRowState extends State<_QuestRow> {
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
-    final tmpl = DailyQuests.byId(questProgress.questId);
+    final tmpl = DailyQuests.byId(widget.questProgress.questId);
     if (tmpl == null) return const SizedBox.shrink();
 
     final progress = tmpl.target > 0
-        ? (questProgress.current / tmpl.target).clamp(0.0, 1.0)
+        ? (widget.questProgress.current / tmpl.target).clamp(0.0, 1.0)
         : 0.0;
-    final isComplete = questProgress.completed;
-    final isClaimed = questProgress.claimed;
+    final isComplete = widget.questProgress.completed;
+    final isClaimed = widget.questProgress.claimed;
     final isClaimable = isComplete && !isClaimed;
+
+    final accentColor = isClaimed
+        ? const Color(0xFF66BB6A)
+        : isClaimable
+            ? const Color(0xFFFFA726)
+            : widget.themeColor.primary;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          // Icon
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: isClaimed
-                  ? const Color(0xFF66BB6A).withValues(alpha: 0.15)
-                  : isClaimable
-                      ? const Color(0xFFFFA726).withValues(alpha: 0.15)
-                      : themeColor.primary.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              isClaimed
-                  ? Icons.check_rounded
-                  : isClaimable
-                      ? Icons.card_giftcard_rounded
-                      : tmpl.icon,
-              size: 18,
-              color: isClaimed
-                  ? const Color(0xFF66BB6A)
-                  : isClaimable
-                      ? const Color(0xFFFFA726)
-                      : themeColor.primary,
-            ),
-          ),
-          const SizedBox(width: 10),
-          // Text + progress bar
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: GestureDetector(
+        onTap: () => setState(() => _expanded = !_expanded),
+        behavior: HitTestBehavior.opaque,
+        child: Column(
+          children: [
+            Row(
               children: [
-                Text(
-                  tmpl.title,
-                  style: TextStyle(
-                    color: isClaimed
-                        ? AppColors.textSecondary
-                        : AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                    decoration: isClaimed ? TextDecoration.lineThrough : null,
+                // Icon
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: accentColor.withValues(
+                        alpha: isClaimed
+                            ? 0.15
+                            : isClaimable
+                                ? 0.15
+                                : 0.10),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    isClaimed
+                        ? Icons.check_rounded
+                        : isClaimable
+                            ? Icons.card_giftcard_rounded
+                            : tmpl.icon,
+                    size: 18,
+                    color: accentColor,
                   ),
                 ),
-                const SizedBox(height: 4),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(3),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 5,
-                    backgroundColor: themeColor.primary.withValues(alpha: 0.12),
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      isClaimed
-                          ? const Color(0xFF66BB6A)
-                          : isClaimable
-                              ? const Color(0xFFFFA726)
-                              : themeColor.primary,
+                const SizedBox(width: 10),
+                // Text + progress bar
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        tmpl.title,
+                        style: TextStyle(
+                          color: isClaimed
+                              ? AppColors.textSecondary
+                              : AppColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          decoration:
+                              isClaimed ? TextDecoration.lineThrough : null,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(3),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 5,
+                          backgroundColor:
+                              widget.themeColor.primary.withValues(alpha: 0.12),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(accentColor),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Claim button or status
+                if (isClaimable)
+                  _ClaimButton(
+                    questIndex: widget.questIndex,
+                    xpReward: tmpl.xpReward,
+                    dropsReward: tmpl.dropsReward,
+                  )
+                else if (isClaimed)
+                  SizedBox(
+                    width: 52,
+                    child: Text(
+                      '+${tmpl.xpReward} XP',
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        color: Color(0xFF66BB6A),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  )
+                else
+                  SizedBox(
+                    width: 52,
+                    child: Text(
+                      '${widget.questProgress.current}/${tmpl.target}',
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
-          ),
-          const SizedBox(width: 8),
-          // Claim button or status
-          if (isClaimable)
-            _ClaimButton(
-              questIndex: questIndex,
-              xpReward: tmpl.xpReward,
-              dropsReward: tmpl.dropsReward,
-            )
-          else if (isClaimed)
-            SizedBox(
-              width: 52,
-              child: Text(
-                '+${tmpl.xpReward} XP',
-                textAlign: TextAlign.right,
-                style: const TextStyle(
-                  color: Color(0xFF66BB6A),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
+            // ── Expanded details ──
+            AnimatedCrossFade(
+              firstChild: const SizedBox.shrink(),
+              secondChild: Padding(
+                padding: const EdgeInsets.only(left: 46, top: 6, bottom: 2),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      tmpl.description,
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                        height: 1.3,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(Icons.star_rounded,
+                            size: 14, color: const Color(0xFFFFD54F)),
+                        const SizedBox(width: 3),
+                        Text(
+                          '+${tmpl.xpReward} XP',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFFFFD54F),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Icon(Icons.water_drop_rounded,
+                            size: 14, color: const Color(0xFF42A5F5)),
+                        const SizedBox(width: 3),
+                        Text(
+                          '+${tmpl.dropsReward} drops',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF42A5F5),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            )
-          else
-            SizedBox(
-              width: 52,
-              child: Text(
-                '${questProgress.current}/${tmpl.target}',
-                textAlign: TextAlign.right,
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 11,
-                ),
-              ),
+              crossFadeState: _expanded
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 200),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }

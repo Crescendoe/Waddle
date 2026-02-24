@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:waddle/core/constants/app_constants.dart';
 import 'package:waddle/core/theme/app_theme.dart';
 import 'package:waddle/core/utils/session_animation_tracker.dart';
@@ -16,83 +18,98 @@ class ChallengesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<HydrationCubit, HydrationBlocState>(
-      builder: (context, state) {
-        if (state is! HydrationLoaded) {
-          return const Center(child: WaddleLoader());
+    return BlocListener<HydrationCubit, HydrationBlocState>(
+      listener: (context, state) {
+        if (state is LeveledUp) {
+          HapticFeedback.heavyImpact();
+          context.pushNamed(
+            'levelUp',
+            extra: {
+              'oldLevel': state.oldLevel,
+              'newLevel': state.newLevel,
+              'dropsAwarded': state.dropsAwarded,
+            },
+          );
         }
+      },
+      child: BlocBuilder<HydrationCubit, HydrationBlocState>(
+        builder: (context, state) {
+          if (state is! HydrationLoaded) {
+            return const Center(child: WaddleLoader());
+          }
 
-        final hydration = state.hydration;
-        final _animate = SessionAnimationTracker.shouldAnimate(
-            SessionAnimationTracker.challenges);
+          final hydration = state.hydration;
+          final _animate = SessionAnimationTracker.shouldAnimate(
+              SessionAnimationTracker.challenges);
 
-        return GradientBackground(
-          child: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Challenges', style: AppTextStyles.displaySmall)
-                      .animateOnce(_animate)
-                      .fadeIn(),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${hydration.completedChallenges} of ${Challenges.all.length} completed',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ).animateOnce(_animate).fadeIn(delay: 100.ms),
-                  const SizedBox(height: 24),
-
-                  // ── Daily Quests (above challenges) ──
-                  const DailyQuestsCard()
-                      .animateOnce(_animate)
-                      .fadeIn(delay: 150.ms),
-                  const SizedBox(height: 20),
-
-                  // Active challenge card
-                  if (hydration.hasActiveChallenge)
-                    _buildActiveChallenge(context, hydration, _animate),
-
-                  // Challenge grid
-                  ...Challenges.all.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final challenge = entry.value;
-                    final isActive =
-                        hydration.activeChallengeIndex == challenge.index;
-                    final isCompleted =
-                        hydration.challengeActive[challenge.index];
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _ChallengeCard(
-                        challenge: challenge,
-                        isActive: isActive,
-                        isCompleted: isCompleted,
-                        hasActiveChallenge: hydration.hasActiveChallenge,
-                        onTap: () => _showChallengeDetail(
-                          context,
-                          challenge,
-                          isActive,
-                          isCompleted,
-                          hydration.hasActiveChallenge,
-                        ),
-                      ),
-                    )
+          return GradientBackground(
+            child: SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Challenges', style: AppTextStyles.displaySmall)
                         .animateOnce(_animate)
-                        .fadeIn(delay: (200 + index * 100).ms)
-                        .slideX(
-                          begin: 0.05,
-                          end: 0,
-                        );
-                  }),
-                ],
+                        .fadeIn(),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${hydration.completedChallenges} of ${Challenges.all.length} completed',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ).animateOnce(_animate).fadeIn(delay: 100.ms),
+                    const SizedBox(height: 24),
+
+                    // ── Daily Quests (above challenges) ──
+                    const DailyQuestsCard()
+                        .animateOnce(_animate)
+                        .fadeIn(delay: 150.ms),
+                    const SizedBox(height: 20),
+
+                    // Active challenge card
+                    if (hydration.hasActiveChallenge)
+                      _buildActiveChallenge(context, hydration, _animate),
+
+                    // Challenge grid
+                    ...Challenges.all.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final challenge = entry.value;
+                      final isActive =
+                          hydration.activeChallengeIndex == challenge.index;
+                      final isCompleted =
+                          hydration.challengeActive[challenge.index];
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _ChallengeCard(
+                          challenge: challenge,
+                          isActive: isActive,
+                          isCompleted: isCompleted,
+                          hasActiveChallenge: hydration.hasActiveChallenge,
+                          onTap: () => _showChallengeDetail(
+                            context,
+                            challenge,
+                            isActive,
+                            isCompleted,
+                            hydration.hasActiveChallenge,
+                          ),
+                        ),
+                      )
+                          .animateOnce(_animate)
+                          .fadeIn(delay: (200 + index * 100).ms)
+                          .slideX(
+                            begin: 0.05,
+                            end: 0,
+                          );
+                    }),
+                  ],
+                ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 

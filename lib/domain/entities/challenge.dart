@@ -29,8 +29,8 @@ class Challenge extends Equatable {
     required this.imagePath,
     required this.color,
     this.durationDays = 14,
-    this.xpReward = 200,
-    this.dropsReward = 75,
+    this.xpReward = 400,
+    this.dropsReward = 150,
   });
 
   @override
