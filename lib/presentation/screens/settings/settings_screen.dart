@@ -842,6 +842,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 children: [
                   _changelogVersion(
+                    version: '0.9.4',
+                    date: 'February 26, 2026',
+                    changes: [
+                      _ChangeEntry(
+                        icon: Icons.egg_rounded,
+                        title: 'Duck Redesign',
+                        description:
+                            'All 24 ducks overhauled — level-based unlocks removed (themes handle that now). Six new challenge-specific ducks '
+                            '(one per challenge) and more unique milestone ducks added.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.bolt_rounded,
+                        title: 'Powerup Fix',
+                        description:
+                            'The "Use" button in the Market tab now works for all powerups — Quick Sip (cooldown skip) was previously broken. '
+                            'Added confirmation feedback when activating items.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.text_fields_rounded,
+                        title: 'Powerup Descriptions',
+                        description:
+                            'Item descriptions in the Market tab are no longer cut off at two lines.',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  _changelogVersion(
                     version: '0.9.3',
                     date: 'February 21, 2026',
                     changes: [
