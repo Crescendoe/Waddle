@@ -373,6 +373,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       completedChallenges: hydration.completedChallenges,
       totalWaterConsumed: hydration.totalWaterConsumedOz,
       totalDaysLogged: hydration.totalDaysLogged,
+      totalHealthyPicks: hydration.totalHealthyPicks,
+      totalGoalsMet: hydration.totalGoalsMet,
+      totalDrinksLogged: hydration.totalDrinksLogged,
+      uniqueDrinks: hydration.uniqueDrinksLogged.length,
+      challengeActive: hydration.challengeActive,
     );
 
     final stats = [

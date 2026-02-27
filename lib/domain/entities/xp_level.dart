@@ -47,14 +47,16 @@ enum XpEvent {
 /// XP thresholds follow a gentle polynomial curve so early levels feel
 /// fast and later levels slow down — exactly like Duolingo.
 ///
-/// Level 1 starts at 0 XP.  Max practical level is 99.
+/// Level 1 starts at 0 XP.  Max level is 100.
 class XpLevel {
   XpLevel._();
+
+  static const int maxLevel = 100;
 
   /// Total XP required to reach [level].
   ///
   /// Formula: `40 * level^1.5` (rounded), so:
-  /// L1=0, L2=113, L3=208, L5=358, L10=1265, L20=3578, L50=14142, L99=39402
+  /// L1=0, L2=113, L5=358, L10=1265, L20=3578, L50=14142, L100=40000
   static int xpForLevel(int level) {
     if (level <= 1) return 0;
     return (40 * _pow15(level)).round();
@@ -67,7 +69,7 @@ class XpLevel {
   /// The user's current level given their total XP.
   static int levelForXp(int totalXp) {
     int lvl = 1;
-    while (xpForLevel(lvl + 1) <= totalXp && lvl < 99) {
+    while (xpForLevel(lvl + 1) <= totalXp && lvl < maxLevel) {
       lvl++;
     }
     return lvl;

@@ -50,5 +50,10 @@
 	<string>Waddle reads your water intake data from Apple Health to display your hydration history.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Waddle writes your logged water intake to Apple Health so it stays in sync across your apps.</string>
+	<!-- Camera & Photo Library for profile image -->
+	<key>NSCameraUsageDescription</key>
+	<string>Waddle uses the camera so you can take a profile photo.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Waddle accesses your photo library so you can choose a profile image.</string>
 </dict>
 </plist>
