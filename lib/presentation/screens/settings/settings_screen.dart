@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -289,6 +290,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ═══════════════════════════════════════════════════════════
 
   void _handleVersionTap() {
+    // Debug mode only available in debug builds
+    if (!kDebugMode) return;
+
     final now = DateTime.now();
 
     // Reset counter if more than 2 seconds since last tap

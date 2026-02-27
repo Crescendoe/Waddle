@@ -41,18 +41,19 @@ android {
 
     signingConfigs {
         release {
-            keyAlias = "crescendoe"
-            keyPassword = "Fluffy500!?Waddle"
-            storeFile = file("C:/Users/cwyle/source/repos VSC/Flutter/waddle/android/waddle_keystore.jks")
-            storePassword = "Fluffy500!?Waddle"
+            keyAlias = keyProperties['keyAlias']
+            keyPassword = keyProperties['keyPassword']
+            storeFile = keyProperties['storeFile'] ? file(keyProperties['storeFile']) : null
+            storePassword = keyProperties['storePassword']
         }
     }
 
     buildTypes {
         release {
             signingConfig = signingConfigs.release
-            shrinkResources false
-            minifyEnabled false
+            shrinkResources true
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }

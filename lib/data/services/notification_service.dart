@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -102,7 +104,13 @@ class NotificationService {
 
   Future<void> init() async {
     tz.initializeTimeZones();
-    tz.setLocalLocation(tz.getLocation(_guessTimezone()));
+    try {
+      final tzInfo = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(tzInfo.identifier));
+    } catch (e) {
+      debugPrint('Timezone detection failed, using UTC fallback: $e');
+      tz.setLocalLocation(tz.getLocation('UTC'));
+    }
 
     final androidImpl = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
@@ -142,18 +150,6 @@ class NotificationService {
     }
 
     await rescheduleAll();
-  }
-
-  String _guessTimezone() {
-    try {
-      final offset = DateTime.now().timeZoneOffset;
-      if (offset == const Duration(hours: -5)) return 'America/New_York';
-      if (offset == const Duration(hours: -6)) return 'America/Chicago';
-      if (offset == const Duration(hours: -7)) return 'America/Denver';
-      if (offset == const Duration(hours: -8)) return 'America/Los_Angeles';
-      if (offset == const Duration(hours: -4)) return 'America/New_York';
-    } catch (_) {}
-    return 'UTC';
   }
 
   // ══════════════════════════════════════════════════════════════

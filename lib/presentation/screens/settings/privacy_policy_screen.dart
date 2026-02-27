@@ -75,10 +75,22 @@ class PrivacyPolicyScreen extends StatelessWidget {
                     'Permissions',
                     '• Camera & Photos — To upload a profile image (optional)\n'
                         '• Notifications — To send reminders (optional)\n'
-                        '• Internet Access — To sync data and enable authentication\n'
-                        '• Health Data — To sync water intake with Apple Health / '
-                        'Google Health Connect (optional)\n\n'
+                        '• Internet Access — To sync data and enable authentication\n\n'
                         'You can control these permissions in your device settings.',
+                  ),
+                  _section(
+                    'Health Data (HealthKit / Health Connect)',
+                    'If you enable health sync, Waddle may read and write water '
+                        'intake data to Apple HealthKit (iOS) or Google Health '
+                        'Connect (Android). This data is:\n\n'
+                        '• Used solely to keep your hydration records in sync '
+                        'across health-related apps on your device.\n'
+                        '• Never transmitted to our servers, shared with third '
+                        'parties, or used for advertising.\n'
+                        '• Stored only on your device by the platform\'s health '
+                        'framework.\n\n'
+                        'You can enable or disable health sync at any time in '
+                        'Settings > Health Sync.',
                   ),
                   _section(
                     'Children\'s Privacy',

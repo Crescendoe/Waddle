@@ -52,20 +52,30 @@ The app may request the following permissions:
 
 You can control these permissions in your device settings.
 
-## 6. Children’s Privacy
+## 6. Health Data (Apple HealthKit / Google Health Connect)
+
+If you enable health sync, Waddle may read and write water intake (hydration) data to Apple HealthKit (iOS) or Google Health Connect (Android). This data is:
+
+- Used solely to keep your hydration records in sync across health-related apps on your device.
+- **Never transmitted to our servers, shared with third parties, or used for advertising.**
+- Stored only on your device by the platform's health framework.
+
+You can enable or disable health sync at any time in the app's Settings > Health Sync screen. Revoking health permissions in your device settings will immediately stop all reads and writes.
+
+## 7. Children's Privacy
 
 Waddle is not intended for children under the age of 13. We do not knowingly collect personal information from children under 13. If you believe we have collected such information, please contact us for removal.
 
-## 7. Your Rights
+## 8. Your Rights
 
 - You can access, update, or delete your account and hydration data at any time from within the app.
 - You may request deletion of your account and all associated data by contacting us at the email below.
 
-## 8. Changes to This Policy
+## 9. Changes to This Policy
 
 We may update this Privacy Policy from time to time. Changes will be posted in the app and/or on our website.
 
-## 9. Contact Us
+## 10. Contact Us
 
 If you have any questions or concerns about this Privacy Policy, please contact us at:
 
