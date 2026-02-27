@@ -7,6 +7,7 @@ import 'package:waddle/core/di/injection.dart';
 import 'package:waddle/core/router/app_router.dart';
 import 'package:waddle/core/theme/app_theme.dart';
 import 'package:waddle/data/services/notification_service.dart';
+import 'package:waddle/data/services/iap_service.dart';
 import 'package:waddle/firebase_options.dart';
 import 'package:waddle/presentation/blocs/auth/auth_cubit.dart';
 import 'package:waddle/presentation/blocs/auth/auth_state.dart';
@@ -38,6 +39,14 @@ void main() async {
 
     // Initialize local notification service (creates channels, restores schedules)
     await getIt<NotificationService>().init();
+
+    // Initialize in-app purchases (non-critical — fails gracefully on
+    // emulators or devices without Google Play Billing)
+    try {
+      await getIt<IapService>().init();
+    } catch (e) {
+      debugPrint('IAP init skipped (store unavailable): $e');
+    }
   } catch (e) {
     debugPrint('Initialization error: $e');
     // Run a minimal error app so the screen isn't black

@@ -9,6 +9,7 @@ import 'package:waddle/data/services/notification_service.dart';
 import 'package:waddle/data/services/app_settings_service.dart';
 import 'package:waddle/data/services/debug_mode_service.dart';
 import 'package:waddle/data/services/friend_service.dart';
+import 'package:waddle/data/services/iap_service.dart';
 import 'package:waddle/domain/repositories/auth_repository.dart';
 import 'package:waddle/domain/repositories/health_repository.dart';
 import 'package:waddle/domain/repositories/hydration_repository.dart';
@@ -62,6 +63,10 @@ Future<void> setupDependencies() async {
 
   getIt.registerLazySingleton<DebugModeService>(
     () => DebugModeService(),
+  );
+
+  getIt.registerLazySingleton<IapService>(
+    () => IapService(),
   );
 
   // Cubits

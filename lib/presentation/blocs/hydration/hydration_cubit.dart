@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:waddle/core/constants/app_constants.dart';
 import 'package:waddle/core/di/injection.dart';
@@ -12,6 +13,7 @@ import 'package:waddle/domain/entities/duck_companion.dart';
 import 'package:waddle/domain/entities/hydration_state.dart';
 import 'package:waddle/domain/entities/shop_item.dart';
 import 'package:waddle/domain/entities/water_log.dart';
+import 'package:waddle/data/services/iap_service.dart';
 import 'package:waddle/domain/entities/xp_level.dart';
 import 'package:waddle/domain/repositories/health_repository.dart';
 import 'package:waddle/domain/repositories/hydration_repository.dart';
@@ -24,6 +26,7 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
   Timer? _dailyResetTimer;
   Timer? _resetWatchdog;
   Timer? _animationTimer;
+  StreamSubscription<IapEvent>? _iapSub;
 
   HydrationCubit({
     required HydrationRepository hydrationRepository,
@@ -73,9 +76,100 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
 
         // Start periodic watchdog that catches missed resets
         _startResetWatchdog();
+
+        // Listen for IAP events (drop deliveries, subscription changes)
+        _listenToIap();
       },
     );
   }
+
+  // ── IAP integration ───────────────────────────────────────────────
+
+  void _listenToIap() {
+    try {
+      final iap = getIt<IapService>();
+      _iapSub?.cancel();
+      _iapSub = iap.events.listen(_handleIapEvent);
+    } catch (e) {
+      debugPrint('IAP service not available: $e');
+    }
+  }
+
+  void _handleIapEvent(IapEvent event) {
+    switch (event) {
+      case DropsDelivered(:final drops, :final productId):
+        _deliverPurchasedDrops(drops, productId);
+        break;
+      case SubscriptionUpdated(
+          :final isActive,
+          :final expiryDate,
+          :final productId
+        ):
+        _updateSubscription(isActive, expiryDate, productId);
+        break;
+      case PurchaseFailed(:final message):
+        debugPrint('IAP purchase failed: $message');
+        break;
+      case PurchaseProcessing():
+        debugPrint('IAP purchase processing...');
+        break;
+      case ProductsLoaded():
+        debugPrint('IAP products loaded');
+        break;
+    }
+  }
+
+  Future<void> _deliverPurchasedDrops(int drops, String productId) async {
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return;
+
+    final newState = currentState.hydration.copyWith(
+      drops: currentState.hydration.drops + drops,
+    );
+
+    emit(currentState.copyWith(hydration: newState));
+    await _hydrationRepository.saveHydrationState(_userId, newState);
+    debugPrint('Delivered $drops drops from purchase $productId');
+  }
+
+  Future<void> _updateSubscription(
+    bool isActive,
+    DateTime? expiryDate,
+    String? productId,
+  ) async {
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return;
+
+    final newState = currentState.hydration.copyWith(
+      isSubscribed: isActive,
+      subscriptionExpiry: expiryDate,
+      subscriptionProductId: productId,
+      clearSubscriptionExpiry: !isActive,
+      clearSubscriptionProductId: !isActive,
+    );
+
+    emit(currentState.copyWith(hydration: newState));
+    await _hydrationRepository.saveHydrationState(_userId, newState);
+  }
+
+  /// Set a custom nickname for the active duck (Waddle+ perk).
+  Future<bool> setDuckNickname(String name) async {
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return false;
+    if (!currentState.hydration.isSubscribed) return false;
+
+    final trimmed = name.trim();
+    if (trimmed.isEmpty || trimmed.length > 20) return false;
+
+    final newState = currentState.hydration.copyWith(duckNickname: trimmed);
+    emit(currentState.copyWith(hydration: newState));
+    await _hydrationRepository.saveHydrationState(_userId, newState);
+    return true;
+  }
+
+  /// Apply the Waddle+ 1.5× drop multiplier to earned drops.
+  int _subDrops(int drops, HydrationState h) =>
+      h.isSubscribed ? (drops * 1.5).round() : drops;
 
   /// Add water intake
   Future<void> addWater(
@@ -146,7 +240,7 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     final newLevel = XpLevel.levelForXp(newTotalXp);
     int levelUpDrops = 0;
     if (newLevel > prevLevel) {
-      levelUpDrops = (newLevel - prevLevel) * 30;
+      levelUpDrops = _subDrops((newLevel - prevLevel) * 30, questState);
     }
 
     final newState = questState.copyWith(
@@ -205,7 +299,7 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
 
       // XP + Drops for meeting goal
       int goalXp = XpEvent.dailyGoalMet.xp * xpMul;
-      int goalDrops = 5;
+      int goalDrops = _subDrops(5, currentState.hydration);
 
       // Increment streak and total goals met
       final newStreakVal = newState.currentStreak + 1;
@@ -220,7 +314,7 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
       // Check streak milestone bonus
       if (StreakMilestones.isMilestone(newStreakVal)) {
         goalXp += XpEvent.streakMilestone.xp * xpMul;
-        goalDrops += 30;
+        goalDrops += _subDrops(30, currentState.hydration);
       }
 
       // Update quest progress for meetGoal type
@@ -843,7 +937,8 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
       }
 
       // Reset daily quests + doubleXp flag for new day
-      final newQuests = DailyQuests.pickForDay(now);
+      final newQuests =
+          DailyQuests.pickForDay(now, count: state.isSubscribed ? 4 : 3);
       final todayStr =
           '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
       final questProgress =
@@ -879,7 +974,8 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
       final xpMul = hydrationState.inventory.doubleXpActive ? 2 : 1;
       final rewardedState = hydrationState.copyWith(
         totalXp: hydrationState.totalXp + challenge.xpReward * xpMul,
-        drops: hydrationState.drops + challenge.dropsReward,
+        drops: hydrationState.drops +
+            _subDrops(challenge.dropsReward, hydrationState),
       );
       _hydrationRepository.saveHydrationState(_userId, rewardedState);
       emit(ChallengeCompleted(
@@ -1065,7 +1161,7 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
         '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     if (h.dailyQuestsDate == todayStr && h.dailyQuests.isNotEmpty) return h;
 
-    final quests = DailyQuests.pickForDay(now);
+    final quests = DailyQuests.pickForDay(now, count: h.isSubscribed ? 4 : 3);
     final progress =
         quests.map((q) => DailyQuestProgress(questId: q.id)).toList();
     return h.copyWith(
@@ -1165,7 +1261,7 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
 
     final xpMul = currentState.hydration.inventory.doubleXpActive ? 2 : 1;
     int claimedXp = tmpl.xpReward * xpMul;
-    int claimedDrops = tmpl.dropsReward;
+    int claimedDrops = _subDrops(tmpl.dropsReward, currentState.hydration);
 
     // Mark this quest as claimed
     final updatedQuests = List<DailyQuestProgress>.from(quests);
@@ -1175,7 +1271,7 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     final allClaimed = updatedQuests.every((q) => q.claimed);
     if (allClaimed) {
       claimedXp += XpEvent.allDailyQuests.xp * xpMul;
-      claimedDrops += 20; // bonus drops
+      claimedDrops += _subDrops(20, currentState.hydration); // bonus drops
     }
 
     final newState = currentState.hydration.copyWith(
@@ -1191,7 +1287,8 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     final prevLevel = XpLevel.levelForXp(currentState.hydration.totalXp);
     final newLevel = XpLevel.levelForXp(newState.totalXp);
     if (newLevel > prevLevel) {
-      final levelUpDrops = (newLevel - prevLevel) * 30;
+      final levelUpDrops =
+          _subDrops((newLevel - prevLevel) * 30, currentState.hydration);
       final levelState = newState.copyWith(
         drops: newState.drops + levelUpDrops,
       );
@@ -1216,6 +1313,7 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     _dailyResetTimer?.cancel();
     _resetWatchdog?.cancel();
     _animationTimer?.cancel();
+    _iapSub?.cancel();
     return super.close();
   }
 }

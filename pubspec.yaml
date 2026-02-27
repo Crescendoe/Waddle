@@ -67,6 +67,9 @@ dependencies:
   rxdart: ^0.28.0
   flutter_timezone: ^5.0.1
 
+  # In-App Purchases
+  in_app_purchase: ^3.2.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -116,6 +116,12 @@ class HydrationRepositoryImpl implements HydrationRepository {
                 ?.map((e) => e.toString())
                 .toList() ??
             const [],
+        // Subscription
+        isSubscribed: data['isSubscribed'] as bool? ?? false,
+        subscriptionExpiry:
+            (data['subscriptionExpiry'] as Timestamp?)?.toDate(),
+        subscriptionProductId: data['subscriptionProductId'] as String?,
+        duckNickname: data['duckNickname'] as String?,
       );
 
       // Cache locally
@@ -192,6 +198,13 @@ class HydrationRepositoryImpl implements HydrationRepository {
         'seenDuckIndices': state.seenDuckIndices,
         'seenThemeIds': state.seenThemeIds,
         'purchasedThemeIds': state.purchasedThemeIds,
+        // Subscription
+        'isSubscribed': state.isSubscribed,
+        'subscriptionExpiry': state.subscriptionExpiry != null
+            ? Timestamp.fromDate(state.subscriptionExpiry!)
+            : null,
+        'subscriptionProductId': state.subscriptionProductId,
+        'duckNickname': state.duckNickname,
       }, SetOptions(merge: true));
 
       _cacheState(state);

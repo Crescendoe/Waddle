@@ -7,7 +7,9 @@ import 'package:waddle/core/theme/app_theme.dart';
 import 'package:waddle/data/services/debug_mode_service.dart';
 import 'package:waddle/domain/entities/app_theme_reward.dart';
 import 'package:waddle/domain/entities/duck_companion.dart';
+import 'package:waddle/domain/entities/iap_products.dart';
 import 'package:waddle/domain/entities/shop_item.dart';
+import 'package:waddle/data/services/iap_service.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_cubit.dart';
 import 'package:waddle/presentation/widgets/duck_avatar.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_state.dart';
@@ -951,6 +953,41 @@ class _MarketTab extends StatelessWidget {
                     .slideY(begin: 0.05, end: 0, duration: 350.ms);
               }),
 
+              // ── Get Drops section ──
+              const SizedBox(height: 22),
+              Text(
+                'Get Drops',
+                style: AppTextStyles.headlineSmall.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ).animateOnce(animate).fadeIn(delay: 350.ms),
+              const SizedBox(height: 4),
+              Text(
+                'Top up your Drops stash instantly',
+                style: AppTextStyles.bodySmall
+                    .copyWith(color: AppColors.textSecondary),
+              ).animateOnce(animate).fadeIn(delay: 370.ms),
+              const SizedBox(height: 12),
+              ...List.generate(DropBundles.all.length, (i) {
+                final bundle = DropBundles.all[i];
+                return Padding(
+                  padding: EdgeInsets.only(
+                      bottom: i < DropBundles.all.length - 1 ? 10 : 0),
+                  child: _DropBundleCard(bundle: bundle, themeColors: tc),
+                )
+                    .animateOnce(animate)
+                    .fadeIn(delay: (380 + i * 60).ms, duration: 400.ms)
+                    .slideY(begin: 0.05, end: 0, duration: 350.ms);
+              }),
+
+              // ── Waddle+ subscription section ──
+              const SizedBox(height: 22),
+              _WaddlePlusSection(
+                isSubscribed: hydration.isSubscribed,
+                themeColors: tc,
+                animate: animate,
+              ),
+
               // ── Theme shop section ──
               const SizedBox(height: 22),
               Text(
@@ -1542,6 +1579,441 @@ class _MarketThemeCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ─── Drop Bundle card (real-money IAP) ──────────────────────────────
+
+class _DropBundleCard extends StatelessWidget {
+  final DropBundle bundle;
+  final ActiveThemeColors themeColors;
+
+  const _DropBundleCard({required this.bundle, required this.themeColors});
+
+  @override
+  Widget build(BuildContext context) {
+    final iap = GetIt.instance<IapService>();
+    final storePrice = iap.priceFor(bundle.productId);
+    final displayPrice = storePrice ?? bundle.displayPrice;
+
+    final dark = HSLColor.fromColor(bundle.color)
+        .withLightness(
+            (HSLColor.fromColor(bundle.color).lightness - 0.25).clamp(0.0, 1.0))
+        .toColor();
+
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: bundle.color.withValues(alpha: 0.16),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ── Colored side strip with icon ──
+            Container(
+              width: 64,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    bundle.color.withValues(alpha: 0.30),
+                    bundle.color.withValues(alpha: 0.12),
+                  ],
+                ),
+              ),
+              child: Center(
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        bundle.color.withValues(alpha: 0.50),
+                        bundle.color.withValues(alpha: 0.22),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: bundle.color.withValues(alpha: 0.25),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Icon(bundle.icon, color: dark, size: 22),
+                ),
+              ),
+            ),
+
+            // ── Content ──
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          bundle.name,
+                          style: TextStyle(
+                            color: dark,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                          ),
+                        ),
+                        if (bundle.popular) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFF9800)
+                                  .withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'Popular',
+                              style: TextStyle(
+                                color: Color(0xFFFF9800),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                        if (bundle.bestValue) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF66BB6A)
+                                  .withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'Best Value',
+                              style: TextStyle(
+                                color: Color(0xFF66BB6A),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                        const Spacer(),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.water_drop, size: 13, color: dark),
+                            const SizedBox(width: 2),
+                            Text(
+                              '${bundle.drops}',
+                              style: TextStyle(
+                                color: dark,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      bundle.description,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12.5,
+                        height: 1.3,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: () async {
+                        HapticFeedback.mediumImpact();
+                        await iap.purchaseDropBundle(bundle);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 9),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [bundle.color, dark],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: bundle.color.withValues(alpha: 0.30),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            displayPrice,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Waddle+ subscription section ─────────────────────────────────
+
+class _WaddlePlusSection extends StatelessWidget {
+  final bool isSubscribed;
+  final ActiveThemeColors themeColors;
+  final bool animate;
+
+  const _WaddlePlusSection({
+    required this.isSubscribed,
+    required this.themeColors,
+    required this.animate,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final iap = GetIt.instance<IapService>();
+    const accentGold = Color(0xFFFFD54F);
+    const accentGoldDark = Color(0xFFF9A825);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.verified_rounded, color: accentGold, size: 22),
+            const SizedBox(width: 8),
+            Text(
+              'Waddle+',
+              style: AppTextStyles.headlineSmall.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            if (isSubscribed) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF66BB6A).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'Active',
+                  style: TextStyle(
+                    color: Color(0xFF66BB6A),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ).animateOnce(animate).fadeIn(delay: 550.ms),
+        const SizedBox(height: 4),
+        Text(
+          isSubscribed
+              ? 'You\'re enjoying premium perks!'
+              : 'Upgrade your hydration journey',
+          style:
+              AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+        ).animateOnce(animate).fadeIn(delay: 570.ms),
+        const SizedBox(height: 12),
+
+        // ── Perk list ──
+        ...List.generate(SubscriptionPerks.all.length, (i) {
+          final perk = SubscriptionPerks.all[i];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: perk.color.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: perk.color.withValues(alpha: 0.15),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: perk.color.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(perk.icon, color: perk.color, size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          perk.title,
+                          style: TextStyle(
+                            color: perk.color,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
+                        Text(
+                          perk.description,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 11,
+                            height: 1.3,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+              .animateOnce(animate)
+              .fadeIn(delay: (590 + i * 50).ms, duration: 350.ms)
+              .slideX(begin: 0.03, end: 0, duration: 300.ms);
+        }),
+
+        // ── Subscription buttons ──
+        if (!isSubscribed) ...[
+          const SizedBox(height: 6),
+          ...Subscriptions.all.map((tier) {
+            final storePrice = iap.priceFor(tier.productId);
+            final displayPrice = storePrice ?? tier.displayPrice;
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: GestureDetector(
+                onTap: () async {
+                  HapticFeedback.mediumImpact();
+                  await iap.purchaseSubscription(tier);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [accentGold, accentGoldDark],
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: accentGold.withValues(alpha: 0.30),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.verified_rounded,
+                          color: Colors.white, size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Subscribe $displayPrice',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                      if (tier.savings != null) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.25),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            tier.savings!,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+
+          // Restore purchases link
+          Center(
+            child: GestureDetector(
+              onTap: () async {
+                await iap.restorePurchases();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Checking for previous purchases...'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              },
+              child: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'Restore Purchases',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

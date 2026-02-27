@@ -53,6 +53,14 @@ class HydrationState extends Equatable {
   // ── Purchased market themes ───────────────────────────────────────
   final List<String> purchasedThemeIds;
 
+  // ── Subscription (Waddle+) ────────────────────────────────────────
+  final bool isSubscribed;
+  final DateTime? subscriptionExpiry;
+  final String? subscriptionProductId;
+
+  // ── Custom duck nickname (subscriber perk) ────────────────────────
+  final String? duckNickname;
+
   const HydrationState({
     this.waterConsumedOz = 0.0,
     this.waterGoalOz = 80.0,
@@ -86,6 +94,10 @@ class HydrationState extends Equatable {
     this.seenDuckIndices = const [],
     this.seenThemeIds = const [],
     this.purchasedThemeIds = const [],
+    this.isSubscribed = false,
+    this.subscriptionExpiry,
+    this.subscriptionProductId,
+    this.duckNickname,
   });
 
   double get progressPercent =>
@@ -164,6 +176,13 @@ class HydrationState extends Equatable {
     List<int>? seenDuckIndices,
     List<String>? seenThemeIds,
     List<String>? purchasedThemeIds,
+    bool? isSubscribed,
+    DateTime? subscriptionExpiry,
+    bool clearSubscriptionExpiry = false,
+    String? subscriptionProductId,
+    bool clearSubscriptionProductId = false,
+    String? duckNickname,
+    bool clearDuckNickname = false,
   }) {
     return HydrationState(
       waterConsumedOz: waterConsumedOz ?? this.waterConsumedOz,
@@ -207,6 +226,15 @@ class HydrationState extends Equatable {
       seenDuckIndices: seenDuckIndices ?? this.seenDuckIndices,
       seenThemeIds: seenThemeIds ?? this.seenThemeIds,
       purchasedThemeIds: purchasedThemeIds ?? this.purchasedThemeIds,
+      isSubscribed: isSubscribed ?? this.isSubscribed,
+      subscriptionExpiry: clearSubscriptionExpiry
+          ? null
+          : (subscriptionExpiry ?? this.subscriptionExpiry),
+      subscriptionProductId: clearSubscriptionProductId
+          ? null
+          : (subscriptionProductId ?? this.subscriptionProductId),
+      duckNickname:
+          clearDuckNickname ? null : (duckNickname ?? this.duckNickname),
     );
   }
 
@@ -244,6 +272,10 @@ class HydrationState extends Equatable {
         seenDuckIndices,
         seenThemeIds,
         purchasedThemeIds,
+        isSubscribed,
+        subscriptionExpiry,
+        subscriptionProductId,
+        duckNickname,
       ];
 }
 
