@@ -715,6 +715,11 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
             completedChallenges: hydration.completedChallenges,
             totalWaterConsumed: hydration.totalWaterConsumedOz,
             totalDaysLogged: hydration.totalDaysLogged,
+            totalHealthyPicks: hydration.totalHealthyPicks,
+            totalGoalsMet: hydration.totalGoalsMet,
+            totalDrinksLogged: hydration.totalDrinksLogged,
+            uniqueDrinks: hydration.uniqueDrinksLogged.length,
+            challengeActive: hydration.challengeActive,
           ) &&
           !hydration.seenDuckIndices.contains(duck.index)) {
         newDuckIndices.add(duck.index);
@@ -724,14 +729,9 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     final newThemeIds = <String>[];
     for (final theme in ThemeRewards.all) {
       if (theme.unlockCondition.isUnlocked(
-            recordStreak: hydration.recordStreak,
-            totalDaysLogged: hydration.totalDaysLogged,
-            completedChallenges: hydration.completedChallenges,
-            totalOzConsumed: hydration.totalWaterConsumedOz,
-            totalHealthyPicks: hydration.totalHealthyPicks,
-            uniqueDrinks: hydration.uniqueDrinksLogged.length,
-            totalGoalsMet: hydration.totalGoalsMet,
-            totalDrinksLogged: hydration.totalDrinksLogged,
+            level: hydration.level,
+            purchasedThemeIds: hydration.purchasedThemeIds,
+            themeId: theme.id,
           ) &&
           !hydration.seenThemeIds.contains(theme.id)) {
         newThemeIds.add(theme.id);
@@ -979,6 +979,30 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     final newState = hydration.copyWith(
       drops: hydration.drops - item.price,
       inventory: newInventory,
+    );
+
+    emit(currentState.copyWith(hydration: newState));
+    await _hydrationRepository.saveHydrationState(_userId, newState);
+    return true;
+  }
+
+  /// Purchase a market theme with Drops. Returns false if insufficient drops
+  /// or already purchased.
+  Future<bool> purchaseTheme(ThemeReward theme) async {
+    if (_realState != null) return false;
+
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return false;
+
+    final hydration = currentState.hydration;
+    if (!theme.isPurchasable) return false;
+    if (hydration.purchasedThemeIds.contains(theme.id)) return false;
+    if (hydration.drops < theme.price) return false;
+
+    final newState = hydration.copyWith(
+      drops: hydration.drops - theme.price,
+      purchasedThemeIds: [...hydration.purchasedThemeIds, theme.id],
+      seenThemeIds: [...hydration.seenThemeIds, theme.id],
     );
 
     emit(currentState.copyWith(hydration: newState));

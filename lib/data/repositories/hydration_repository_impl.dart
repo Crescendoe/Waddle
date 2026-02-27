@@ -112,6 +112,10 @@ class HydrationRepositoryImpl implements HydrationRepository {
                 ?.map((e) => e.toString())
                 .toList() ??
             const [],
+        purchasedThemeIds: (data['purchasedThemeIds'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            const [],
       );
 
       // Cache locally
@@ -187,6 +191,7 @@ class HydrationRepositoryImpl implements HydrationRepository {
         // Seen unlock rewards
         'seenDuckIndices': state.seenDuckIndices,
         'seenThemeIds': state.seenThemeIds,
+        'purchasedThemeIds': state.purchasedThemeIds,
       }, SetOptions(merge: true));
 
       _cacheState(state);

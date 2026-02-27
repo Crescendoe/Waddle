@@ -121,12 +121,21 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
     final avgOzPerDay =
         totalDaysLogged > 0 ? (totalWater / totalDaysLogged) : 0.0;
     final avgCups = avgOzPerDay / 8;
+    final challengeActive = List<bool>.generate(
+      6,
+      (i) => s['challenge${i + 1}Active'] as bool? ?? false,
+    );
     final ducks = DuckCompanions.countUnlocked(
       currentStreak: currentStreak,
       recordStreak: recordStreak,
       completedChallenges: completedChallenges,
       totalWaterConsumed: totalWater,
       totalDaysLogged: totalDaysLogged,
+      totalHealthyPicks: s['totalHealthyPicks'] as int? ?? 0,
+      totalGoalsMet: totalGoalsMet,
+      totalDrinksLogged: totalDrinksLogged,
+      uniqueDrinks: (s['uniqueDrinksLogged'] as List<dynamic>?)?.length ?? 0,
+      challengeActive: challengeActive,
     );
     final goalHitRate = totalDaysLogged > 0
         ? ((totalGoalsMet / totalDaysLogged) * 100).toStringAsFixed(0)

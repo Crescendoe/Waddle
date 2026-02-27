@@ -50,6 +50,9 @@ class HydrationState extends Equatable {
   final List<int> seenDuckIndices;
   final List<String> seenThemeIds;
 
+  // ── Purchased market themes ───────────────────────────────────────
+  final List<String> purchasedThemeIds;
+
   const HydrationState({
     this.waterConsumedOz = 0.0,
     this.waterGoalOz = 80.0,
@@ -82,6 +85,7 @@ class HydrationState extends Equatable {
     this.inventory = const UserInventory(),
     this.seenDuckIndices = const [],
     this.seenThemeIds = const [],
+    this.purchasedThemeIds = const [],
   });
 
   double get progressPercent =>
@@ -159,6 +163,7 @@ class HydrationState extends Equatable {
     UserInventory? inventory,
     List<int>? seenDuckIndices,
     List<String>? seenThemeIds,
+    List<String>? purchasedThemeIds,
   }) {
     return HydrationState(
       waterConsumedOz: waterConsumedOz ?? this.waterConsumedOz,
@@ -201,6 +206,7 @@ class HydrationState extends Equatable {
       inventory: inventory ?? this.inventory,
       seenDuckIndices: seenDuckIndices ?? this.seenDuckIndices,
       seenThemeIds: seenThemeIds ?? this.seenThemeIds,
+      purchasedThemeIds: purchasedThemeIds ?? this.purchasedThemeIds,
     );
   }
 
@@ -237,6 +243,7 @@ class HydrationState extends Equatable {
         inventory,
         seenDuckIndices,
         seenThemeIds,
+        purchasedThemeIds,
       ];
 }
 

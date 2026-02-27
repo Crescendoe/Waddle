@@ -115,6 +115,11 @@ class _DucksTab extends StatelessWidget {
       completedChallenges: hydration.completedChallenges,
       totalWaterConsumed: hydration.totalWaterConsumedOz,
       totalDaysLogged: hydration.totalDaysLogged,
+      totalHealthyPicks: hydration.totalHealthyPicks,
+      totalGoalsMet: hydration.totalGoalsMet,
+      totalDrinksLogged: hydration.totalDrinksLogged,
+      uniqueDrinks: hydration.uniqueDrinksLogged.length,
+      challengeActive: hydration.challengeActive,
     );
 
     return CustomScrollView(
@@ -168,6 +173,11 @@ class _DucksTab extends StatelessWidget {
                       completedChallenges: hydration.completedChallenges,
                       totalWaterConsumed: hydration.totalWaterConsumedOz,
                       totalDaysLogged: hydration.totalDaysLogged,
+                      totalHealthyPicks: hydration.totalHealthyPicks,
+                      totalGoalsMet: hydration.totalGoalsMet,
+                      totalDrinksLogged: hydration.totalDrinksLogged,
+                      uniqueDrinks: hydration.uniqueDrinksLogged.length,
+                      challengeActive: hydration.challengeActive,
                     );
 
                 return _DuckCard(
@@ -339,14 +349,8 @@ class _ThemesTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final h = loaded.hydration;
     final unlocked = ThemeRewards.countUnlocked(
-      recordStreak: h.recordStreak,
-      totalDaysLogged: h.totalDaysLogged,
-      completedChallenges: h.completedChallenges,
-      totalOzConsumed: h.totalWaterConsumedOz,
-      totalHealthyPicks: h.totalHealthyPicks,
-      uniqueDrinks: h.uniqueDrinksLogged.length,
-      totalGoalsMet: h.totalGoalsMet,
-      totalDrinksLogged: h.totalDrinksLogged,
+      level: h.level,
+      purchasedThemeIds: h.purchasedThemeIds,
     );
 
     return CustomScrollView(
@@ -395,14 +399,9 @@ class _ThemesTab extends StatelessWidget {
                 final debugMode = GetIt.instance<DebugModeService>().isActive;
                 final isUnlocked = debugMode ||
                     theme.unlockCondition.isUnlocked(
-                      recordStreak: h.recordStreak,
-                      totalDaysLogged: h.totalDaysLogged,
-                      completedChallenges: h.completedChallenges,
-                      totalOzConsumed: h.totalWaterConsumedOz,
-                      totalHealthyPicks: h.totalHealthyPicks,
-                      uniqueDrinks: h.uniqueDrinksLogged.length,
-                      totalGoalsMet: h.totalGoalsMet,
-                      totalDrinksLogged: h.totalDrinksLogged,
+                      level: h.level,
+                      purchasedThemeIds: h.purchasedThemeIds,
+                      themeId: theme.id,
                     );
                 final isActive = h.activeThemeId == theme.id ||
                     (h.activeThemeId == null && theme.id == 'default');
@@ -532,11 +531,49 @@ class _ThemesTab extends StatelessWidget {
                   size: 24, color: AppColors.textHint),
               const SizedBox(height: 8),
               Text(
-                'Unlock: ${theme.unlockCondition.displayText}',
+                theme.isPurchasable
+                    ? '${theme.price} Drops'
+                    : 'Unlock: ${theme.unlockCondition.displayText}',
                 style: AppTextStyles.bodyMedium
                     .copyWith(color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
+              if (theme.isPurchasable) ...[
+                const SizedBox(height: 4),
+                Text(
+                  theme.description,
+                  style: AppTextStyles.bodySmall
+                      .copyWith(color: AppColors.textHint),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                BlocBuilder<HydrationCubit, HydrationBlocState>(
+                  builder: (ctx, st) {
+                    final drops =
+                        st is HydrationLoaded ? st.hydration.drops : 0;
+                    final canAfford = drops >= theme.price;
+                    return FilledButton.icon(
+                      onPressed: canAfford
+                          ? () async {
+                              final cubit = ctx.read<HydrationCubit>();
+                              final ok = await cubit.purchaseTheme(theme);
+                              if (ok && sheetCtx.mounted) {
+                                Navigator.of(sheetCtx).pop();
+                                HapticFeedback.mediumImpact();
+                              }
+                            }
+                          : null,
+                      icon: const Icon(Icons.water_drop_rounded, size: 18),
+                      label: Text(canAfford
+                          ? 'Buy for ${theme.price} Drops'
+                          : 'Need ${theme.price - drops} more Drops'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: ActiveThemeColors.of(sheetCtx).primary,
+                      ),
+                    );
+                  },
+                ),
+              ],
             ],
 
             const SizedBox(height: 16),
@@ -679,15 +716,21 @@ class _ThemeCard extends StatelessWidget {
                         ? const Icon(Icons.check_rounded,
                             size: 22, color: Colors.white)
                         : Icon(theme.icon, size: 22, color: Colors.white))
-                    : const Icon(Icons.lock_rounded,
-                        size: 20, color: Colors.grey),
+                    : theme.isPurchasable
+                        ? Icon(theme.icon, size: 20, color: Colors.grey)
+                        : const Icon(Icons.lock_rounded,
+                            size: 20, color: Colors.grey),
               ),
             ),
             const SizedBox(height: 8),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Text(
-                isUnlocked ? theme.name : '???',
+                isUnlocked
+                    ? theme.name
+                    : theme.isPurchasable
+                        ? theme.name
+                        : '???',
                 style: AppTextStyles.bodySmall.copyWith(
                   fontWeight: FontWeight.w600,
                   color:
@@ -907,6 +950,41 @@ class _MarketTab extends StatelessWidget {
                     .fadeIn(delay: (150 + i * 80).ms, duration: 400.ms)
                     .slideY(begin: 0.05, end: 0, duration: 350.ms);
               }),
+
+              // ── Theme shop section ──
+              const SizedBox(height: 22),
+              Text(
+                'Theme Shop',
+                style: AppTextStyles.headlineSmall.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ).animateOnce(animate).fadeIn(delay: 400.ms),
+              const SizedBox(height: 4),
+              Text(
+                'Personalize your Waddle experience',
+                style: AppTextStyles.bodySmall
+                    .copyWith(color: AppColors.textSecondary),
+              ).animateOnce(animate).fadeIn(delay: 420.ms),
+              const SizedBox(height: 12),
+              ...List.generate(ThemeRewards.purchasable.length, (i) {
+                final theme = ThemeRewards.purchasable[i];
+                final owned = hydration.purchasedThemeIds.contains(theme.id);
+                return Padding(
+                  padding: EdgeInsets.only(
+                      bottom: i < ThemeRewards.purchasable.length - 1 ? 10 : 0),
+                  child: _MarketThemeCard(
+                    theme: theme,
+                    drops: drops,
+                    owned: owned,
+                    themeColors: tc,
+                  ),
+                )
+                    .animateOnce(animate)
+                    .fadeIn(delay: (450 + i * 60).ms, duration: 400.ms)
+                    .slideY(begin: 0.05, end: 0, duration: 350.ms);
+              }),
+
+              const SizedBox(height: 80),
             ]),
           ),
         ),
@@ -940,9 +1018,17 @@ class _MarketItemCard extends StatelessWidget {
     final owned = inventory.countOf(item.id);
     final canAfford = drops >= item.price;
     final canBuy = canAfford && inventory.canPurchase(item);
-    final isDoubleXp = item.id == 'double_xp';
-    final canActivate =
-        isDoubleXp && inventory.doubleXpTokens > 0 && !inventory.doubleXpActive;
+    final bool canActivate;
+    switch (item.id) {
+      case 'double_xp':
+        canActivate = inventory.doubleXpTokens > 0 && !inventory.doubleXpActive;
+        break;
+      case 'cooldown_skip':
+        canActivate = inventory.cooldownSkips > 0;
+        break;
+      default:
+        canActivate = false;
+    }
     final maxed = !inventory.canPurchase(item);
 
     final dark = _darkColor;
@@ -1074,7 +1160,7 @@ class _MarketItemCard extends StatelessWidget {
                         fontSize: 12.5,
                         height: 1.3,
                       ),
-                      maxLines: 2,
+                      maxLines: 4,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 8),
@@ -1138,9 +1224,34 @@ class _MarketItemCard extends StatelessWidget {
                           GestureDetector(
                             onTap: () async {
                               HapticFeedback.lightImpact();
-                              await context
-                                  .read<HydrationCubit>()
-                                  .activateDoubleXp();
+                              final cubit = context.read<HydrationCubit>();
+                              switch (item.id) {
+                                case 'double_xp':
+                                  await cubit.activateDoubleXp();
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                            '⚡ Double XP activated for 24 hours!'),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
+                                  break;
+                                case 'cooldown_skip':
+                                  final ok = await cubit.useCooldownSkip();
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(ok
+                                            ? '⏩ Quest cooldown skipped!'
+                                            : 'No active cooldown to skip.'),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
+                                  break;
+                              }
                             },
                             child: Container(
                               padding: const EdgeInsets.symmetric(
@@ -1181,6 +1292,247 @@ class _MarketItemCard extends StatelessWidget {
                             ),
                           ),
                         ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Market theme card ───────────────────────────────────────────────
+
+class _MarketThemeCard extends StatelessWidget {
+  final ThemeReward theme;
+  final int drops;
+  final bool owned;
+  final ActiveThemeColors themeColors;
+
+  const _MarketThemeCard({
+    required this.theme,
+    required this.drops,
+    required this.owned,
+    required this.themeColors,
+  });
+
+  Color get _tierColor {
+    switch (theme.tier) {
+      case ThemeTier.common:
+        return const Color(0xFF78909C);
+      case ThemeTier.uncommon:
+        return const Color(0xFF66BB6A);
+      case ThemeTier.rare:
+        return const Color(0xFF42A5F5);
+      case ThemeTier.epic:
+        return const Color(0xFFAB47BC);
+      case ThemeTier.legendary:
+        return const Color(0xFFFFB300);
+      case ThemeTier.free:
+        return const Color(0xFF90CAF9);
+    }
+  }
+
+  String get _tierLabel {
+    switch (theme.tier) {
+      case ThemeTier.common:
+        return 'Common';
+      case ThemeTier.uncommon:
+        return 'Uncommon';
+      case ThemeTier.rare:
+        return 'Rare';
+      case ThemeTier.epic:
+        return 'Epic';
+      case ThemeTier.legendary:
+        return 'Legendary';
+      case ThemeTier.free:
+        return 'Free';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final canAfford = drops >= theme.price;
+    final canBuy = canAfford && !owned;
+    final dark = HSLColor.fromColor(_tierColor)
+        .withLightness(
+            (HSLColor.fromColor(_tierColor).lightness - 0.25).clamp(0.0, 1.0))
+        .toColor();
+
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: _tierColor.withValues(alpha: 0.16),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ── Gradient preview strip ──
+            Container(
+              width: 64,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: theme.gradientColors,
+                ),
+              ),
+              child: Center(
+                child: Icon(theme.icon, color: Colors.white, size: 26),
+              ),
+            ),
+
+            // ── Content ──
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            theme.name,
+                            style: TextStyle(
+                              color: dark,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: _tierColor.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            _tierLabel,
+                            style: TextStyle(
+                              color: _tierColor,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      theme.description,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12.5,
+                        height: 1.3,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: canBuy
+                                ? () async {
+                                    HapticFeedback.mediumImpact();
+                                    await context
+                                        .read<HydrationCubit>()
+                                        .purchaseTheme(theme);
+                                  }
+                                : null,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(vertical: 9),
+                              decoration: BoxDecoration(
+                                gradient: canBuy
+                                    ? LinearGradient(
+                                        colors: [_tierColor, dark],
+                                      )
+                                    : null,
+                                color: canBuy ? null : AppColors.surfaceLight,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: canBuy
+                                    ? [
+                                        BoxShadow(
+                                          color: _tierColor.withValues(
+                                              alpha: 0.30),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: Center(
+                                child: owned
+                                    ? Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.check_circle_rounded,
+                                              size: 14,
+                                              color: canBuy
+                                                  ? Colors.white
+                                                  : AppColors.textHint),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'Owned',
+                                            style: TextStyle(
+                                              color: canBuy
+                                                  ? Colors.white
+                                                  : AppColors.textHint,
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    : Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.water_drop,
+                                              size: 13,
+                                              color: canBuy
+                                                  ? Colors.white
+                                                  : AppColors.textHint),
+                                          const SizedBox(width: 3),
+                                          Text(
+                                            canAfford
+                                                ? '${theme.price} Drops'
+                                                : 'Need ${theme.price - drops} more',
+                                            style: TextStyle(
+                                              color: canBuy
+                                                  ? Colors.white
+                                                  : AppColors.textHint,
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ],
