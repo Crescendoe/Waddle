@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:waddle/domain/entities/daily_quest.dart';
+import 'package:waddle/domain/entities/duck_bond.dart';
 import 'package:waddle/domain/entities/shop_item.dart';
 import 'package:waddle/domain/entities/xp_level.dart';
 
@@ -61,6 +62,13 @@ class HydrationState extends Equatable {
   // ── Custom duck nickname (subscriber perk) ────────────────────────
   final String? duckNickname;
 
+  // ── Duck bonds & accessories ──────────────────────────────────────
+  final Map<int, DuckBondData> duckBonds;
+  final List<String> ownedAccessoryIds;
+
+  // ── Seasonal / holiday cosmetic packs ─────────────────────────────
+  final List<String> claimedSeasonalPackIds;
+
   const HydrationState({
     this.waterConsumedOz = 0.0,
     this.waterGoalOz = 80.0,
@@ -98,6 +106,9 @@ class HydrationState extends Equatable {
     this.subscriptionExpiry,
     this.subscriptionProductId,
     this.duckNickname,
+    this.duckBonds = const {},
+    this.ownedAccessoryIds = const [],
+    this.claimedSeasonalPackIds = const [],
   });
 
   double get progressPercent =>
@@ -183,6 +194,9 @@ class HydrationState extends Equatable {
     bool clearSubscriptionProductId = false,
     String? duckNickname,
     bool clearDuckNickname = false,
+    Map<int, DuckBondData>? duckBonds,
+    List<String>? ownedAccessoryIds,
+    List<String>? claimedSeasonalPackIds,
   }) {
     return HydrationState(
       waterConsumedOz: waterConsumedOz ?? this.waterConsumedOz,
@@ -235,6 +249,10 @@ class HydrationState extends Equatable {
           : (subscriptionProductId ?? this.subscriptionProductId),
       duckNickname:
           clearDuckNickname ? null : (duckNickname ?? this.duckNickname),
+      duckBonds: duckBonds ?? this.duckBonds,
+      ownedAccessoryIds: ownedAccessoryIds ?? this.ownedAccessoryIds,
+      claimedSeasonalPackIds:
+          claimedSeasonalPackIds ?? this.claimedSeasonalPackIds,
     );
   }
 
@@ -276,6 +294,9 @@ class HydrationState extends Equatable {
         subscriptionExpiry,
         subscriptionProductId,
         duckNickname,
+        duckBonds,
+        ownedAccessoryIds,
+        claimedSeasonalPackIds,
       ];
 }
 

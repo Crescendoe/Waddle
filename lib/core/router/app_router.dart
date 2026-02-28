@@ -21,6 +21,8 @@ import 'package:waddle/presentation/screens/celebration/challenge_complete_scree
 import 'package:waddle/presentation/screens/celebration/challenge_failed_screen.dart';
 import 'package:waddle/presentation/screens/celebration/level_up_screen.dart';
 import 'package:waddle/presentation/screens/celebration/unlock_reward_screen.dart';
+import 'package:waddle/presentation/screens/celebration/seasonal_pack_unlock_screen.dart';
+import 'package:waddle/presentation/screens/duck/duck_detail_screen.dart';
 import 'package:waddle/presentation/screens/splash/splash_screen.dart';
 
 class AppRouter {
@@ -151,7 +153,24 @@ class AppRouter {
               type: extra['type'] as UnlockRewardType? ?? UnlockRewardType.duck,
               duckIndex: extra['duckIndex'] as int?,
               themeId: extra['themeId'] as String?,
+              accessoryId: extra['accessoryId'] as String?,
             );
+          },
+        ),
+        GoRoute(
+          path: '/seasonal-pack-unlock',
+          name: 'seasonalPackUnlock',
+          builder: (context, state) {
+            final packId = state.extra as String? ?? '';
+            return SeasonalPackUnlockScreen(packId: packId);
+          },
+        ),
+        GoRoute(
+          path: '/duck-detail',
+          name: 'duckDetail',
+          builder: (context, state) {
+            final duckIndex = state.extra as int? ?? 0;
+            return DuckDetailScreen(duckIndex: duckIndex);
           },
         ),
 

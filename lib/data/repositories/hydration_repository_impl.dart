@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:waddle/core/constants/app_constants.dart';
 import 'package:waddle/core/error/failures.dart';
 import 'package:waddle/domain/entities/daily_quest.dart';
+import 'package:waddle/domain/entities/duck_bond.dart';
 import 'package:waddle/domain/entities/hydration_state.dart';
 import 'package:waddle/domain/entities/shop_item.dart';
 import 'package:waddle/domain/entities/water_log.dart';
@@ -24,6 +25,20 @@ class HydrationRepositoryImpl implements HydrationRepository {
 
   CollectionReference _logsCollection(String userId) =>
       _userDoc(userId).collection(AppConstants.waterLogsSubcollection);
+
+  /// Parse the duckBonds map from Firestore (keys are stringified ints).
+  Map<int, DuckBondData> _parseDuckBonds(dynamic raw) {
+    if (raw == null || raw is! Map) return const {};
+    final map = <int, DuckBondData>{};
+    for (final entry in (raw as Map).entries) {
+      final key = int.tryParse(entry.key.toString());
+      if (key == null) continue;
+      map[key] = DuckBondData.fromMap(
+        Map<String, dynamic>.from(entry.value as Map),
+      );
+    }
+    return map;
+  }
 
   /// Safely parse a DateTime from Firestore (could be Timestamp, String, or null)
   DateTime? _parseDateTime(dynamic value) {
@@ -122,6 +137,16 @@ class HydrationRepositoryImpl implements HydrationRepository {
             (data['subscriptionExpiry'] as Timestamp?)?.toDate(),
         subscriptionProductId: data['subscriptionProductId'] as String?,
         duckNickname: data['duckNickname'] as String?,
+        duckBonds: _parseDuckBonds(data['duckBonds']),
+        ownedAccessoryIds: (data['ownedAccessoryIds'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            const [],
+        claimedSeasonalPackIds:
+            (data['claimedSeasonalPackIds'] as List<dynamic>?)
+                    ?.map((e) => e.toString())
+                    .toList() ??
+                const [],
       );
 
       // Cache locally
@@ -205,6 +230,11 @@ class HydrationRepositoryImpl implements HydrationRepository {
             : null,
         'subscriptionProductId': state.subscriptionProductId,
         'duckNickname': state.duckNickname,
+        'duckBonds': state.duckBonds.map(
+          (k, v) => MapEntry(k.toString(), v.toMap()),
+        ),
+        'ownedAccessoryIds': state.ownedAccessoryIds,
+        'claimedSeasonalPackIds': state.claimedSeasonalPackIds,
       }, SetOptions(merge: true));
 
       _cacheState(state);

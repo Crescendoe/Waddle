@@ -4,14 +4,14 @@ class AppConstants {
 
   // App Info
   static const String appName = 'Waddle';
-  static const String appVersion = '0.9.3';
+  static const String appVersion = '0.9.5';
   static const String developerName = 'William Wyler';
   static const String supportEmail = 'crescendoedd@gmail.com';
 
   // Water defaults
   static const double defaultWaterGoalOz = 80.0;
   static const double ozPerCup = 8.0;
-  static const int entryTimerMinutes = 15;
+  static const int entryTimerMinutes = 30;
   static const int challengeDurationDays = 14;
 
   // Streak tier thresholds

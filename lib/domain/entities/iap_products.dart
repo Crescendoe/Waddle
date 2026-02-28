@@ -182,10 +182,10 @@ class SubscriptionPerks {
       color: Color(0xFF42A5F5),
     ),
     SubscriptionPerk(
-      icon: Icons.verified_rounded,
-      title: 'Subscriber Badge',
+      icon: Icons.favorite_rounded,
+      title: 'Supporter Status',
       description:
-          'A shiny badge next to your name on your profile and friend list.',
+          'A golden Supporter badge on your profile — and your name in future credits.',
       color: Color(0xFFFFD54F),
     ),
     SubscriptionPerk(
@@ -195,9 +195,10 @@ class SubscriptionPerks {
       color: Color(0xFF66BB6A),
     ),
     SubscriptionPerk(
-      icon: Icons.edit_rounded,
-      title: 'Name Your Duck',
-      description: 'Give your active duck companion a custom nickname.',
+      icon: Icons.card_giftcard_rounded,
+      title: 'Free Seasonal Packs',
+      description:
+          'Unlock every holiday & seasonal cosmetic pack at no extra cost.',
       color: Color(0xFFAB47BC),
     ),
   ];

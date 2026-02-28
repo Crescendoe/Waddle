@@ -99,6 +99,38 @@ enum DuckRarity {
   legendary,
 }
 
+extension DuckRarityExtension on DuckRarity {
+  Color get color {
+    switch (this) {
+      case DuckRarity.common:
+        return const Color(0xFF78909C);
+      case DuckRarity.uncommon:
+        return const Color(0xFF66BB6A);
+      case DuckRarity.rare:
+        return const Color(0xFF42A5F5);
+      case DuckRarity.epic:
+        return const Color(0xFFAB47BC);
+      case DuckRarity.legendary:
+        return const Color(0xFFFFB300);
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case DuckRarity.common:
+        return 'Common';
+      case DuckRarity.uncommon:
+        return 'Uncommon';
+      case DuckRarity.rare:
+        return 'Rare';
+      case DuckRarity.epic:
+        return 'Epic';
+      case DuckRarity.legendary:
+        return 'Legendary';
+    }
+  }
+}
+
 /// All 24 collectible ducks
 class DuckCompanions {
   DuckCompanions._();

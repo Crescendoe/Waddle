@@ -842,6 +842,61 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 children: [
                   _changelogVersion(
+                    version: '0.9.5',
+                    date: 'February 27, 2026',
+                    changes: [
+                      _ChangeEntry(
+                        icon: Icons.checkroom_rounded,
+                        title: 'Duck Accessories & Bond System',
+                        description:
+                            'Dress up your ducks! 24 accessories across 4 slots (hats, eyewear, neckwear, held items). '
+                            'Feed your ducks to increase their bond level and strengthen their passive bonus.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.trending_up_rounded,
+                        title: 'Custom Passive Scaling',
+                        description:
+                            'Each duck now has a unique upgrade path across 10 bond levels. Rarer ducks gain stronger, '
+                            'more frequent boosts — common ducks progress slowly with plateaus.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.arrow_forward_rounded,
+                        title: 'Next-Level Preview',
+                        description:
+                            'The bond section now shows exactly what your duck\'s passive will become at the next level, '
+                            'so you know whether feeding is worth it.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.celebration_rounded,
+                        title: 'Seasonal Cosmetic Packs',
+                        description:
+                            '18 seasonal & holiday packs with 49 unique accessories and themed color palettes — '
+                            'available year-round in the Market\'s Accessories tab.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.auto_awesome_rounded,
+                        title: 'Unlock Celebrations',
+                        description:
+                            'Brand-new celebration screens for purchasing themes, accessories, and claiming seasonal packs '
+                            'with sparkle effects and staggered item reveals.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.storefront_rounded,
+                        title: 'Market & Waddle+',
+                        description:
+                            'The Market tab now has 5 scrollable categories (Items, Accessories, Themes, Drops, Waddle+) '
+                            'with a fade hint on the chip bar. Waddle+ section features Wade waving.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.timer_rounded,
+                        title: 'Cooldown Adjusted',
+                        description:
+                            'The drink-logging cooldown has been increased from 15 to 30 minutes for better pacing.',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  _changelogVersion(
                     version: '0.9.4',
                     date: 'February 26, 2026',
                     changes: [

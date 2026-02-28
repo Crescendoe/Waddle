@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:waddle/core/constants/app_constants.dart';
@@ -9,8 +10,11 @@ import 'package:waddle/domain/entities/app_theme_reward.dart';
 import 'package:waddle/domain/entities/challenge.dart';
 import 'package:waddle/domain/entities/daily_quest.dart';
 import 'package:waddle/domain/entities/drink_type.dart';
+import 'package:waddle/domain/entities/duck_accessory.dart';
+import 'package:waddle/domain/entities/duck_bond.dart';
 import 'package:waddle/domain/entities/duck_companion.dart';
 import 'package:waddle/domain/entities/hydration_state.dart';
+import 'package:waddle/domain/entities/seasonal_pack.dart';
 import 'package:waddle/domain/entities/shop_item.dart';
 import 'package:waddle/domain/entities/water_log.dart';
 import 'package:waddle/data/services/iap_service.dart';
@@ -150,6 +154,26 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
 
     emit(currentState.copyWith(hydration: newState));
     await _hydrationRepository.saveHydrationState(_userId, newState);
+
+    // Track supporter in Firestore so the dev can credit them.
+    if (isActive) {
+      _recordSupporter(productId);
+    }
+  }
+
+  /// Write supporter info to a top-level `supporters` collection (fire-and-forget).
+  void _recordSupporter(String? productId) {
+    try {
+      final firestore = FirebaseFirestore.instance;
+      firestore.collection('supporters').doc(_userId).set({
+        'uid': _userId,
+        'productId': productId ?? 'unknown',
+        'subscribedAt': FieldValue.serverTimestamp(),
+        'active': true,
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('Failed to record supporter: $e');
+    }
   }
 
   /// Set a custom nickname for the active duck (Waddle+ perk).
@@ -214,9 +238,14 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     final isFirstDrink = currentState.todayLogs.isEmpty;
     final xpMultiplier =
         currentState.hydration.inventory.doubleXpActive ? 2 : 1;
+    final bonuses = _getActiveBonuses(currentState.hydration);
+
     int earnedXp = XpEvent.logDrink.xp * xpMultiplier;
     if (isHealthy) earnedXp += XpEvent.healthyPick.xp * xpMultiplier;
     if (isFirstDrink) earnedXp += XpEvent.firstDrinkOfDay.xp * xpMultiplier;
+
+    // Apply duck passive: XP boost
+    earnedXp = (earnedXp * (1.0 + bonuses.xpBoostFraction)).round();
 
     // ── Daily quest progress ────────────────────────────────────────
     final questState = _ensureDailyQuests(currentState.hydration, now);
@@ -243,11 +272,21 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
       levelUpDrops = _subDrops((newLevel - prevLevel) * 30, questState);
     }
 
+    // ── Duck passive: bonus drops per log & multiplier ──────────────
+    int passiveDrops = bonuses.bonusDropsPerLog;
+    final totalDropsEarned = levelUpDrops + passiveDrops;
+    final multipliedDrops =
+        (totalDropsEarned * (1.0 + bonuses.dropMultiplierFraction)).round();
+
+    // ── Duck passive: cooldown reduction ────────────────────────────
+    final cooldownMinutes =
+        AppConstants.entryTimerMinutes - bonuses.cooldownReductionMin;
+    final effectiveCooldown = cooldownMinutes.clamp(1, 999);
+
     final newState = questState.copyWith(
       waterConsumedOz: newConsumed,
       goalMetToday: goalMet,
-      nextEntryTime:
-          now.add(const Duration(minutes: AppConstants.entryTimerMinutes)),
+      nextEntryTime: now.add(Duration(minutes: effectiveCooldown)),
       totalWaterConsumedOz:
           currentState.hydration.totalWaterConsumedOz + waterContent,
       totalDrinksLogged: currentState.hydration.totalDrinksLogged + 1,
@@ -256,7 +295,7 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
           : currentState.hydration.totalHealthyPicks,
       uniqueDrinksLogged: updatedUnique,
       totalXp: newTotalXp,
-      drops: questState.drops + levelUpDrops,
+      drops: questState.drops + multipliedDrops,
       dailyQuests: updatedQuests,
     );
 
@@ -300,6 +339,10 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
       // XP + Drops for meeting goal
       int goalXp = XpEvent.dailyGoalMet.xp * xpMul;
       int goalDrops = _subDrops(5, currentState.hydration);
+
+      // Duck passive: bonus drops on goal + XP boost
+      goalDrops += bonuses.bonusDropsOnGoal;
+      goalXp = (goalXp * (1.0 + bonuses.xpBoostFraction)).round();
 
       // Increment streak and total goals met
       final newStreakVal = newState.currentStreak + 1;
@@ -665,6 +708,205 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     await _hydrationRepository.saveHydrationState(_userId, newState);
   }
 
+  /// Replace an existing home duck with a new one (when home is full).
+  Future<void> replaceHomeDuck(int oldDuckIndex, int newDuckIndex) async {
+    if (_realState != null) return;
+
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return;
+
+    final current = List<int>.from(currentState.hydration.homeDuckIndices);
+    final idx = current.indexOf(oldDuckIndex);
+    if (idx == -1) return; // old duck not on home
+
+    current[idx] = newDuckIndex;
+
+    final newState = currentState.hydration.copyWith(
+      homeDuckIndices: current,
+    );
+
+    emit(currentState.copyWith(hydration: newState));
+    await _hydrationRepository.saveHydrationState(_userId, newState);
+  }
+
+  // ── Duck bond & accessories ───────────────────────────────────────
+
+  /// Calculate aggregated passive bonuses from home-screen ducks.
+  ActiveDuckBonuses _getActiveBonuses(HydrationState h) =>
+      ActiveDuckBonuses.compute(
+        homeDuckIndices: h.homeDuckIndices,
+        duckBonds: h.duckBonds,
+      );
+
+  /// Feed a duck to increase its bond level. Costs drops.
+  Future<bool> feedDuck(int duckIndex) async {
+    if (_realState != null) return false;
+
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return false;
+
+    final h = currentState.hydration;
+    final bond = h.duckBonds[duckIndex] ?? const DuckBondData(bondLevel: 1);
+
+    if (bond.bondLevel >= DuckBondLevels.maxLevel) return false;
+
+    final cost = DuckBondLevels.costToLevel(bond.bondLevel + 1);
+    if (h.drops < cost) return false;
+
+    final updatedBond = bond.copyWith(bondLevel: bond.bondLevel + 1);
+    final updatedBonds = Map<int, DuckBondData>.from(h.duckBonds);
+    updatedBonds[duckIndex] = updatedBond;
+
+    final newState = h.copyWith(
+      drops: h.drops - cost,
+      duckBonds: updatedBonds,
+    );
+
+    emit(currentState.copyWith(hydration: newState));
+    await _hydrationRepository.saveHydrationState(_userId, newState);
+    return true;
+  }
+
+  /// Purchase an accessory from the market using drops.
+  Future<bool> purchaseAccessory(String accessoryId) async {
+    if (_realState != null) return false;
+
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return false;
+
+    final h = currentState.hydration;
+    if (h.ownedAccessoryIds.contains(accessoryId)) return false;
+
+    final accessory = DuckAccessories.byId(accessoryId);
+    if (accessory == null) return false;
+    if (accessory.subscriberOnly && !h.isSubscribed) return false;
+    if (h.drops < accessory.price) return false;
+
+    final newState = h.copyWith(
+      drops: h.drops - accessory.price,
+      ownedAccessoryIds: [...h.ownedAccessoryIds, accessoryId],
+    );
+
+    emit(currentState.copyWith(hydration: newState));
+    await _hydrationRepository.saveHydrationState(_userId, newState);
+    return true;
+  }
+
+  /// Claim (or purchase) a seasonal cosmetic pack.
+  /// Waddle+ subscribers claim for free; others pay with Drops.
+  Future<bool> claimSeasonalPack(String packId) async {
+    if (_realState != null) return false;
+
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return false;
+
+    final h = currentState.hydration;
+    if (h.claimedSeasonalPackIds.contains(packId)) return false;
+
+    final pack = SeasonalPacks.byId(packId);
+    if (pack == null) return false;
+    if (!pack.isCurrentlyAvailable) return false;
+
+    // Non-subscribers must pay with drops
+    if (!h.isSubscribed && h.drops < pack.price) return false;
+
+    final dropsAfter = h.isSubscribed ? h.drops : h.drops - pack.price;
+
+    // Add all pack accessories to owned list
+    final newAccessoryIds = <String>[...h.ownedAccessoryIds];
+    for (final acc in pack.accessories) {
+      if (!newAccessoryIds.contains(acc.id)) {
+        newAccessoryIds.add(acc.id);
+      }
+    }
+
+    // Grant the pack's exclusive theme
+    final newThemeIds = <String>[...h.purchasedThemeIds];
+    if (!newThemeIds.contains(pack.theme.id)) {
+      newThemeIds.add(pack.theme.id);
+    }
+
+    final newState = h.copyWith(
+      drops: dropsAfter,
+      ownedAccessoryIds: newAccessoryIds,
+      purchasedThemeIds: newThemeIds,
+      claimedSeasonalPackIds: [...h.claimedSeasonalPackIds, packId],
+    );
+
+    emit(currentState.copyWith(hydration: newState));
+    await _hydrationRepository.saveHydrationState(_userId, newState);
+    return true;
+  }
+
+  /// Equip an owned accessory on a duck.
+  Future<void> equipAccessory(int duckIndex, String accessoryId) async {
+    if (_realState != null) return;
+
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return;
+
+    final h = currentState.hydration;
+    if (!h.ownedAccessoryIds.contains(accessoryId)) return;
+
+    final accessory = DuckAccessories.byId(accessoryId);
+    if (accessory == null) return;
+
+    final bond = h.duckBonds[duckIndex] ?? const DuckBondData(bondLevel: 1);
+    final updatedEquipped = Map<String, String>.from(bond.equippedAccessories);
+    updatedEquipped[accessory.slot.name] = accessoryId;
+
+    final updatedBonds = Map<int, DuckBondData>.from(h.duckBonds);
+    updatedBonds[duckIndex] =
+        bond.copyWith(equippedAccessories: updatedEquipped);
+
+    final newState = h.copyWith(duckBonds: updatedBonds);
+    emit(currentState.copyWith(hydration: newState));
+    await _hydrationRepository.saveHydrationState(_userId, newState);
+  }
+
+  /// Unequip an accessory from a specific slot on a duck.
+  Future<void> unequipAccessory(int duckIndex, AccessorySlot slot) async {
+    if (_realState != null) return;
+
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return;
+
+    final h = currentState.hydration;
+    final bond = h.duckBonds[duckIndex];
+    if (bond == null) return;
+    if (!bond.equippedAccessories.containsKey(slot.name)) return;
+
+    final updatedEquipped = Map<String, String>.from(bond.equippedAccessories);
+    updatedEquipped.remove(slot.name);
+
+    final updatedBonds = Map<int, DuckBondData>.from(h.duckBonds);
+    updatedBonds[duckIndex] =
+        bond.copyWith(equippedAccessories: updatedEquipped);
+
+    final newState = h.copyWith(duckBonds: updatedBonds);
+    emit(currentState.copyWith(hydration: newState));
+    await _hydrationRepository.saveHydrationState(_userId, newState);
+  }
+
+  /// Rename a duck (available to all users).
+  Future<void> renameDuck(int duckIndex, String name) async {
+    if (_realState != null) return;
+
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return;
+
+    final h = currentState.hydration;
+    final bond = h.duckBonds[duckIndex] ?? const DuckBondData(bondLevel: 1);
+
+    final updatedBonds = Map<int, DuckBondData>.from(h.duckBonds);
+    updatedBonds[duckIndex] =
+        bond.copyWith(nickname: name.trim().isEmpty ? null : name.trim());
+
+    final newState = h.copyWith(duckBonds: updatedBonds);
+    emit(currentState.copyWith(hydration: newState));
+    await _hydrationRepository.saveHydrationState(_userId, newState);
+  }
+
   // ── Debug mode ────────────────────────────────────────────────────
 
   /// Saved copy of real state before debug mode was activated.
@@ -676,66 +918,17 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     final currentState = state;
     if (currentState is! HydrationLoaded) return;
 
+    // Snapshot the real state so we can restore it later
     _realState = currentState.hydration;
 
     // Pause background timers that could trigger saves
     _resetWatchdog?.cancel();
     _dailyResetTimer?.cancel();
 
-    // All drink names for uniqueDrinksLogged
-    final allDrinks = [
-      'Water',
-      'Sparkling Water',
-      'Coconut Water',
-      'Green Tea',
-      'Black Tea',
-      'Herbal Tea',
-      'Coffee',
-      'Espresso',
-      'Latte',
-      'Cappuccino',
-      'Matcha',
-      'Orange Juice',
-      'Apple Juice',
-      'Cranberry Juice',
-      'Lemonade',
-      'Smoothie',
-      'Protein Shake',
-      'Milk',
-      'Oat Milk',
-      'Almond Milk',
-      'Hot Chocolate',
-      'Kombucha',
-      'Energy Drink',
-      'Sports Drink',
-      'Soda',
-    ];
-
-    final debugState = currentState.hydration.copyWith(
-      waterConsumedOz: 70.0,
-      waterGoalOz: 80.0,
-      currentStreak: 365,
-      recordStreak: 365,
-      goalMetToday: false,
-      completedChallenges: 6,
-      challengeActive: const [true, true, true, true, true, true],
-      totalWaterConsumedOz: 15000.0,
-      totalDaysLogged: 365,
-      totalDrinksLogged: 2000,
-      totalHealthyPicks: 500,
-      uniqueDrinksLogged: allDrinks,
-      totalGoalsMet: 300,
-      clearNextEntryTime: true,
-      totalXp: 25000,
-      drops: 999,
-      inventory: const UserInventory(
-        streakFreezes: 3,
-        doubleXpTokens: 2,
-        cooldownSkips: 5,
-      ),
-    );
-
-    emit(currentState.copyWith(hydration: debugState));
+    // Don't change any values — the user will set what they need
+    // via the debug menu.  Just emit a fresh copy so the menu knows
+    // debug mode is active.
+    emit(currentState.copyWith(hydration: currentState.hydration));
   }
 
   /// Deactivate debug mode — restore the real state.
@@ -760,12 +953,22 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     double? waterGoalOz,
     bool? goalMetToday,
     int? completedChallenges,
+    List<bool>? challengeActive,
     double? totalWaterConsumedOz,
     int? totalDaysLogged,
     int? totalDrinksLogged,
     int? totalGoalsMet,
+    int? totalHealthyPicks,
     int? totalXp,
     int? drops,
+    UserInventory? inventory,
+    List<int>? homeDuckIndices,
+    Map<int, DuckBondData>? duckBonds,
+    List<String>? ownedAccessoryIds,
+    List<String>? purchasedThemeIds,
+    List<String>? uniqueDrinksLogged,
+    List<String>? claimedSeasonalPackIds,
+    bool? isSubscribed,
     bool clearNextEntryTime = false,
   }) {
     if (_realState == null) return; // not in debug mode
@@ -779,12 +982,22 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
       waterGoalOz: waterGoalOz,
       goalMetToday: goalMetToday,
       completedChallenges: completedChallenges,
+      challengeActive: challengeActive,
       totalWaterConsumedOz: totalWaterConsumedOz,
       totalDaysLogged: totalDaysLogged,
       totalDrinksLogged: totalDrinksLogged,
       totalGoalsMet: totalGoalsMet,
+      totalHealthyPicks: totalHealthyPicks,
       totalXp: totalXp,
       drops: drops,
+      inventory: inventory,
+      homeDuckIndices: homeDuckIndices,
+      duckBonds: duckBonds,
+      ownedAccessoryIds: ownedAccessoryIds,
+      purchasedThemeIds: purchasedThemeIds,
+      uniqueDrinksLogged: uniqueDrinksLogged,
+      claimedSeasonalPackIds: claimedSeasonalPackIds,
+      isSubscribed: isSubscribed,
       clearNextEntryTime: clearNextEntryTime,
     );
 
@@ -1260,8 +1473,14 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     if (tmpl == null) return false;
 
     final xpMul = currentState.hydration.inventory.doubleXpActive ? 2 : 1;
+    final questBonuses = _getActiveBonuses(currentState.hydration);
     int claimedXp = tmpl.xpReward * xpMul;
     int claimedDrops = _subDrops(tmpl.dropsReward, currentState.hydration);
+
+    // Duck passive: quest bonus
+    claimedXp = (claimedXp * (1.0 + questBonuses.questBonusFraction)).round();
+    claimedDrops =
+        (claimedDrops * (1.0 + questBonuses.questBonusFraction)).round();
 
     // Mark this quest as claimed
     final updatedQuests = List<DailyQuestProgress>.from(quests);

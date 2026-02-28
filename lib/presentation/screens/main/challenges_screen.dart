@@ -78,7 +78,8 @@ class ChallengesScreen extends StatelessWidget {
                       final isActive =
                           hydration.activeChallengeIndex == challenge.index;
                       final isCompleted =
-                          hydration.challengeActive[challenge.index];
+                          hydration.challengeActive[challenge.index] &&
+                              !isActive;
 
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),

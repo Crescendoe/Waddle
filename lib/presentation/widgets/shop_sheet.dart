@@ -8,6 +8,7 @@ import 'package:waddle/presentation/blocs/hydration/hydration_cubit.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_state.dart'
     as bloc;
 import 'package:waddle/presentation/widgets/common.dart';
+import 'package:waddle/presentation/widgets/market_confirmation.dart';
 
 /// Opens the Drops shop as a bottom sheet.
 void showShopSheet(BuildContext context) {
@@ -324,6 +325,13 @@ class _ShopItemTile extends StatelessWidget {
                   onTap: canBuy
                       ? () async {
                           HapticFeedback.mediumImpact();
+                          final confirmed = await showMarketConfirmation(
+                            context,
+                            action: 'purchase',
+                            itemName: item.name,
+                            cost: item.price,
+                          );
+                          if (!confirmed || !context.mounted) return;
                           await context
                               .read<HydrationCubit>()
                               .purchaseShopItem(item);
@@ -367,6 +375,12 @@ class _ShopItemTile extends StatelessWidget {
                   GestureDetector(
                     onTap: () async {
                       HapticFeedback.lightImpact();
+                      final confirmed = await showMarketConfirmation(
+                        context,
+                        action: 'use',
+                        itemName: item.name,
+                      );
+                      if (!confirmed || !context.mounted) return;
                       final cubit = context.read<HydrationCubit>();
                       bool success = false;
                       String message = '';
