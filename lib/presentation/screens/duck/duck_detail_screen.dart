@@ -10,6 +10,7 @@ import 'package:waddle/presentation/blocs/hydration/hydration_cubit.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_state.dart';
 import 'package:waddle/presentation/widgets/common.dart';
 import 'package:waddle/presentation/widgets/duck_avatar.dart';
+import 'package:waddle/core/utils/session_animation_tracker.dart';
 
 /// Full-screen duck detail / dress-up screen for an owned duck.
 class DuckDetailScreen extends StatefulWidget {
@@ -26,6 +27,8 @@ class _DuckDetailScreenState extends State<DuckDetailScreen>
   late final FocusNode _nameFocus;
   bool _feedAnimating = false;
   bool _justLeveledUp = false;
+  late final bool _animate =
+      SessionAnimationTracker.shouldAnimate(SessionAnimationTracker.duckDetail);
 
   @override
   void initState() {
@@ -36,6 +39,9 @@ class _DuckDetailScreenState extends State<DuckDetailScreen>
         ? state.hydration.duckBonds[widget.duckIndex]
         : null;
     _nameCtrl = TextEditingController(text: bond?.nickname ?? '');
+
+    // Check AFK progress on open (may auto-level)
+    context.read<HydrationCubit>().checkDuckAfk();
   }
 
   @override
@@ -100,11 +106,11 @@ class _DuckDetailScreenState extends State<DuckDetailScreen>
               ),
             ],
           ),
-          body: SingleChildScrollView(
+          body: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
               children: [
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
 
                 // ── Duck avatar with bond ring ──────────────────────
                 _DuckAvatarSection(
@@ -124,7 +130,7 @@ class _DuckDetailScreenState extends State<DuckDetailScreen>
                       curve: Curves.elasticOut,
                     ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
 
                 // ── Rename field ────────────────────────────────────
                 _RenameField(
@@ -143,7 +149,7 @@ class _DuckDetailScreenState extends State<DuckDetailScreen>
                     .fadeIn(delay: 150.ms, duration: 400.ms)
                     .slideY(begin: 0.1, end: 0),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
 
                 // ── Bond level + feed ───────────────────────────────
                 _BondSection(
@@ -153,12 +159,13 @@ class _DuckDetailScreenState extends State<DuckDetailScreen>
                   themeColor: themeColors.primary,
                   feedAnimating: _feedAnimating,
                   onFeed: () => _handleFeed(bond),
+                  isOnHome: isHomeDuck,
                 )
-                    .animate()
+                    .animateOnce(_animate)
                     .fadeIn(delay: 250.ms, duration: 400.ms)
                     .slideY(begin: 0.15, end: 0),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
 
                 // ── Passive bonus card ──────────────────────────────
                 if (passive != null)
@@ -168,24 +175,26 @@ class _DuckDetailScreenState extends State<DuckDetailScreen>
                     isHomeDuck: isHomeDuck,
                     themeColor: themeColors.primary,
                   )
-                      .animate()
+                      .animateOnce(_animate)
                       .fadeIn(delay: 350.ms, duration: 400.ms)
                       .slideY(begin: 0.15, end: 0),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
 
                 // ── Accessory slots ─────────────────────────────────
-                _AccessorySlotsSection(
-                  duckIndex: widget.duckIndex,
-                  bond: bond,
-                  ownedAccessoryIds: h.ownedAccessoryIds,
-                  themeColor: themeColors.primary,
-                )
-                    .animate()
-                    .fadeIn(delay: 450.ms, duration: 400.ms)
-                    .slideY(begin: 0.15, end: 0),
+                Expanded(
+                  child: _AccessorySlotsSection(
+                    duckIndex: widget.duckIndex,
+                    bond: bond,
+                    ownedAccessoryIds: h.ownedAccessoryIds,
+                    themeColor: themeColors.primary,
+                  )
+                      .animateOnce(_animate)
+                      .fadeIn(delay: 450.ms, duration: 400.ms)
+                      .slideY(begin: 0.15, end: 0),
+                ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 8),
 
                 // ── Action buttons ──────────────────────────────────
                 _ActionButtons(
@@ -197,11 +206,11 @@ class _DuckDetailScreenState extends State<DuckDetailScreen>
                   duckBonds: h.duckBonds,
                   themeColor: themeColors.primary,
                 )
-                    .animate()
+                    .animateOnce(_animate)
                     .fadeIn(delay: 550.ms, duration: 400.ms)
                     .slideY(begin: 0.1, end: 0),
 
-                const SizedBox(height: 40),
+                SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
               ],
             ),
           ),
@@ -214,7 +223,7 @@ class _DuckDetailScreenState extends State<DuckDetailScreen>
     if (_feedAnimating) return;
     if (bond.bondLevel >= DuckBondLevels.maxLevel) return;
 
-    final cost = DuckBondLevels.costToLevel(bond.bondLevel + 1);
+    final cost = bond.discountedCost();
     final state = context.read<HydrationCubit>().state;
     if (state is! HydrationLoaded) return;
     if (state.hydration.drops < cost) {
@@ -275,26 +284,30 @@ class _DuckAvatarSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final progress = (bond.bondLevel - 1) / (DuckBondLevels.maxLevel - 1);
+    final isMax = bond.bondLevel >= DuckBondLevels.maxLevel;
+    // Circle ring reflects overall bond level (1–10)
+    final ringProgress = isMax ? 1.0 : bond.bondLevel / DuckBondLevels.maxLevel;
 
     return SizedBox(
-      width: 180,
-      height: 180,
+      width: 150,
+      height: 150,
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Bond level ring
+          // Bond level ring (overall progress Lv.1→10)
           SizedBox(
-            width: 170,
-            height: 170,
+            width: 140,
+            height: 140,
             child: CircularProgressIndicator(
-              value: progress,
+              value: ringProgress,
               strokeWidth: 4,
               backgroundColor: AppColors.divider,
               valueColor: AlwaysStoppedAnimation(
-                bond.bondLevel >= DuckBondLevels.maxLevel
+                isMax
                     ? AppColors.streakGold
-                    : AppColors.primary,
+                    : bond.readyToAutoLevel
+                        ? AppColors.streakGold
+                        : AppColors.primary,
               ),
             ),
           ),
@@ -302,8 +315,8 @@ class _DuckAvatarSection extends StatelessWidget {
           // Glow on level-up
           if (justLeveledUp)
             Container(
-              width: 160,
-              height: 160,
+              width: 130,
+              height: 130,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 boxShadow: [
@@ -322,8 +335,8 @@ class _DuckAvatarSection extends StatelessWidget {
 
           // Duck circle background
           Container(
-            width: 150,
-            height: 150,
+            width: 120,
+            height: 120,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: duck.rarity.color.withValues(alpha: 0.1),
@@ -443,7 +456,7 @@ class _AnimatedDuckAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget avatar = DuckAvatar(duck: duck, size: 110);
+    Widget avatar = DuckAvatar(duck: duck, size: 90);
 
     // Gentle idle floating
     avatar = avatar
@@ -527,6 +540,11 @@ class _RenameField extends StatelessWidget {
                       maxLength}) =>
                   null,
               onSubmitted: onSubmitted,
+              onTapOutside: (_) {
+                if (focusNode.hasFocus) {
+                  onSubmitted(controller.text);
+                }
+              },
               textInputAction: TextInputAction.done,
             ),
           ),
@@ -556,6 +574,7 @@ class _BondSection extends StatelessWidget {
   final Color themeColor;
   final bool feedAnimating;
   final VoidCallback onFeed;
+  final bool isOnHome;
 
   const _BondSection({
     required this.bond,
@@ -564,15 +583,33 @@ class _BondSection extends StatelessWidget {
     required this.themeColor,
     required this.feedAnimating,
     required this.onFeed,
+    required this.isOnHome,
   });
+
+  String _formatDuration(Duration d) {
+    if (d.inDays > 0) {
+      final h = d.inHours % 24;
+      return '${d.inDays}d ${h}h';
+    }
+    if (d.inHours > 0) {
+      final m = d.inMinutes % 60;
+      return '${d.inHours}h ${m}m';
+    }
+    return '${d.inMinutes}m';
+  }
 
   @override
   Widget build(BuildContext context) {
     final isMaxLevel = bond.bondLevel >= DuckBondLevels.maxLevel;
-    final cost =
-        isMaxLevel ? 0 : DuckBondLevels.costToLevel(bond.bondLevel + 1);
-    final canAfford = drops >= cost;
-    final progress = (bond.bondLevel - 1) / (DuckBondLevels.maxLevel - 1);
+    final baseCost =
+        isMaxLevel ? 0 : DuckBondLevels.costToLevel(bond.bondLevel);
+    final discountedCost = bond.discountedCost();
+    final canAfford = drops >= discountedCost;
+    final afkProg = bond.afkProgress();
+    final afkPercent = (afkProg * 100).round();
+    final timeLeft = bond.afkTimeRemaining();
+    final isReady = bond.readyToAutoLevel;
+    final hasDiscount = discountedCost < baseCost && !isMaxLevel;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -590,16 +627,15 @@ class _BondSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Header ─────────────────────────────────────────────
           Row(
             children: [
               Icon(Icons.favorite_rounded, color: Colors.pinkAccent, size: 20),
               const SizedBox(width: 8),
-              Text('Bond Level', style: AppTextStyles.labelLarge),
+              Text('Bond', style: AppTextStyles.labelLarge),
               const Spacer(),
               Text(
-                isMaxLevel
-                    ? 'MAX ✨'
-                    : '${bond.bondLevel} / ${DuckBondLevels.maxLevel}',
+                isMaxLevel ? 'MAX ✨' : 'Lv. ${bond.bondLevel}',
                 style: AppTextStyles.bodyMedium.copyWith(
                   fontWeight: FontWeight.w600,
                   color:
@@ -610,20 +646,76 @@ class _BondSection extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // Progress bar
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 8,
-              backgroundColor: AppColors.divider,
-              valueColor: AlwaysStoppedAnimation(
-                isMaxLevel ? AppColors.streakGold : themeColor,
-              ),
+          // ── AFK bond gauge ─────────────────────────────────────
+          if (!isMaxLevel) ...[
+            // Progress bar
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: afkProg,
+                    minHeight: 10,
+                    backgroundColor: AppColors.divider,
+                    valueColor: AlwaysStoppedAnimation(
+                      isReady ? AppColors.streakGold : themeColor,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
+            const SizedBox(height: 8),
 
-          // Next-level preview
+            // Time remaining / ready label
+            if (isReady)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.auto_awesome_rounded,
+                      size: 16, color: AppColors.streakGold),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Ready to level up — free!',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.streakGold,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              )
+            else if (isOnHome)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.schedule_rounded,
+                      size: 14, color: AppColors.textHint),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${_formatDuration(timeLeft)} until next bond level',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              )
+            else
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.home_rounded, size: 14, color: AppColors.textHint),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Place on home screen to earn bond',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.textHint,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ),
+          ],
+
+          // ── Next-level preview ─────────────────────────────────
           if (!isMaxLevel && passive != null) ...[
             const SizedBox(height: 12),
             Container(
@@ -684,7 +776,7 @@ class _BondSection extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          // Feed button
+          // ── Feed button ────────────────────────────────────────
           if (!isMaxLevel)
             SizedBox(
               width: double.infinity,
@@ -701,11 +793,21 @@ class _BondSection extends StatelessWidget {
                       )
                     : const Icon(Icons.restaurant_rounded, size: 18),
                 label: Text(
-                  feedAnimating ? 'Feeding...' : 'Feed  •  $cost 💧',
+                  feedAnimating
+                      ? 'Feeding...'
+                      : isReady
+                          ? 'Level Up!  •  Free'
+                          : hasDiscount
+                              ? 'Feed  •  $discountedCost 💧  ($afkPercent% off)'
+                              : 'Feed  •  $baseCost 💧',
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: canAfford ? themeColor : AppColors.divider,
+                  backgroundColor: isReady
+                      ? AppColors.streakGold
+                      : canAfford
+                          ? themeColor
+                          : AppColors.divider,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(

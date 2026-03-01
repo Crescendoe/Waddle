@@ -10,6 +10,7 @@ import 'package:waddle/core/theme/app_theme.dart';
 import 'package:waddle/data/services/friend_service.dart';
 import 'package:waddle/domain/entities/friend_entity.dart';
 import 'package:waddle/presentation/widgets/common.dart';
+import 'package:waddle/core/utils/session_animation_tracker.dart';
 
 class FriendsScreen extends StatefulWidget {
   const FriendsScreen({super.key});
@@ -24,6 +25,8 @@ class _FriendsScreenState extends State<FriendsScreen>
   late final FriendService _friendService;
   final TextEditingController _searchController = TextEditingController();
   Timer? _searchDebounce;
+  late final bool _animate =
+      SessionAnimationTracker.shouldAnimate(SessionAnimationTracker.friends);
 
   List<FriendEntity> _friends = [];
   List<FriendRequest> _requests = [];
@@ -238,7 +241,7 @@ class _FriendsScreenState extends State<FriendsScreen>
       itemBuilder: (context, index) {
         final friend = _friends[index];
         return _buildFriendTile(friend)
-            .animate()
+            .animateOnce(_animate)
             .fadeIn(delay: (50 * index).ms);
       },
     );
@@ -425,7 +428,7 @@ class _FriendsScreenState extends State<FriendsScreen>
       itemBuilder: (context, index) {
         final request = _requests[index];
         return _buildRequestCard(request)
-            .animate()
+            .animateOnce(_animate)
             .fadeIn(delay: (50 * index).ms);
       },
     );
@@ -627,7 +630,7 @@ class _FriendsScreenState extends State<FriendsScreen>
       itemCount: _searchResults.length,
       itemBuilder: (context, index) =>
           _buildSearchResultTile(_searchResults[index])
-              .animate()
+              .animateOnce(_animate)
               .fadeIn(delay: (50 * index).ms),
     );
   }
@@ -865,7 +868,10 @@ class _FriendsScreenState extends State<FriendsScreen>
               ),
             ],
           ),
-        ).animate().fadeIn(delay: (index * 60).ms).slideX(begin: 0.05);
+        )
+            .animateOnce(_animate)
+            .fadeIn(delay: (index * 60).ms)
+            .slideX(begin: 0.05);
       },
     );
   }

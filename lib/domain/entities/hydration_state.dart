@@ -141,10 +141,12 @@ class HydrationState extends Equatable {
       dailyQuests.isNotEmpty && dailyQuests.every((q) => q.completed);
 
   StreakTier get streakTier {
-    if (currentStreak >= 30) return StreakTier.platinum;
-    if (currentStreak >= 20) return StreakTier.gold;
-    if (currentStreak >= 15) return StreakTier.silver;
-    if (currentStreak >= 10) return StreakTier.bronze;
+    if (currentStreak >= 1000) return StreakTier.obsidian;
+    if (currentStreak >= 365) return StreakTier.diamond;
+    if (currentStreak >= 150) return StreakTier.platinum;
+    if (currentStreak >= 60) return StreakTier.gold;
+    if (currentStreak >= 30) return StreakTier.silver;
+    if (currentStreak >= 14) return StreakTier.bronze;
     return StreakTier.normal;
   }
 
@@ -300,11 +302,15 @@ class HydrationState extends Equatable {
       ];
 }
 
-enum StreakTier { normal, bronze, silver, gold, platinum }
+enum StreakTier { normal, bronze, silver, gold, platinum, diamond, obsidian }
 
 extension StreakTierExtension on StreakTier {
   Color get color {
     switch (this) {
+      case StreakTier.obsidian:
+        return const Color(0xFF1A1A2E);
+      case StreakTier.diamond:
+        return const Color(0xFF00BCD4);
       case StreakTier.platinum:
         return const Color(0xFF36708B);
       case StreakTier.gold:
@@ -320,6 +326,10 @@ extension StreakTierExtension on StreakTier {
 
   String get label {
     switch (this) {
+      case StreakTier.obsidian:
+        return 'Obsidian';
+      case StreakTier.diamond:
+        return 'Diamond';
       case StreakTier.platinum:
         return 'Platinum';
       case StreakTier.gold:
@@ -335,8 +345,12 @@ extension StreakTierExtension on StreakTier {
 
   IconData get icon {
     switch (this) {
-      case StreakTier.platinum:
+      case StreakTier.obsidian:
+        return Icons.auto_awesome_rounded;
+      case StreakTier.diamond:
         return Icons.diamond_rounded;
+      case StreakTier.platinum:
+        return Icons.stars_rounded;
       case StreakTier.gold:
         return Icons.emoji_events_rounded;
       case StreakTier.silver:

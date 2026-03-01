@@ -46,6 +46,8 @@ enum XpEvent {
 ///
 /// XP thresholds follow a gentle polynomial curve so early levels feel
 /// fast and later levels slow down — exactly like Duolingo.
+/// After level 15 the curve steepens gradually so that reaching
+/// level 100 takes roughly one year of daily play.
 ///
 /// Level 1 starts at 0 XP.  Max level is 100.
 class XpLevel {
@@ -55,11 +57,15 @@ class XpLevel {
 
   /// Total XP required to reach [level].
   ///
-  /// Formula: `40 * level^1.5` (rounded), so:
-  /// L1=0, L2=113, L5=358, L10=1265, L20=3578, L50=14142, L100=40000
+  /// Base formula: `40 * level^1.5`
+  /// After level 15 a scaling factor `(1 + (level-15)/50)` is applied
+  /// to extend the endgame:
+  /// L1=0, L2=113, L10=1265, L20=3935, L50=24041, L100=108000
   static int xpForLevel(int level) {
     if (level <= 1) return 0;
-    return (40 * _pow15(level)).round();
+    final base = 40 * _pow15(level);
+    final scale = level > 15 ? 1.0 + (level - 15) / 50.0 : 1.0;
+    return (base * scale).round();
   }
 
   /// XP required to go from [level] to [level]+1.
@@ -112,7 +118,7 @@ class XpLevel {
 class StreakMilestones {
   StreakMilestones._();
 
-  static const List<int> milestones = [10, 20, 30, 60, 100, 365];
+  static const List<int> milestones = [7, 14, 30, 60, 100, 150, 365, 500, 1000];
 
   /// Returns `true` if [streak] is exactly a milestone value.
   static bool isMilestone(int streak) => milestones.contains(streak);

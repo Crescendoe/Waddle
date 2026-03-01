@@ -4,7 +4,7 @@ class AppConstants {
 
   // App Info
   static const String appName = 'Waddle';
-  static const String appVersion = '0.9.5';
+  static const String appVersion = '0.9.6';
   static const String developerName = 'William Wyler';
   static const String supportEmail = 'crescendoedd@gmail.com';
 
@@ -15,10 +15,12 @@ class AppConstants {
   static const int challengeDurationDays = 14;
 
   // Streak tier thresholds
-  static const int bronzeThreshold = 10;
-  static const int silverThreshold = 15;
-  static const int goldThreshold = 20;
-  static const int platinumThreshold = 30;
+  static const int bronzeThreshold = 14;
+  static const int silverThreshold = 30;
+  static const int goldThreshold = 60;
+  static const int platinumThreshold = 150;
+  static const int diamondThreshold = 365;
+  static const int obsidianThreshold = 1000;
 
   // Drink logging
   static const int logDebounceSeconds = 60;

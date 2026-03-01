@@ -5,6 +5,7 @@ import 'package:waddle/core/di/injection.dart';
 import 'package:waddle/core/theme/app_theme.dart';
 import 'package:waddle/data/services/notification_service.dart';
 import 'package:waddle/presentation/widgets/common.dart';
+import 'package:waddle/core/utils/session_animation_tracker.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -15,6 +16,8 @@ class NotificationsScreen extends StatefulWidget {
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
   late final NotificationService _service;
+  late final bool _animate = SessionAnimationTracker.shouldAnimate(
+      SessionAnimationTracker.notifications);
 
   // Master
   late bool _remindersEnabled;
@@ -143,7 +146,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           fontWeight: FontWeight.w700,
         ),
       ),
-    ).animate().fadeIn();
+    ).animateOnce(_animate).fadeIn();
   }
 
   Widget _buildMasterToggle() {
@@ -173,7 +176,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           color: _remindersEnabled ? AppColors.primary : AppColors.textHint,
         ),
       ),
-    ).animate().fadeIn();
+    ).animateOnce(_animate).fadeIn();
   }
 
   // ── Schedule cards ──
@@ -224,7 +227,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ),
         ],
       ),
-    ).animate().fadeIn(delay: 100.ms);
+    ).animateOnce(_animate).fadeIn(delay: 100.ms);
   }
 
   Widget _buildActiveWindowCard() {
@@ -273,7 +276,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ),
         ],
       ),
-    ).animate().fadeIn(delay: 150.ms);
+    ).animateOnce(_animate).fadeIn(delay: 150.ms);
   }
 
   Widget _buildScheduledRemindersCard() {
@@ -314,7 +317,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ),
         ],
       ),
-    ).animate().fadeIn(delay: 200.ms);
+    ).animateOnce(_animate).fadeIn(delay: 200.ms);
   }
 
   // ── Alerts card ──
@@ -361,7 +364,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ),
         ],
       ),
-    ).animate().fadeIn(delay: 300.ms);
+    ).animateOnce(_animate).fadeIn(delay: 300.ms);
   }
 
   // ── Tone card ──
@@ -413,7 +416,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ),
         ],
       ),
-    ).animate().fadeIn(delay: 350.ms);
+    ).animateOnce(_animate).fadeIn(delay: 350.ms);
   }
 
   Widget _buildSmartCard() {
@@ -430,7 +433,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           _service.setSmartFrequency(v);
         },
       ),
-    ).animate().fadeIn(delay: 400.ms);
+    ).animateOnce(_animate).fadeIn(delay: 400.ms);
   }
 
   // ── Delivery card ──
@@ -465,7 +468,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ),
         ],
       ),
-    ).animate().fadeIn(delay: 450.ms);
+    ).animateOnce(_animate).fadeIn(delay: 450.ms);
   }
 
   Widget _buildQuietHoursCard() {
@@ -529,7 +532,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ],
         ],
       ),
-    ).animate().fadeIn(delay: 500.ms);
+    ).animateOnce(_animate).fadeIn(delay: 500.ms);
   }
 
   // ══════════════════════════════════════════════════════════════

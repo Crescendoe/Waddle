@@ -5,13 +5,17 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:waddle/core/constants/app_constants.dart';
+import 'package:waddle/core/di/injection.dart';
 import 'package:waddle/core/theme/app_theme.dart';
+import 'package:waddle/data/services/inbox_service.dart';
 import 'package:waddle/domain/entities/drink_type.dart';
 import 'package:waddle/domain/entities/hydration_state.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_cubit.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_state.dart';
 import 'package:waddle/presentation/screens/celebration/unlock_reward_screen.dart';
 import 'package:waddle/presentation/widgets/common.dart';
+import 'package:waddle/presentation/widgets/inbox_sheet.dart';
+import 'package:waddle/presentation/widgets/waddle_toast.dart';
 import 'package:waddle/presentation/widgets/water_cup.dart';
 import 'package:waddle/presentation/screens/main/drink_selection_sheet.dart';
 
@@ -85,6 +89,13 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         if (state is ChallengeCompleted) {
           HapticFeedback.heavyImpact();
+          WaddleToast.show(
+            context,
+            title: 'Challenge Complete!',
+            body: 'You did it! Claim your rewards.',
+            icon: Icons.emoji_events_rounded,
+            color: AppColors.success,
+          );
           context.pushNamed(
             'challengeComplete',
             extra: {'challengeIndex': state.challengeIndex},
@@ -99,6 +110,13 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         if (state is LeveledUp) {
           HapticFeedback.heavyImpact();
+          WaddleToast.show(
+            context,
+            title: 'Level ${state.newLevel}!',
+            body: 'You earned ${state.dropsAwarded} drops.',
+            icon: Icons.arrow_upward_rounded,
+            color: AppColors.primary,
+          );
           context.pushNamed(
             'levelUp',
             extra: {
@@ -223,139 +241,205 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildHeader(HydrationState hydration, HydrationLoaded loaded) {
     final tc = ActiveThemeColors.of(context);
-    return Row(
+    return Stack(
+      alignment: Alignment.center,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        // Bell icon — true center
+        _buildInboxBell(tc),
+        // Greeting + badges row
+        Row(
           children: [
-            Text('Good ${_timeGreeting()}!',
-                style: AppTextStyles.headlineSmall),
-            Text(
-              hydration.goalMetToday
-                  ? 'Goal reached! Keep it up 💧'
-                  : '${hydration.remainingOz.toStringAsFixed(0)} oz to go',
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-        const Spacer(),
-        // Drinks logged badge (always positive)
-        if (loaded.todayLogs.isNotEmpty)
-          GestureDetector(
-            onTap: () => _showBadgeTip(
-              context,
-              icon: Icons.playlist_add_check_rounded,
-              color: tc.primary,
-              title: 'Drinks Logged',
-              body:
-                  'This counts every drink you log today — water, coffee, soda, everything!\n\nHonest tracking gives you the most accurate view of your hydration. Every log counts.',
-            ),
-            child: Container(
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: tc.primary.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: tc.primary.withValues(alpha: 0.25),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.playlist_add_check_rounded,
-                      size: 14, color: tc.primary),
-                  const SizedBox(width: 3),
-                  Text(
-                    '${loaded.todayLogs.length}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: tc.primary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ).animateOnce(_animate).fadeIn(),
-        // Healthy picks badge (bonus — only shows when > 0)
-        if (loaded.healthyPicksToday > 0)
-          GestureDetector(
-            onTap: () => _showBadgeTip(
-              context,
-              icon: Icons.eco_rounded,
-              color: const Color(0xFF2E7D32),
-              title: 'Healthy Picks',
-              body:
-                  'This counts drinks rated Excellent or Good — like water, tea, coffee, and milk.\n\nIt only goes up! Logging other drinks won\'t lower this number.',
-            ),
-            child: Container(
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2E7D32).withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: const Color(0xFF2E7D32).withValues(alpha: 0.25),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.eco_rounded,
-                      size: 14, color: Color(0xFF2E7D32)),
-                  const SizedBox(width: 3),
-                  Text(
-                    '${loaded.healthyPicksToday}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF2E7D32),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ).animateOnce(_animate).fadeIn(),
-        // Streak badge
-        GestureDetector(
-          onTap: () => _showBadgeTip(
-            context,
-            icon: Icons.local_fire_department_rounded,
-            color: hydration.streakTier.color,
-            title: 'Daily Streak',
-            body:
-                'Your streak grows each day you meet your water goal.\n\nCurrent: ${hydration.currentStreak} days\nBest: ${hydration.recordStreak} days\nTier: ${hydration.streakTier.label}',
-          ),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: hydration.streakTier.color.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: hydration.streakTier.color.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.local_fire_department_rounded,
-                    size: 18, color: hydration.streakTier.color),
-                const SizedBox(width: 4),
+                Text('Good ${_timeGreeting()}!',
+                    style: AppTextStyles.headlineSmall),
                 Text(
-                  '${hydration.currentStreak}',
-                  style: AppTextStyles.labelLarge.copyWith(
-                    color: hydration.streakTier.color,
-                    fontWeight: FontWeight.bold,
+                  hydration.goalMetToday
+                      ? 'Goal reached! Keep it up 💧'
+                      : '${hydration.remainingOz.toStringAsFixed(0)} oz to go',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
                   ),
                 ),
               ],
             ),
-          ),
-        ).animateOnce(_animate).fadeIn().slideX(begin: 0.2),
+            const Spacer(),
+            // Drinks logged badge (always positive)
+            if (loaded.todayLogs.isNotEmpty)
+              GestureDetector(
+                onTap: () => _showBadgeTip(
+                  context,
+                  icon: Icons.playlist_add_check_rounded,
+                  color: tc.primary,
+                  title: 'Drinks Logged',
+                  body:
+                      'This counts every drink you log today — water, coffee, soda, everything!\n\nHonest tracking gives you the most accurate view of your hydration. Every log counts.',
+                ),
+                child: Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: tc.primary.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: tc.primary.withValues(alpha: 0.25),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.playlist_add_check_rounded,
+                          size: 14, color: tc.primary),
+                      const SizedBox(width: 3),
+                      Text(
+                        '${loaded.todayLogs.length}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: tc.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ).animateOnce(_animate).fadeIn(),
+            // Healthy picks badge (bonus — only shows when > 0)
+            if (loaded.healthyPicksToday > 0)
+              GestureDetector(
+                onTap: () => _showBadgeTip(
+                  context,
+                  icon: Icons.eco_rounded,
+                  color: const Color(0xFF2E7D32),
+                  title: 'Healthy Picks',
+                  body:
+                      'This counts drinks rated Excellent or Good — like water, tea, coffee, and milk.\n\nIt only goes up! Logging other drinks won\'t lower this number.',
+                ),
+                child: Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2E7D32).withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color(0xFF2E7D32).withValues(alpha: 0.25),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.eco_rounded,
+                          size: 14, color: Color(0xFF2E7D32)),
+                      const SizedBox(width: 3),
+                      Text(
+                        '${loaded.healthyPicksToday}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2E7D32),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ).animateOnce(_animate).fadeIn(),
+            // Streak badge
+            GestureDetector(
+              onTap: () => _showBadgeTip(
+                context,
+                icon: Icons.local_fire_department_rounded,
+                color: hydration.streakTier.color,
+                title: 'Daily Streak',
+                body:
+                    'Your streak grows each day you meet your water goal.\n\nCurrent: ${hydration.currentStreak} days\nBest: ${hydration.recordStreak} days\nTier: ${hydration.streakTier.label}',
+              ),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: hydration.streakTier.color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: hydration.streakTier.color.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.local_fire_department_rounded,
+                        size: 18, color: hydration.streakTier.color),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${hydration.currentStreak}',
+                      style: AppTextStyles.labelLarge.copyWith(
+                        color: hydration.streakTier.color,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ).animateOnce(_animate).fadeIn().slideX(begin: 0.2),
+          ],
+        ).animateOnce(_animate).fadeIn(),
       ],
+    );
+  }
+
+  Widget _buildInboxBell(ActiveThemeColors tc) {
+    final unread = getIt<InboxService>().unreadCount;
+    return GestureDetector(
+      onTap: () async {
+        await showInboxSheet(context);
+        // Refresh after sheet closes so badge count updates
+        if (mounted) setState(() {});
+      },
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: unread > 0
+              ? tc.primary.withValues(alpha: 0.10)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Icon(
+              unread > 0
+                  ? Icons.notifications_rounded
+                  : Icons.notifications_none_rounded,
+              size: 20,
+              color: unread > 0 ? tc.primary : AppColors.textHint,
+            ),
+            if (unread > 0)
+              Positioned(
+                top: -4,
+                right: -6,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: AppColors.error,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  constraints: const BoxConstraints(minWidth: 16),
+                  child: Text(
+                    unread > 9 ? '9+' : '$unread',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     ).animateOnce(_animate).fadeIn();
   }
 

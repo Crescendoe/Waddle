@@ -537,6 +537,8 @@ class _StreaksScreenState extends State<StreaksScreen>
       (StreakTier.silver, AppConstants.silverThreshold),
       (StreakTier.gold, AppConstants.goldThreshold),
       (StreakTier.platinum, AppConstants.platinumThreshold),
+      (StreakTier.diamond, AppConstants.diamondThreshold),
+      (StreakTier.obsidian, AppConstants.obsidianThreshold),
     ];
 
     return GlassCard(

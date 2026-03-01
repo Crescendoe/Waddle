@@ -143,14 +143,14 @@ class DuckPassives {
       name: 'Puddle Pace',
       description: 'Reduces entry cooldown.',
       type: DuckPassiveType.cooldownReductionMin,
-      levelValues: [1, 1, 2, 2, 2, 3, 3, 3, 4, 4],
+      levelValues: [1, 2, 2, 3, 3, 4, 4, 5, 5, 6],
     ),
     1: DuckPassive(
       // Ripple — Common
       name: 'Ripple Reward',
       description: 'Bonus drops every time you log a drink.',
       type: DuckPassiveType.bonusDropsPerLog,
-      levelValues: [1, 1, 1, 2, 2, 2, 3, 3, 3, 4],
+      levelValues: [1, 1, 2, 2, 3, 3, 4, 4, 5, 6],
     ),
     2: DuckPassive(
       // Current — Rare
@@ -173,7 +173,7 @@ class DuckPassives {
       name: 'Morning Dew',
       description: 'Bonus drops when you hit your daily goal.',
       type: DuckPassiveType.bonusDropsOnGoal,
-      levelValues: [2, 2, 3, 3, 4, 4, 5, 5, 6, 7],
+      levelValues: [3, 4, 5, 6, 7, 8, 9, 10, 12, 14],
     ),
     5: DuckPassive(
       // Brook — Uncommon
@@ -196,7 +196,7 @@ class DuckPassives {
       name: 'Green Thumb',
       description: 'A little extra for every drink you log.',
       type: DuckPassiveType.bonusDropsPerLog,
-      levelValues: [1, 1, 1, 2, 2, 2, 3, 3, 3, 4],
+      levelValues: [1, 1, 2, 2, 3, 3, 4, 4, 5, 6],
     ),
     8: DuckPassive(
       // Botanist — Uncommon
@@ -212,14 +212,14 @@ class DuckPassives {
       name: 'Perfect Aim',
       description: 'Generous bonus drops on goal completion.',
       type: DuckPassiveType.bonusDropsOnGoal,
-      levelValues: [3, 3, 4, 4, 5, 5, 6, 6, 7, 8],
+      levelValues: [4, 5, 6, 7, 8, 9, 10, 12, 14, 16],
     ),
     10: DuckPassive(
       // Marksman — Rare
       name: 'Sharpshooter',
       description: 'Big drop bonus when you hit your goal.',
       type: DuckPassiveType.bonusDropsOnGoal,
-      levelValues: [6, 7, 8, 9, 10, 12, 14, 16, 18, 20],
+      levelValues: [8, 10, 12, 14, 16, 18, 20, 23, 26, 30],
     ),
 
     // ── Drinks logged duck (Rare) ───────────────────────────────────
@@ -237,7 +237,7 @@ class DuckPassives {
       name: 'Pure Drops',
       description: 'A small bonus drop per drink logged.',
       type: DuckPassiveType.bonusDropsPerLog,
-      levelValues: [1, 1, 2, 2, 3, 3, 4, 4, 5, 5],
+      levelValues: [1, 1, 2, 2, 3, 3, 4, 5, 5, 6],
     ),
     13: DuckPassive(
       // Brewmaster — Uncommon
@@ -251,14 +251,14 @@ class DuckPassives {
       name: 'Inner Peace',
       description: 'Calm focus reduces cooldown.',
       type: DuckPassiveType.cooldownReductionMin,
-      levelValues: [2, 2, 3, 3, 3, 4, 4, 5, 5, 6],
+      levelValues: [2, 2, 3, 3, 4, 4, 5, 5, 6, 7],
     ),
     15: DuckPassive(
       // Frostbite — Uncommon
       name: 'Crisp Reward',
       description: 'A refreshing bonus with each log.',
       type: DuckPassiveType.bonusDropsPerLog,
-      levelValues: [1, 1, 2, 2, 3, 3, 4, 4, 5, 5],
+      levelValues: [1, 1, 2, 2, 3, 3, 4, 5, 5, 6],
     ),
     16: DuckPassive(
       // Herbivore — Uncommon
@@ -337,26 +337,83 @@ class DuckBondData extends Equatable {
   /// e.g. `{ 'hat': 'hat_crown', 'eyewear': 'eye_monocle' }`
   final Map<String, String> equippedAccessories;
 
+  // ── AFK bond progress ───────────────────────────────────────────
+  /// Banked idle-time milliseconds toward the current level.
+  /// Accumulated whenever the duck is removed from the home screen.
+  final int afkAccumulatedMs;
+
+  /// When the duck was last placed on the home screen (null = not active).
+  /// While on the home screen, elapsed = now − afkStartTime.
+  final DateTime? afkStartTime;
+
   const DuckBondData({
     this.bondLevel = 1,
     this.nickname,
     this.equippedAccessories = const {},
+    this.afkAccumulatedMs = 0,
+    this.afkStartTime,
   });
 
   /// Get the accessory ID equipped in a given slot, or null.
   String? accessoryForSlot(AccessorySlot slot) =>
       equippedAccessories[slot.name];
 
+  // ── AFK helpers ─────────────────────────────────────────────────
+
+  /// Total AFK milliseconds (banked + live elapsed if active).
+  int totalAfkMs() {
+    int total = afkAccumulatedMs;
+    if (afkStartTime != null) {
+      total += DateTime.now().difference(afkStartTime!).inMilliseconds;
+    }
+    return total.clamp(0, DuckAfkConfig.msForLevel(bondLevel));
+  }
+
+  /// AFK progress toward auto-level-up (0.0–1.0).
+  double afkProgress() {
+    if (bondLevel >= DuckBondLevels.maxLevel) return 1.0;
+    final needed = DuckAfkConfig.msForLevel(bondLevel);
+    if (needed <= 0) return 1.0;
+    return (totalAfkMs() / needed).clamp(0.0, 1.0);
+  }
+
+  /// Drop cost after applying the AFK discount.
+  int discountedCost() {
+    if (bondLevel >= DuckBondLevels.maxLevel) return 0;
+    final base = DuckBondLevels.costToLevel(bondLevel);
+    final discount = afkProgress();
+    return (base * (1.0 - discount)).ceil();
+  }
+
+  /// Whether AFK progress has reached 100% for auto-level-up.
+  bool get readyToAutoLevel =>
+      bondLevel < DuckBondLevels.maxLevel && afkProgress() >= 1.0;
+
+  /// Remaining duration until auto-level-up (zero if already ready).
+  Duration afkTimeRemaining() {
+    if (bondLevel >= DuckBondLevels.maxLevel) return Duration.zero;
+    final needed = DuckAfkConfig.msForLevel(bondLevel);
+    final elapsed = totalAfkMs();
+    final remaining = needed - elapsed;
+    return remaining > 0 ? Duration(milliseconds: remaining) : Duration.zero;
+  }
+
   DuckBondData copyWith({
     int? bondLevel,
     String? nickname,
     bool clearNickname = false,
     Map<String, String>? equippedAccessories,
+    int? afkAccumulatedMs,
+    DateTime? afkStartTime,
+    bool clearAfkStartTime = false,
   }) {
     return DuckBondData(
       bondLevel: bondLevel ?? this.bondLevel,
       nickname: clearNickname ? null : (nickname ?? this.nickname),
       equippedAccessories: equippedAccessories ?? this.equippedAccessories,
+      afkAccumulatedMs: afkAccumulatedMs ?? this.afkAccumulatedMs,
+      afkStartTime:
+          clearAfkStartTime ? null : (afkStartTime ?? this.afkStartTime),
     );
   }
 
@@ -365,6 +422,9 @@ class DuckBondData extends Equatable {
         'bondLevel': bondLevel,
         if (nickname != null) 'nickname': nickname,
         'equippedAccessories': equippedAccessories,
+        'afkAccumulatedMs': afkAccumulatedMs,
+        if (afkStartTime != null)
+          'afkStartTime': afkStartTime!.toIso8601String(),
       };
 
   /// Deserialize from Firestore.
@@ -375,11 +435,21 @@ class DuckBondData extends Equatable {
       equippedAccessories: (map['equippedAccessories'] as Map<String, dynamic>?)
               ?.map((k, v) => MapEntry(k, v.toString())) ??
           const {},
+      afkAccumulatedMs: (map['afkAccumulatedMs'] as num?)?.toInt() ?? 0,
+      afkStartTime: map['afkStartTime'] is String
+          ? DateTime.tryParse(map['afkStartTime'] as String)
+          : null,
     );
   }
 
   @override
-  List<Object?> get props => [bondLevel, nickname, equippedAccessories];
+  List<Object?> get props => [
+        bondLevel,
+        nickname,
+        equippedAccessories,
+        afkAccumulatedMs,
+        afkStartTime
+      ];
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -394,23 +464,23 @@ class DuckBondLevels {
   static int costToLevel(int level) {
     switch (level) {
       case 1:
-        return 15;
+        return 10;
       case 2:
-        return 30;
+        return 20;
       case 3:
-        return 50;
+        return 35;
       case 4:
-        return 75;
+        return 50;
       case 5:
-        return 110;
+        return 75;
       case 6:
-        return 160;
+        return 100;
       case 7:
-        return 220;
+        return 140;
       case 8:
-        return 300;
+        return 190;
       case 9:
-        return 400;
+        return 250;
       default:
         return 0; // max level
     }
@@ -426,6 +496,42 @@ class DuckBondLevels {
     }
     return sum;
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// AFK / IDLE BOND CONFIG
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Configuration for idle/AFK bond accumulation.
+///
+/// While a duck is on the home screen it slowly fills a bond gauge.
+/// Once the gauge is full the duck auto-levels for free.
+/// Partial progress proportionally reduces the feed cost.
+class DuckAfkConfig {
+  DuckAfkConfig._();
+
+  /// Hours required to auto-level from [level] → [level + 1].
+  static const Map<int, int> _hoursForLevel = {
+    1: 8,
+    2: 16,
+    3: 24,
+    4: 36,
+    5: 48,
+    6: 72,
+    7: 120,
+    8: 168,
+    9: 240,
+  };
+
+  /// Milliseconds required to auto-level from [level] → [level + 1].
+  static int msForLevel(int level) {
+    final hours = _hoursForLevel[level] ?? 0;
+    return hours * 3600 * 1000;
+  }
+
+  /// Duration required to auto-level from [level] → [level + 1].
+  static Duration durationForLevel(int level) =>
+      Duration(milliseconds: msForLevel(level));
 }
 
 // ═══════════════════════════════════════════════════════════════════════

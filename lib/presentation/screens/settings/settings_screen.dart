@@ -18,6 +18,7 @@ import 'package:waddle/presentation/blocs/hydration/hydration_cubit.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_state.dart';
 import 'package:waddle/presentation/screens/settings/debug_menu_sheet.dart';
 import 'package:waddle/presentation/widgets/common.dart';
+import 'package:waddle/core/utils/session_animation_tracker.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -28,6 +29,8 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late final AppSettingsService _settings;
+  late final bool _animate =
+      SessionAnimationTracker.shouldAnimate(SessionAnimationTracker.settings);
   int _versionTapCount = 0;
   DateTime? _lastVersionTap;
 
@@ -74,7 +77,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ],
               ),
-            ).animate().fadeIn(),
+            ).animateOnce(_animate).fadeIn(),
             const SizedBox(height: 20),
 
             // ── Hydration Preferences ──
@@ -109,7 +112,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ],
               ),
-            ).animate().fadeIn(delay: 100.ms),
+            ).animateOnce(_animate).fadeIn(delay: 100.ms),
             const SizedBox(height: 20),
 
             // ── Legal & Support ──
@@ -140,7 +143,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ],
               ),
-            ).animate().fadeIn(delay: 300.ms),
+            ).animateOnce(_animate).fadeIn(delay: 300.ms),
             const SizedBox(height: 20),
 
             // ── What's New ──
@@ -153,7 +156,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 subtitle: 'See what\'s new in v${AppConstants.appVersion}',
                 onTap: () => _showChangelog(),
               ),
-            ).animate().fadeIn(delay: 350.ms),
+            ).animateOnce(_animate).fadeIn(delay: 350.ms),
             const SizedBox(height: 20),
 
             // ── Share & Rate ──
@@ -177,7 +180,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ],
               ),
-            ).animate().fadeIn(delay: 400.ms),
+            ).animateOnce(_animate).fadeIn(delay: 400.ms),
             const SizedBox(height: 20),
 
             // ── Data Management ──
@@ -209,7 +212,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ],
               ),
-            ).animate().fadeIn(delay: 500.ms),
+            ).animateOnce(_animate).fadeIn(delay: 500.ms),
             const SizedBox(height: 24),
 
             // ── Sign out ──
@@ -225,7 +228,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
               ),
-            ).animate().fadeIn(delay: 500.ms),
+            ).animateOnce(_animate).fadeIn(delay: 500.ms),
             const SizedBox(height: 16),
 
             // ── Debug Mode Section (visible only when active) ──
@@ -263,7 +266,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ],
                 ),
-              ).animate().fadeIn(),
+              ).animateOnce(_animate).fadeIn(),
               const SizedBox(height: 16),
             ],
 
@@ -277,7 +280,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               ),
-            ).animate().fadeIn(delay: 600.ms),
+            ).animateOnce(_animate).fadeIn(delay: 600.ms),
             const SizedBox(height: 24),
           ],
         ),
@@ -841,6 +844,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 children: [
+                  _changelogVersion(
+                    version: '0.9.6',
+                    date: 'March 1, 2026',
+                    changes: [
+                      _ChangeEntry(
+                        icon: Icons.notifications_rounded,
+                        title: 'Inbox & Toast Notifications',
+                        description:
+                            'New inbox system with a centered bell icon on the home screen. '
+                            'Get notified about streak milestones, duck bond level-ups, quest completions, '
+                            'seasonal packs, and more — with swipeable toast banners and a full message history.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.local_fire_department_rounded,
+                        title: 'Streak Tier Rebalance',
+                        description:
+                            'Streak tiers reworked to reward long-term consistency: Bronze (14d), Silver (30d), '
+                            'Gold (60d), Platinum (150d), Diamond (365d), and Obsidian (1000d).',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.bedtime_rounded,
+                        title: 'AFK Duck Bond',
+                        description:
+                            'Ducks now passively accumulate bond while idle on the home screen. '
+                            'Higher bond levels require more AFK time (8h–240h). Auto-levels when the gauge fills.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.cruelty_free_rounded,
+                        title: 'Duck Detail Screen Rework',
+                        description:
+                            'Compact layout that fits without scrolling. Smaller avatar, cleaner bond section — '
+                            'the ring now shows overall bond level progress (1–10) while the bar tracks AFK time.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.bug_report_rounded,
+                        title: 'Bug Fixes',
+                        description:
+                            'Fixed duck nickname not clearing when erased. Names now auto-save when tapping outside '
+                            'the text field. Removed redundant percentage label from the bond bar.',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
                   _changelogVersion(
                     version: '0.9.5',
                     date: 'February 27, 2026',

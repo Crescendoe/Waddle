@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:waddle/data/repositories/auth_repository_impl.dart';
 import 'package:waddle/data/repositories/health_repository_impl.dart';
 import 'package:waddle/data/repositories/hydration_repository_impl.dart';
+import 'package:waddle/data/services/inbox_service.dart';
 import 'package:waddle/data/services/notification_service.dart';
 import 'package:waddle/data/services/app_settings_service.dart';
 import 'package:waddle/data/services/debug_mode_service.dart';
@@ -52,6 +53,10 @@ Future<void> setupDependencies() async {
 
   getIt.registerLazySingleton<AppSettingsService>(
     () => AppSettingsService(prefs: getIt()),
+  );
+
+  getIt.registerLazySingleton<InboxService>(
+    () => InboxService(prefs: getIt()),
   );
 
   getIt.registerLazySingleton<FriendService>(

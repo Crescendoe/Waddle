@@ -142,7 +142,7 @@ class DailyQuests {
       icon: Icons.local_drink_rounded,
       target: 3,
       xpReward: 25,
-      dropsReward: 8,
+      dropsReward: 12,
     ),
     DailyQuestTemplate(
       id: 'log_5_drinks',
@@ -152,7 +152,7 @@ class DailyQuests {
       icon: Icons.local_drink_rounded,
       target: 5,
       xpReward: 35,
-      dropsReward: 12,
+      dropsReward: 18,
     ),
     DailyQuestTemplate(
       id: 'log_8_drinks',
@@ -162,7 +162,7 @@ class DailyQuests {
       icon: Icons.local_drink_rounded,
       target: 8,
       xpReward: 50,
-      dropsReward: 20,
+      dropsReward: 30,
     ),
     DailyQuestTemplate(
       id: 'log_4_drinks',
@@ -172,7 +172,7 @@ class DailyQuests {
       icon: Icons.local_drink_rounded,
       target: 4,
       xpReward: 30,
-      dropsReward: 10,
+      dropsReward: 15,
     ),
     DailyQuestTemplate(
       id: 'log_6_drinks',
@@ -182,7 +182,7 @@ class DailyQuests {
       icon: Icons.local_drink_rounded,
       target: 6,
       xpReward: 40,
-      dropsReward: 14,
+      dropsReward: 20,
     ),
 
     // ── Drink volume ───────────────────────────────────────────
@@ -194,7 +194,7 @@ class DailyQuests {
       icon: Icons.water_drop_rounded,
       target: 24,
       xpReward: 20,
-      dropsReward: 8,
+      dropsReward: 12,
     ),
     DailyQuestTemplate(
       id: 'drink_32oz',
@@ -204,7 +204,7 @@ class DailyQuests {
       icon: Icons.water_drop_rounded,
       target: 32,
       xpReward: 25,
-      dropsReward: 10,
+      dropsReward: 15,
     ),
     DailyQuestTemplate(
       id: 'drink_48oz',
@@ -214,7 +214,7 @@ class DailyQuests {
       icon: Icons.water_drop_rounded,
       target: 48,
       xpReward: 30,
-      dropsReward: 12,
+      dropsReward: 18,
     ),
     DailyQuestTemplate(
       id: 'drink_64oz',
@@ -224,7 +224,7 @@ class DailyQuests {
       icon: Icons.water_drop_rounded,
       target: 64,
       xpReward: 40,
-      dropsReward: 15,
+      dropsReward: 22,
     ),
     DailyQuestTemplate(
       id: 'drink_80oz',
@@ -234,7 +234,7 @@ class DailyQuests {
       icon: Icons.water_drop_rounded,
       target: 80,
       xpReward: 50,
-      dropsReward: 20,
+      dropsReward: 30,
     ),
 
     // ── Healthy picks ──────────────────────────────────────────
@@ -246,7 +246,7 @@ class DailyQuests {
       icon: Icons.eco_rounded,
       target: 2,
       xpReward: 25,
-      dropsReward: 10,
+      dropsReward: 15,
     ),
     DailyQuestTemplate(
       id: 'healthy_3',
@@ -256,7 +256,7 @@ class DailyQuests {
       icon: Icons.eco_rounded,
       target: 3,
       xpReward: 30,
-      dropsReward: 12,
+      dropsReward: 18,
     ),
     DailyQuestTemplate(
       id: 'healthy_4',
@@ -266,7 +266,7 @@ class DailyQuests {
       icon: Icons.eco_rounded,
       target: 4,
       xpReward: 40,
-      dropsReward: 15,
+      dropsReward: 22,
     ),
     DailyQuestTemplate(
       id: 'healthy_5',
@@ -276,7 +276,7 @@ class DailyQuests {
       icon: Icons.eco_rounded,
       target: 5,
       xpReward: 50,
-      dropsReward: 18,
+      dropsReward: 28,
     ),
 
     // ── Early bird ─────────────────────────────────────────────
@@ -288,7 +288,7 @@ class DailyQuests {
       icon: Icons.wb_sunny_rounded,
       target: 9,
       xpReward: 25,
-      dropsReward: 10,
+      dropsReward: 15,
     ),
     DailyQuestTemplate(
       id: 'early_bird_8am',
@@ -298,7 +298,7 @@ class DailyQuests {
       icon: Icons.wb_sunny_rounded,
       target: 8,
       xpReward: 30,
-      dropsReward: 12,
+      dropsReward: 18,
     ),
     DailyQuestTemplate(
       id: 'early_bird_7am',
@@ -308,7 +308,7 @@ class DailyQuests {
       icon: Icons.wb_twilight_rounded,
       target: 7,
       xpReward: 35,
-      dropsReward: 15,
+      dropsReward: 22,
     ),
 
     // ── Unique drinks ──────────────────────────────────────────
@@ -320,7 +320,7 @@ class DailyQuests {
       icon: Icons.shuffle_rounded,
       target: 2,
       xpReward: 20,
-      dropsReward: 8,
+      dropsReward: 12,
     ),
     DailyQuestTemplate(
       id: 'unique_3',
@@ -330,7 +330,7 @@ class DailyQuests {
       icon: Icons.shuffle_rounded,
       target: 3,
       xpReward: 30,
-      dropsReward: 12,
+      dropsReward: 18,
     ),
     DailyQuestTemplate(
       id: 'unique_4',
@@ -340,7 +340,7 @@ class DailyQuests {
       icon: Icons.explore_rounded,
       target: 4,
       xpReward: 40,
-      dropsReward: 16,
+      dropsReward: 24,
     ),
 
     // ── Meet goal ──────────────────────────────────────────────
@@ -352,7 +352,7 @@ class DailyQuests {
       icon: Icons.flag_rounded,
       target: 1,
       xpReward: 40,
-      dropsReward: 15,
+      dropsReward: 22,
     ),
 
     // ── Spread hydration ───────────────────────────────────────
@@ -364,7 +364,7 @@ class DailyQuests {
       icon: Icons.schedule_rounded,
       target: 3,
       xpReward: 30,
-      dropsReward: 12,
+      dropsReward: 18,
     ),
     DailyQuestTemplate(
       id: 'spread_4h',
@@ -374,7 +374,7 @@ class DailyQuests {
       icon: Icons.schedule_rounded,
       target: 4,
       xpReward: 35,
-      dropsReward: 14,
+      dropsReward: 20,
     ),
     DailyQuestTemplate(
       id: 'spread_5h',
@@ -384,7 +384,7 @@ class DailyQuests {
       icon: Icons.schedule_rounded,
       target: 5,
       xpReward: 45,
-      dropsReward: 18,
+      dropsReward: 28,
     ),
     DailyQuestTemplate(
       id: 'spread_6h',
@@ -394,7 +394,7 @@ class DailyQuests {
       icon: Icons.access_time_filled_rounded,
       target: 6,
       xpReward: 55,
-      dropsReward: 22,
+      dropsReward: 35,
     ),
   ];
 
