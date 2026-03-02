@@ -256,7 +256,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: AppTextStyles.headlineSmall),
                 Text(
                   hydration.goalMetToday
-                      ? 'Goal reached! Keep it up 💧'
+                      ? 'Goal reached! 💧'
                       : '${hydration.remainingOz.toStringAsFixed(0)} oz to go',
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: AppColors.textSecondary,

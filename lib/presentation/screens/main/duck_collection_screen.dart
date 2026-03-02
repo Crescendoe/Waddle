@@ -1345,7 +1345,7 @@ class _MarketAccessoryCard extends StatelessWidget {
 
 // ─── Seasonal pack card ─────────────────────────────────────────────
 
-class _SeasonalPackCard extends StatelessWidget {
+class _SeasonalPackCard extends StatefulWidget {
   final SeasonalPack pack;
   final bool claimed;
   final bool isSubscribed;
@@ -1361,197 +1361,402 @@ class _SeasonalPackCard extends StatelessWidget {
   });
 
   @override
+  State<_SeasonalPackCard> createState() => _SeasonalPackCardState();
+}
+
+class _SeasonalPackCardState extends State<_SeasonalPackCard>
+    with SingleTickerProviderStateMixin {
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
+    final pack = widget.pack;
+    final claimed = widget.claimed;
+    final isSubscribed = widget.isSubscribed;
+    final drops = widget.drops;
+    final themeColors = widget.themeColors;
     final isFree = isSubscribed;
     final canAfford = isFree || drops >= pack.price;
 
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            pack.color.withValues(alpha: 0.18),
-            pack.color.withValues(alpha: 0.06),
+    return GestureDetector(
+      onTap: () => setState(() => _expanded = !_expanded),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              pack.color.withValues(alpha: 0.35),
+              pack.color.withValues(alpha: 0.14),
+            ],
+          ),
+          border: Border.all(color: pack.color.withValues(alpha: 0.45)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Header ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: pack.color.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(pack.icon, color: pack.color, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          pack.name,
+                          style: AppTextStyles.bodyLarge.copyWith(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
+                        Text(
+                          pack.description,
+                          style: AppTextStyles.bodySmall
+                              .copyWith(color: AppColors.textSecondary),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (claimed)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Text(
+                        'Claimed \u2713',
+                        style: TextStyle(
+                          color: AppColors.success,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
+                      ),
+                    )
+                  else
+                    GestureDetector(
+                      onTap: canAfford
+                          ? () async {
+                              final confirmed = await showMarketConfirmation(
+                                context,
+                                action: isFree ? 'claim' : 'purchase',
+                                itemName: '${pack.name} Pack',
+                                cost: isFree ? 0 : pack.price,
+                              );
+                              if (confirmed && context.mounted) {
+                                final success = await context
+                                    .read<HydrationCubit>()
+                                    .claimSeasonalPack(pack.id);
+                                HapticFeedback.mediumImpact();
+                                if (success && context.mounted) {
+                                  context.pushNamed(
+                                    'seasonalPackUnlock',
+                                    extra: pack.id,
+                                  );
+                                }
+                              }
+                            }
+                          : null,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isFree
+                              ? const Color(0xFF66BB6A).withValues(alpha: 0.14)
+                              : canAfford
+                                  ? themeColors.primary.withValues(alpha: 0.12)
+                                  : AppColors.divider,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          isFree ? 'Free \u2726' : '${pack.price} \uD83D\uDCA7',
+                          style: TextStyle(
+                            color: isFree
+                                ? const Color(0xFF66BB6A)
+                                : canAfford
+                                    ? themeColors.primary
+                                    : AppColors.textHint,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+
+            // ── Compact chips + expand hint ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+              child: Row(
+                children: [
+                  // Theme chip
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: pack.theme.primaryColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                          color:
+                              pack.theme.primaryColor.withValues(alpha: 0.30)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.palette_rounded,
+                            size: 14, color: pack.theme.primaryColor),
+                        const SizedBox(width: 4),
+                        Text(
+                          pack.theme.name,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: pack.theme.primaryColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  // Item count chip
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.12)),
+                    ),
+                    child: Text(
+                      '${pack.accessories.length} items',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  // Expand / collapse hint
+                  AnimatedRotation(
+                    turns: _expanded ? 0.5 : 0.0,
+                    duration: const Duration(milliseconds: 250),
+                    child: Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 20,
+                      color: AppColors.textHint,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Expanded preview section ──
+            AnimatedCrossFade(
+              firstChild: const SizedBox(height: 14),
+              secondChild: _buildPreview(pack),
+              crossFadeState: _expanded
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 250),
+              sizeCurve: Curves.easeInOut,
+            ),
           ],
         ),
-        border: Border.all(color: pack.color.withValues(alpha: 0.30)),
       ),
+    );
+  }
+
+  Widget _buildPreview(SeasonalPack pack) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header ──
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
+          // ── Theme preview ──
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: pack.theme.gradientColors,
+              ),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.15),
+              ),
+            ),
             child: Row(
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: pack.color.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(pack.icon, color: pack.color, size: 22),
-                ),
-                const SizedBox(width: 12),
+                Icon(pack.theme.icon, color: Colors.white, size: 20),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        pack.name,
-                        style: AppTextStyles.bodyLarge.copyWith(
+                        pack.theme.name,
+                        style: const TextStyle(
+                          color: Colors.white,
                           fontWeight: FontWeight.w700,
-                          fontSize: 15,
+                          fontSize: 13,
                         ),
                       ),
                       Text(
-                        pack.description,
-                        style: AppTextStyles.bodySmall
-                            .copyWith(color: AppColors.textSecondary),
-                        maxLines: 1,
+                        pack.theme.description,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.85),
+                          fontSize: 11,
+                        ),
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
-                if (claimed)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.success.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Text(
-                      'Claimed ✓',
-                      style: TextStyle(
-                        color: AppColors.success,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                      ),
-                    ),
-                  )
-                else
-                  GestureDetector(
-                    onTap: canAfford
-                        ? () async {
-                            final confirmed = await showMarketConfirmation(
-                              context,
-                              action: isFree ? 'claim' : 'purchase',
-                              itemName: '${pack.name} Pack',
-                              cost: isFree ? 0 : pack.price,
-                            );
-                            if (confirmed && context.mounted) {
-                              final success = await context
-                                  .read<HydrationCubit>()
-                                  .claimSeasonalPack(pack.id);
-                              HapticFeedback.mediumImpact();
-                              if (success && context.mounted) {
-                                context.pushNamed(
-                                  'seasonalPackUnlock',
-                                  extra: pack.id,
-                                );
-                              }
-                            }
-                          }
-                        : null,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: isFree
-                            ? const Color(0xFF66BB6A).withValues(alpha: 0.14)
-                            : canAfford
-                                ? themeColors.primary.withValues(alpha: 0.12)
-                                : AppColors.divider,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        isFree ? 'Free ✦' : '${pack.price} 💧',
-                        style: TextStyle(
-                          color: isFree
-                              ? const Color(0xFF66BB6A)
-                              : canAfford
-                                  ? themeColors.primary
-                                  : AppColors.textHint,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                        ),
-                      ),
+                const SizedBox(width: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    pack.theme.tier.name[0].toUpperCase() +
+                        pack.theme.tier.name.substring(1),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 10,
                     ),
                   ),
+                ),
               ],
             ),
           ),
 
-          // ── Accessory & theme preview row ──
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
-            child: Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                // Theme chip
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: pack.theme.primaryColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                        color: pack.theme.primaryColor.withValues(alpha: 0.30)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.palette_rounded,
-                          size: 14, color: pack.theme.primaryColor),
-                      const SizedBox(width: 4),
-                      Text(
-                        pack.theme.name,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: pack.theme.primaryColor,
-                        ),
-                      ),
-                    ],
+          const SizedBox(height: 10),
+
+          // ── Accessory detail cards ──
+          ...pack.accessories.map((acc) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: acc.color.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: acc.color.withValues(alpha: 0.30),
                   ),
                 ),
-                // Accessory chips
-                ...pack.accessories.map((acc) {
-                  return Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.65),
-                      borderRadius: BorderRadius.circular(8),
-                      border:
-                          Border.all(color: acc.color.withValues(alpha: 0.25)),
+                child: Row(
+                  children: [
+                    // Accessory icon
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: acc.color.withValues(alpha: 0.30),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(acc.icon, color: acc.color, size: 18),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(acc.icon, size: 14, color: acc.color),
-                        const SizedBox(width: 4),
-                        Text(
-                          acc.name,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
+                    const SizedBox(width: 10),
+                    // Name + description
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            acc.name,
+                            style: AppTextStyles.labelMedium.copyWith(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
                           ),
+                          const SizedBox(height: 2),
+                          Text(
+                            acc.description,
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: AppColors.textSecondary,
+                              fontSize: 11,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Slot + rarity tags
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: acc.rarity.color.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            acc.rarity.label,
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              color: acc.rarity.color,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(acc.slot.icon,
+                                size: 11, color: AppColors.textHint),
+                            const SizedBox(width: 3),
+                            Text(
+                              acc.slot.label,
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textHint,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  );
-                }),
-              ],
-            ),
-          ),
+                  ],
+                ),
+              ),
+            );
+          }),
         ],
       ),
     );

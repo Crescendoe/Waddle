@@ -130,193 +130,195 @@ class DuckPassives {
   /// Passive for each duck, indexed by `DuckCompanion.index`.
   ///
   /// Each [levelValues] list contains the exact value at bond levels 1–10.
+  /// Every level provides an increase — no plateaus at any rarity.
   /// Progression speed scales with rarity:
-  ///   Common    → slow, lots of plateaus
-  ///   Uncommon  → moderate, occasional plateaus
-  ///   Rare      → steady growth, few plateaus
-  ///   Epic      → consistent increases every level
-  ///   Legendary → always increasing, large jumps
+  ///   Common    → modest start, steady +1 growth
+  ///   Uncommon  → higher start, consistent growth
+  ///   Rare      → strong start, accelerating growth
+  ///   Epic      → high start, large gains per level
+  ///   Legendary → highest start, biggest jumps
   static const Map<int, DuckPassive> all = {
     // ── Streak ducks (Common / Rare / Epic) ─────────────────────────
     0: DuckPassive(
       // Puddle — Common
       name: 'Puddle Pace',
-      description: 'Reduces entry cooldown.',
+      description: 'Shaves minutes off the wait between water logs.',
       type: DuckPassiveType.cooldownReductionMin,
-      levelValues: [1, 2, 2, 3, 3, 4, 4, 5, 5, 6],
+      levelValues: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     ),
     1: DuckPassive(
       // Ripple — Common
       name: 'Ripple Reward',
-      description: 'Bonus drops every time you log a drink.',
+      description: 'Earn extra 💧 Drops each time you record a drink.',
       type: DuckPassiveType.bonusDropsPerLog,
-      levelValues: [1, 1, 2, 2, 3, 3, 4, 4, 5, 6],
+      levelValues: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     ),
     2: DuckPassive(
       // Current — Rare
       name: 'Swift Current',
-      description: 'Significantly cuts cooldown time.',
+      description: 'Cuts minutes off the cooldown between water logs.',
       type: DuckPassiveType.cooldownReductionMin,
-      levelValues: [3, 4, 4, 5, 5, 6, 7, 7, 8, 9],
+      levelValues: [5, 6, 8, 10, 12, 14, 16, 18, 20, 22],
     ),
     3: DuckPassive(
       // Tidal — Epic
       name: 'Tidal Surge',
-      description: 'Boosts XP from all sources.',
+      description: 'Boosts ⚡ XP earned from all sources by a %.',
       type: DuckPassiveType.xpBoostPercent,
-      levelValues: [8, 9, 11, 12, 14, 15, 17, 19, 21, 24],
+      levelValues: [12, 15, 18, 21, 24, 28, 31, 35, 38, 42],
     ),
 
     // ── Volume ducks (Common / Uncommon / Epic) ─────────────────────
     4: DuckPassive(
       // Dewdrop — Common
       name: 'Morning Dew',
-      description: 'Bonus drops when you hit your daily goal.',
+      description: 'Grants bonus 💧 Drops when you reach your daily goal.',
       type: DuckPassiveType.bonusDropsOnGoal,
-      levelValues: [3, 4, 5, 6, 7, 8, 9, 10, 12, 14],
+      levelValues: [5, 6, 8, 10, 12, 14, 16, 18, 20, 22],
     ),
     5: DuckPassive(
       // Brook — Uncommon
       name: 'Babbling Brook',
-      description: 'Extra drops with every drink logged.',
+      description: 'Earn extra 💧 Drops each time you record a drink.',
       type: DuckPassiveType.bonusDropsPerLog,
-      levelValues: [2, 2, 3, 3, 4, 4, 5, 5, 6, 7],
+      levelValues: [3, 4, 5, 7, 8, 10, 11, 13, 14, 16],
     ),
     6: DuckPassive(
       // Cascade — Epic
       name: 'Cascade Flow',
-      description: 'Multiplies all drop earnings.',
+      description: 'Multiplies all 💧 Drop earnings by a %.',
       type: DuckPassiveType.dropMultiplierPercent,
-      levelValues: [8, 9, 11, 12, 14, 15, 17, 19, 21, 24],
+      levelValues: [12, 15, 18, 21, 24, 28, 31, 35, 38, 42],
     ),
 
     // ── Healthy picks ducks (Common / Uncommon) ─────────────────────
     7: DuckPassive(
       // Sprout — Common
       name: 'Green Thumb',
-      description: 'A little extra for every drink you log.',
+      description: 'Earn extra 💧 Drops each time you record a drink.',
       type: DuckPassiveType.bonusDropsPerLog,
-      levelValues: [1, 1, 2, 2, 3, 3, 4, 4, 5, 6],
+      levelValues: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     ),
     8: DuckPassive(
       // Botanist — Uncommon
       name: 'Botanical Knowledge',
-      description: 'Boosts XP from all sources.',
+      description: 'Boosts ⚡ XP earned from all sources by a %.',
       type: DuckPassiveType.xpBoostPercent,
-      levelValues: [3, 4, 5, 5, 6, 7, 7, 8, 9, 10],
+      levelValues: [4, 5, 7, 8, 10, 11, 13, 15, 17, 20],
     ),
 
     // ── Goals met ducks (Common / Rare) ─────────────────────────────
     9: DuckPassive(
       // Bullseye — Common
       name: 'Perfect Aim',
-      description: 'Generous bonus drops on goal completion.',
+      description: 'Grants bonus 💧 Drops when you reach your daily goal.',
       type: DuckPassiveType.bonusDropsOnGoal,
-      levelValues: [4, 5, 6, 7, 8, 9, 10, 12, 14, 16],
+      levelValues: [6, 8, 10, 12, 14, 16, 18, 20, 22, 25],
     ),
     10: DuckPassive(
       // Marksman — Rare
       name: 'Sharpshooter',
-      description: 'Big drop bonus when you hit your goal.',
+      description:
+          'Grants a large 💧 Drop bonus when you reach your daily goal.',
       type: DuckPassiveType.bonusDropsOnGoal,
-      levelValues: [8, 10, 12, 14, 16, 18, 20, 23, 26, 30],
+      levelValues: [15, 18, 22, 26, 30, 34, 38, 42, 46, 50],
     ),
 
     // ── Drinks logged duck (Rare) ───────────────────────────────────
     11: DuckPassive(
       // Nightingale — Rare
       name: 'Melodic Boost',
-      description: 'Increases all quest rewards.',
+      description: 'Increases 💧 Drops and ⚡ XP earned from quests by a %.',
       type: DuckPassiveType.questBonusPercent,
-      levelValues: [7, 8, 10, 11, 13, 14, 16, 18, 20, 22],
+      levelValues: [8, 10, 12, 15, 17, 20, 22, 25, 28, 30],
     ),
 
     // ── Challenge-specific ducks (Uncommon) ─────────────────────────
     12: DuckPassive(
       // Purist — Uncommon
       name: 'Pure Drops',
-      description: 'A small bonus drop per drink logged.',
+      description: 'Earn extra 💧 Drops each time you record a drink.',
       type: DuckPassiveType.bonusDropsPerLog,
-      levelValues: [1, 1, 2, 2, 3, 3, 4, 5, 5, 6],
+      levelValues: [3, 4, 5, 7, 8, 10, 11, 13, 14, 16],
     ),
     13: DuckPassive(
       // Brewmaster — Uncommon
       name: 'Steeped Wisdom',
-      description: 'Brewed knowledge boosts XP.',
+      description: 'Boosts ⚡ XP earned from all sources by a %.',
       type: DuckPassiveType.xpBoostPercent,
-      levelValues: [3, 4, 5, 5, 6, 7, 7, 8, 9, 10],
+      levelValues: [4, 5, 7, 8, 10, 11, 13, 15, 17, 20],
     ),
     14: DuckPassive(
       // Serene — Uncommon
       name: 'Inner Peace',
-      description: 'Calm focus reduces cooldown.',
+      description: 'Shaves minutes off the wait between water logs.',
       type: DuckPassiveType.cooldownReductionMin,
-      levelValues: [2, 2, 3, 3, 4, 4, 5, 5, 6, 7],
+      levelValues: [3, 4, 5, 7, 8, 10, 11, 13, 14, 16],
     ),
     15: DuckPassive(
       // Frostbite — Uncommon
       name: 'Crisp Reward',
-      description: 'A refreshing bonus with each log.',
+      description: 'Earn extra 💧 Drops each time you record a drink.',
       type: DuckPassiveType.bonusDropsPerLog,
-      levelValues: [1, 1, 2, 2, 3, 3, 4, 5, 5, 6],
+      levelValues: [3, 4, 5, 7, 8, 10, 11, 13, 14, 16],
     ),
     16: DuckPassive(
       // Herbivore — Uncommon
       name: 'Plant Power',
-      description: 'Nature-powered quest bonus.',
+      description: 'Increases 💧 Drops and ⚡ XP earned from quests by a %.',
       type: DuckPassiveType.questBonusPercent,
-      levelValues: [3, 4, 5, 5, 6, 7, 7, 8, 9, 10],
+      levelValues: [4, 5, 7, 8, 10, 11, 13, 15, 17, 20],
     ),
     17: DuckPassive(
       // Elixir — Uncommon
       name: 'Elixir Boost',
-      description: 'A touch of magic on all drops earned.',
+      description: 'Multiplies all 💧 Drop earnings by a %.',
       type: DuckPassiveType.dropMultiplierPercent,
-      levelValues: [3, 4, 5, 5, 6, 7, 7, 8, 9, 10],
+      levelValues: [4, 5, 7, 8, 10, 11, 13, 15, 17, 20],
     ),
 
     // ── Very unique ducks (Rare / Epic / Legendary) ─────────────────
     18: DuckPassive(
       // Verdant — Rare
       name: 'Verdant Wisdom',
-      description: 'Deep botanical knowledge boosts XP.',
+      description: 'Boosts ⚡ XP earned from all sources by a %.',
       type: DuckPassiveType.xpBoostPercent,
-      levelValues: [5, 6, 7, 8, 10, 11, 13, 14, 16, 18],
+      levelValues: [7, 9, 11, 13, 15, 17, 19, 22, 24, 26],
     ),
     19: DuckPassive(
       // Leviathan — Epic
       name: 'Deep Harvest',
-      description: 'The leviathan rewards each sip.',
+      description: 'Earn extra 💧 Drops each time you record a drink.',
       type: DuckPassiveType.bonusDropsPerLog,
-      levelValues: [3, 4, 5, 6, 7, 8, 9, 10, 12, 14],
+      levelValues: [5, 7, 9, 11, 13, 15, 17, 20, 22, 24],
     ),
     20: DuckPassive(
       // Mixologist — Uncommon
       name: 'Mixed Mastery',
-      description: 'Diverse tastes boost quest rewards.',
+      description: 'Increases 💧 Drops and ⚡ XP earned from quests by a %.',
       type: DuckPassiveType.questBonusPercent,
-      levelValues: [5, 6, 7, 7, 8, 9, 10, 11, 12, 14],
+      levelValues: [6, 8, 9, 11, 12, 14, 16, 18, 20, 22],
     ),
     21: DuckPassive(
       // Marathon — Legendary
       name: 'Endurance',
-      description: 'Marathon stamina slashes cooldown.',
+      description: 'Shaves minutes off the wait between water logs.',
       type: DuckPassiveType.cooldownReductionMin,
-      levelValues: [5, 6, 7, 8, 9, 10, 11, 12, 13, 15],
+      levelValues: [8, 10, 12, 14, 16, 18, 21, 24, 26, 28],
     ),
     22: DuckPassive(
       // Zenith — Legendary
       name: 'Peak Performance',
-      description: 'A year of wisdom amplifies all XP.',
+      description: 'Boosts ⚡ XP earned from all sources by a %.',
       type: DuckPassiveType.xpBoostPercent,
-      levelValues: [10, 12, 14, 16, 18, 21, 24, 27, 30, 35],
+      levelValues: [15, 18, 22, 26, 30, 35, 39, 44, 49, 55],
     ),
     23: DuckPassive(
       // Kraken — Legendary
       name: 'Kraken\'s Hoard',
-      description: 'A mythical multiplier on all drops.',
+      description: 'Multiplies all 💧 Drop earnings by a %.',
       type: DuckPassiveType.dropMultiplierPercent,
-      levelValues: [10, 12, 14, 16, 18, 21, 24, 27, 30, 35],
+      levelValues: [15, 18, 22, 26, 30, 35, 39, 44, 49, 55],
     ),
   };
 }
