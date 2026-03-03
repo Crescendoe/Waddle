@@ -1,17 +1,24 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:waddle/core/constants/app_constants.dart';
 import 'package:waddle/core/di/injection.dart';
+import 'package:waddle/data/services/inbox_service.dart';
 import 'package:waddle/data/services/notification_service.dart';
 import 'package:waddle/domain/entities/app_theme_reward.dart';
 import 'package:waddle/domain/entities/challenge.dart';
 import 'package:waddle/domain/entities/daily_quest.dart';
 import 'package:waddle/domain/entities/drink_type.dart';
+import 'package:waddle/domain/entities/duck_accessory.dart';
+import 'package:waddle/domain/entities/duck_bond.dart';
 import 'package:waddle/domain/entities/duck_companion.dart';
 import 'package:waddle/domain/entities/hydration_state.dart';
+import 'package:waddle/domain/entities/seasonal_pack.dart';
 import 'package:waddle/domain/entities/shop_item.dart';
 import 'package:waddle/domain/entities/water_log.dart';
+import 'package:waddle/data/services/iap_service.dart';
 import 'package:waddle/domain/entities/xp_level.dart';
 import 'package:waddle/domain/repositories/health_repository.dart';
 import 'package:waddle/domain/repositories/hydration_repository.dart';
@@ -24,6 +31,7 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
   Timer? _dailyResetTimer;
   Timer? _resetWatchdog;
   Timer? _animationTimer;
+  StreamSubscription<IapEvent>? _iapSub;
 
   HydrationCubit({
     required HydrationRepository hydrationRepository,
@@ -65,6 +73,12 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
           todayLogs: todayLogs,
         ));
 
+        // Check AFK bond progress & auto-level ducks
+        await checkDuckAfk();
+
+        // Check for scheduled inbox messages (seasonal packs, etc.)
+        _checkScheduledInbox(checkedState);
+
         // Check challenge status
         _checkChallengeStatus(checkedState);
 
@@ -73,9 +87,120 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
 
         // Start periodic watchdog that catches missed resets
         _startResetWatchdog();
+
+        // Listen for IAP events (drop deliveries, subscription changes)
+        _listenToIap();
       },
     );
   }
+
+  // ── IAP integration ───────────────────────────────────────────────
+
+  void _listenToIap() {
+    try {
+      final iap = getIt<IapService>();
+      _iapSub?.cancel();
+      _iapSub = iap.events.listen(_handleIapEvent);
+    } catch (e) {
+      debugPrint('IAP service not available: $e');
+    }
+  }
+
+  void _handleIapEvent(IapEvent event) {
+    switch (event) {
+      case DropsDelivered(:final drops, :final productId):
+        _deliverPurchasedDrops(drops, productId);
+        break;
+      case SubscriptionUpdated(
+          :final isActive,
+          :final expiryDate,
+          :final productId
+        ):
+        _updateSubscription(isActive, expiryDate, productId);
+        break;
+      case PurchaseFailed(:final message):
+        debugPrint('IAP purchase failed: $message');
+        break;
+      case PurchaseProcessing():
+        debugPrint('IAP purchase processing...');
+        break;
+      case ProductsLoaded():
+        debugPrint('IAP products loaded');
+        break;
+    }
+  }
+
+  Future<void> _deliverPurchasedDrops(int drops, String productId) async {
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return;
+
+    final newState = currentState.hydration.copyWith(
+      drops: currentState.hydration.drops + drops,
+    );
+
+    emit(currentState.copyWith(hydration: newState));
+    await _hydrationRepository.saveHydrationState(_userId, newState);
+    debugPrint('Delivered $drops drops from purchase $productId');
+  }
+
+  Future<void> _updateSubscription(
+    bool isActive,
+    DateTime? expiryDate,
+    String? productId,
+  ) async {
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return;
+
+    final newState = currentState.hydration.copyWith(
+      isSubscribed: isActive,
+      subscriptionExpiry: expiryDate,
+      subscriptionProductId: productId,
+      clearSubscriptionExpiry: !isActive,
+      clearSubscriptionProductId: !isActive,
+    );
+
+    emit(currentState.copyWith(hydration: newState));
+    await _hydrationRepository.saveHydrationState(_userId, newState);
+
+    // Track supporter in Firestore so the dev can credit them.
+    if (isActive) {
+      _recordSupporter(productId);
+    }
+  }
+
+  /// Write supporter info to a top-level `supporters` collection (fire-and-forget).
+  void _recordSupporter(String? productId) {
+    try {
+      final firestore = FirebaseFirestore.instance;
+      firestore.collection('supporters').doc(_userId).set({
+        'uid': _userId,
+        'productId': productId ?? 'unknown',
+        'subscribedAt': FieldValue.serverTimestamp(),
+        'active': true,
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('Failed to record supporter: $e');
+    }
+  }
+
+  /// Set a custom nickname for the active duck (Waddle+ perk).
+  Future<bool> setDuckNickname(String name) async {
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return false;
+    if (!currentState.hydration.isSubscribed) return false;
+
+    final trimmed = name.trim();
+    if (trimmed.isEmpty || trimmed.length > 20) return false;
+
+    final newState = currentState.hydration.copyWith(duckNickname: trimmed);
+    emit(currentState.copyWith(hydration: newState));
+    await _hydrationRepository.saveHydrationState(_userId, newState);
+    return true;
+  }
+
+  /// Apply the Waddle+ 1.5× drop multiplier to earned drops.
+  int _subDrops(int drops, HydrationState h) =>
+      h.isSubscribed ? (drops * 1.5).round() : drops;
 
   /// Add water intake
   Future<void> addWater(
@@ -120,9 +245,14 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     final isFirstDrink = currentState.todayLogs.isEmpty;
     final xpMultiplier =
         currentState.hydration.inventory.doubleXpActive ? 2 : 1;
+    final bonuses = _getActiveBonuses(currentState.hydration);
+
     int earnedXp = XpEvent.logDrink.xp * xpMultiplier;
     if (isHealthy) earnedXp += XpEvent.healthyPick.xp * xpMultiplier;
     if (isFirstDrink) earnedXp += XpEvent.firstDrinkOfDay.xp * xpMultiplier;
+
+    // Apply duck passive: XP boost
+    earnedXp = (earnedXp * (1.0 + bonuses.xpBoostFraction)).round();
 
     // ── Daily quest progress ────────────────────────────────────────
     final questState = _ensureDailyQuests(currentState.hydration, now);
@@ -146,14 +276,24 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     final newLevel = XpLevel.levelForXp(newTotalXp);
     int levelUpDrops = 0;
     if (newLevel > prevLevel) {
-      levelUpDrops = (newLevel - prevLevel) * 30;
+      levelUpDrops = _subDrops((newLevel - prevLevel) * 50, questState);
     }
+
+    // ── Duck passive: bonus drops per log & multiplier ──────────────
+    int passiveDrops = bonuses.bonusDropsPerLog;
+    final totalDropsEarned = levelUpDrops + passiveDrops;
+    final multipliedDrops =
+        (totalDropsEarned * (1.0 + bonuses.dropMultiplierFraction)).round();
+
+    // ── Duck passive: cooldown reduction ────────────────────────────
+    final cooldownMinutes =
+        AppConstants.entryTimerMinutes - bonuses.cooldownReductionMin;
+    final effectiveCooldown = cooldownMinutes.clamp(1, 999);
 
     final newState = questState.copyWith(
       waterConsumedOz: newConsumed,
       goalMetToday: goalMet,
-      nextEntryTime:
-          now.add(const Duration(minutes: AppConstants.entryTimerMinutes)),
+      nextEntryTime: now.add(Duration(minutes: effectiveCooldown)),
       totalWaterConsumedOz:
           currentState.hydration.totalWaterConsumedOz + waterContent,
       totalDrinksLogged: currentState.hydration.totalDrinksLogged + 1,
@@ -162,7 +302,7 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
           : currentState.hydration.totalHealthyPicks,
       uniqueDrinksLogged: updatedUnique,
       totalXp: newTotalXp,
-      drops: questState.drops + levelUpDrops,
+      drops: questState.drops + multipliedDrops,
       dailyQuests: updatedQuests,
     );
 
@@ -205,7 +345,11 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
 
       // XP + Drops for meeting goal
       int goalXp = XpEvent.dailyGoalMet.xp * xpMul;
-      int goalDrops = 5;
+      int goalDrops = _subDrops(10, currentState.hydration);
+
+      // Duck passive: bonus drops on goal + XP boost
+      goalDrops += bonuses.bonusDropsOnGoal;
+      goalXp = (goalXp * (1.0 + bonuses.xpBoostFraction)).round();
 
       // Increment streak and total goals met
       final newStreakVal = newState.currentStreak + 1;
@@ -220,7 +364,27 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
       // Check streak milestone bonus
       if (StreakMilestones.isMilestone(newStreakVal)) {
         goalXp += XpEvent.streakMilestone.xp * xpMul;
-        goalDrops += 30;
+        goalDrops += _subDrops(50, currentState.hydration);
+        _sendInbox(
+          type: InboxMessageType.streakMilestone,
+          title: '🔥 $newStreakVal-Day Streak!',
+          body:
+              'You\'ve hit your hydration goal $newStreakVal days in a row. Keep the momentum going!',
+        );
+      }
+
+      // Check streak tier promotion
+      final oldTier = currentState.hydration.streakTier;
+      final newTierState = streakState.copyWith(currentStreak: newStreakVal);
+      // Compute new tier manually
+      final newTier = newTierState.streakTier;
+      if (newTier != oldTier && newTier != StreakTier.normal) {
+        _sendInbox(
+          type: InboxMessageType.streakTierPromoted,
+          title: '🏅 ${newTier.label} Tier Unlocked!',
+          body:
+              'Your streak reached ${newTier.label} tier at $newStreakVal days. Amazing dedication!',
+        );
       }
 
       // Update quest progress for meetGoal type
@@ -273,6 +437,12 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
         newLevel: newLevel,
         dropsAwarded: levelUpDrops,
       ));
+      _sendInbox(
+        type: InboxMessageType.levelUp,
+        title: '⬆️ Level $newLevel!',
+        body:
+            'You leveled up from $prevLevel to $newLevel and earned $levelUpDrops drops!',
+      );
       emit(HydrationLoaded(
         hydration: latestState,
         todayLogs: [...currentState.todayLogs, log],
@@ -549,24 +719,330 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
   }
 
   /// Toggle a duck on/off from the home-screen overlay (max 3).
+  ///
+  /// When a duck is **added** to the home screen its AFK timer starts.
+  /// When **removed**, the elapsed idle time is banked into
+  /// [DuckBondData.afkAccumulatedMs] so progress is not lost.
   Future<void> toggleHomeDuck(int duckIndex) async {
     if (_realState != null) return;
 
     final currentState = state;
     if (currentState is! HydrationLoaded) return;
 
-    final current = List<int>.from(currentState.hydration.homeDuckIndices);
+    final h = currentState.hydration;
+    final current = List<int>.from(h.homeDuckIndices);
+    final bonds = Map<int, DuckBondData>.from(h.duckBonds);
+    final now = DateTime.now();
+
     if (current.contains(duckIndex)) {
+      // ── Removing from home → bank AFK time ─────────────────────
       current.remove(duckIndex);
+      final old = bonds[duckIndex] ?? const DuckBondData();
+      bonds[duckIndex] = old.copyWith(
+        afkAccumulatedMs: old.totalAfkMs(),
+        clearAfkStartTime: true,
+      );
     } else {
       if (current.length >= 3) return; // max 3 ducks
+      // ── Adding to home → start AFK timer ───────────────────────
       current.add(duckIndex);
+      final old = bonds[duckIndex] ?? const DuckBondData();
+      bonds[duckIndex] = old.copyWith(afkStartTime: now);
     }
 
-    final newState = currentState.hydration.copyWith(
+    final newState = h.copyWith(
       homeDuckIndices: current,
+      duckBonds: bonds,
     );
 
+    emit(currentState.copyWith(hydration: newState));
+    await _hydrationRepository.saveHydrationState(_userId, newState);
+  }
+
+  /// Replace an existing home duck with a new one (when home is full).
+  Future<void> replaceHomeDuck(int oldDuckIndex, int newDuckIndex) async {
+    if (_realState != null) return;
+
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return;
+
+    final h = currentState.hydration;
+    final current = List<int>.from(h.homeDuckIndices);
+    final idx = current.indexOf(oldDuckIndex);
+    if (idx == -1) return; // old duck not on home
+
+    current[idx] = newDuckIndex;
+    final bonds = Map<int, DuckBondData>.from(h.duckBonds);
+    final now = DateTime.now();
+
+    // Bank AFK for removed duck
+    final oldBond = bonds[oldDuckIndex] ?? const DuckBondData();
+    bonds[oldDuckIndex] = oldBond.copyWith(
+      afkAccumulatedMs: oldBond.totalAfkMs(),
+      clearAfkStartTime: true,
+    );
+    // Start AFK for new duck
+    final newBond = bonds[newDuckIndex] ?? const DuckBondData();
+    bonds[newDuckIndex] = newBond.copyWith(afkStartTime: now);
+
+    final newState = h.copyWith(
+      homeDuckIndices: current,
+      duckBonds: bonds,
+    );
+
+    emit(currentState.copyWith(hydration: newState));
+    await _hydrationRepository.saveHydrationState(_userId, newState);
+  }
+
+  // ── Duck bond & accessories ───────────────────────────────────────
+
+  /// Calculate aggregated passive bonuses from home-screen ducks.
+  ActiveDuckBonuses _getActiveBonuses(HydrationState h) =>
+      ActiveDuckBonuses.compute(
+        homeDuckIndices: h.homeDuckIndices,
+        duckBonds: h.duckBonds,
+      );
+
+  /// Check all home-screen ducks for AFK auto-level-ups.
+  /// Called on app launch and when opening the duck detail screen.
+  Future<void> checkDuckAfk() async {
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return;
+
+    final h = currentState.hydration;
+    final bonds = Map<int, DuckBondData>.from(h.duckBonds);
+    bool changed = false;
+    final now = DateTime.now();
+
+    // Ensure every home duck has an afkStartTime
+    for (final idx in h.homeDuckIndices) {
+      final bond = bonds[idx] ?? const DuckBondData();
+      if (bond.afkStartTime == null &&
+          bond.bondLevel < DuckBondLevels.maxLevel) {
+        bonds[idx] = bond.copyWith(afkStartTime: now);
+        changed = true;
+      }
+    }
+
+    // Auto-level any ducks whose AFK gauge is full
+    for (final idx in h.homeDuckIndices) {
+      var bond = bonds[idx] ?? const DuckBondData();
+      final prevLevel = bond.bondLevel;
+      while (bond.readyToAutoLevel) {
+        bond = bond.copyWith(
+          bondLevel: bond.bondLevel + 1,
+          afkAccumulatedMs: 0,
+          afkStartTime:
+              bond.bondLevel + 1 < DuckBondLevels.maxLevel ? now : null,
+          clearAfkStartTime: bond.bondLevel + 1 >= DuckBondLevels.maxLevel,
+        );
+        changed = true;
+      }
+      if (bond.bondLevel > prevLevel) {
+        final duckName = idx < DuckCompanions.all.length
+            ? DuckCompanions.all[idx].name
+            : 'Your duck';
+        final isMaxed = bond.bondLevel >= DuckBondLevels.maxLevel;
+        _sendInbox(
+          type: isMaxed
+              ? InboxMessageType.duckAfkReady
+              : InboxMessageType.duckAfkLevelUp,
+          title: isMaxed
+              ? '🐣 $duckName hit max bond!'
+              : '🐣 $duckName leveled up!',
+          body: isMaxed
+              ? '$duckName reached max bond level while chilling on your home screen!'
+              : '$duckName\'s bond grew to Lv.${bond.bondLevel} while on your home screen.',
+        );
+      }
+      if (changed) bonds[idx] = bond;
+    }
+
+    if (changed) {
+      final newState = h.copyWith(duckBonds: bonds);
+      emit(currentState.copyWith(hydration: newState));
+      await _hydrationRepository.saveHydrationState(_userId, newState);
+    }
+  }
+
+  /// Feed a duck to increase its bond level.
+  /// Cost is reduced by the duck's AFK progress (0–100% discount).
+  Future<bool> feedDuck(int duckIndex) async {
+    if (_realState != null) return false;
+
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return false;
+
+    final h = currentState.hydration;
+    final bond = h.duckBonds[duckIndex] ?? const DuckBondData(bondLevel: 1);
+
+    if (bond.bondLevel >= DuckBondLevels.maxLevel) return false;
+
+    final cost = bond.discountedCost();
+    if (h.drops < cost) return false;
+
+    final isOnHome = h.homeDuckIndices.contains(duckIndex);
+    final now = DateTime.now();
+
+    final updatedBond = bond.copyWith(
+      bondLevel: bond.bondLevel + 1,
+      afkAccumulatedMs: 0,
+      afkStartTime:
+          isOnHome && bond.bondLevel + 1 < DuckBondLevels.maxLevel ? now : null,
+      clearAfkStartTime:
+          !isOnHome || bond.bondLevel + 1 >= DuckBondLevels.maxLevel,
+    );
+    final updatedBonds = Map<int, DuckBondData>.from(h.duckBonds);
+    updatedBonds[duckIndex] = updatedBond;
+
+    final newState = h.copyWith(
+      drops: h.drops - cost,
+      duckBonds: updatedBonds,
+    );
+
+    emit(currentState.copyWith(hydration: newState));
+    await _hydrationRepository.saveHydrationState(_userId, newState);
+    return true;
+  }
+
+  /// Purchase an accessory from the market using drops.
+  Future<bool> purchaseAccessory(String accessoryId) async {
+    if (_realState != null) return false;
+
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return false;
+
+    final h = currentState.hydration;
+    if (h.ownedAccessoryIds.contains(accessoryId)) return false;
+
+    final accessory = DuckAccessories.byId(accessoryId);
+    if (accessory == null) return false;
+    if (accessory.subscriberOnly && !h.isSubscribed) return false;
+    if (h.drops < accessory.price) return false;
+
+    final newState = h.copyWith(
+      drops: h.drops - accessory.price,
+      ownedAccessoryIds: [...h.ownedAccessoryIds, accessoryId],
+    );
+
+    emit(currentState.copyWith(hydration: newState));
+    await _hydrationRepository.saveHydrationState(_userId, newState);
+    return true;
+  }
+
+  /// Claim (or purchase) a seasonal cosmetic pack.
+  /// Waddle+ subscribers claim for free; others pay with Drops.
+  Future<bool> claimSeasonalPack(String packId) async {
+    if (_realState != null) return false;
+
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return false;
+
+    final h = currentState.hydration;
+    if (h.claimedSeasonalPackIds.contains(packId)) return false;
+
+    final pack = SeasonalPacks.byId(packId);
+    if (pack == null) return false;
+    if (!pack.isCurrentlyAvailable) return false;
+
+    // Non-subscribers must pay with drops
+    if (!h.isSubscribed && h.drops < pack.price) return false;
+
+    final dropsAfter = h.isSubscribed ? h.drops : h.drops - pack.price;
+
+    // Add all pack accessories to owned list
+    final newAccessoryIds = <String>[...h.ownedAccessoryIds];
+    for (final acc in pack.accessories) {
+      if (!newAccessoryIds.contains(acc.id)) {
+        newAccessoryIds.add(acc.id);
+      }
+    }
+
+    // Grant the pack's exclusive theme
+    final newThemeIds = <String>[...h.purchasedThemeIds];
+    if (!newThemeIds.contains(pack.theme.id)) {
+      newThemeIds.add(pack.theme.id);
+    }
+
+    final newState = h.copyWith(
+      drops: dropsAfter,
+      ownedAccessoryIds: newAccessoryIds,
+      purchasedThemeIds: newThemeIds,
+      claimedSeasonalPackIds: [...h.claimedSeasonalPackIds, packId],
+    );
+
+    emit(currentState.copyWith(hydration: newState));
+    await _hydrationRepository.saveHydrationState(_userId, newState);
+    return true;
+  }
+
+  /// Equip an owned accessory on a duck.
+  Future<void> equipAccessory(int duckIndex, String accessoryId) async {
+    if (_realState != null) return;
+
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return;
+
+    final h = currentState.hydration;
+    if (!h.ownedAccessoryIds.contains(accessoryId)) return;
+
+    final accessory = DuckAccessories.byId(accessoryId);
+    if (accessory == null) return;
+
+    final bond = h.duckBonds[duckIndex] ?? const DuckBondData(bondLevel: 1);
+    final updatedEquipped = Map<String, String>.from(bond.equippedAccessories);
+    updatedEquipped[accessory.slot.name] = accessoryId;
+
+    final updatedBonds = Map<int, DuckBondData>.from(h.duckBonds);
+    updatedBonds[duckIndex] =
+        bond.copyWith(equippedAccessories: updatedEquipped);
+
+    final newState = h.copyWith(duckBonds: updatedBonds);
+    emit(currentState.copyWith(hydration: newState));
+    await _hydrationRepository.saveHydrationState(_userId, newState);
+  }
+
+  /// Unequip an accessory from a specific slot on a duck.
+  Future<void> unequipAccessory(int duckIndex, AccessorySlot slot) async {
+    if (_realState != null) return;
+
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return;
+
+    final h = currentState.hydration;
+    final bond = h.duckBonds[duckIndex];
+    if (bond == null) return;
+    if (!bond.equippedAccessories.containsKey(slot.name)) return;
+
+    final updatedEquipped = Map<String, String>.from(bond.equippedAccessories);
+    updatedEquipped.remove(slot.name);
+
+    final updatedBonds = Map<int, DuckBondData>.from(h.duckBonds);
+    updatedBonds[duckIndex] =
+        bond.copyWith(equippedAccessories: updatedEquipped);
+
+    final newState = h.copyWith(duckBonds: updatedBonds);
+    emit(currentState.copyWith(hydration: newState));
+    await _hydrationRepository.saveHydrationState(_userId, newState);
+  }
+
+  /// Rename a duck (available to all users).
+  Future<void> renameDuck(int duckIndex, String name) async {
+    if (_realState != null) return;
+
+    final currentState = state;
+    if (currentState is! HydrationLoaded) return;
+
+    final h = currentState.hydration;
+    final bond = h.duckBonds[duckIndex] ?? const DuckBondData(bondLevel: 1);
+
+    final updatedBonds = Map<int, DuckBondData>.from(h.duckBonds);
+    final trimmed = name.trim();
+    updatedBonds[duckIndex] = trimmed.isEmpty
+        ? bond.copyWith(clearNickname: true)
+        : bond.copyWith(nickname: trimmed);
+
+    final newState = h.copyWith(duckBonds: updatedBonds);
     emit(currentState.copyWith(hydration: newState));
     await _hydrationRepository.saveHydrationState(_userId, newState);
   }
@@ -582,66 +1058,17 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     final currentState = state;
     if (currentState is! HydrationLoaded) return;
 
+    // Snapshot the real state so we can restore it later
     _realState = currentState.hydration;
 
     // Pause background timers that could trigger saves
     _resetWatchdog?.cancel();
     _dailyResetTimer?.cancel();
 
-    // All drink names for uniqueDrinksLogged
-    final allDrinks = [
-      'Water',
-      'Sparkling Water',
-      'Coconut Water',
-      'Green Tea',
-      'Black Tea',
-      'Herbal Tea',
-      'Coffee',
-      'Espresso',
-      'Latte',
-      'Cappuccino',
-      'Matcha',
-      'Orange Juice',
-      'Apple Juice',
-      'Cranberry Juice',
-      'Lemonade',
-      'Smoothie',
-      'Protein Shake',
-      'Milk',
-      'Oat Milk',
-      'Almond Milk',
-      'Hot Chocolate',
-      'Kombucha',
-      'Energy Drink',
-      'Sports Drink',
-      'Soda',
-    ];
-
-    final debugState = currentState.hydration.copyWith(
-      waterConsumedOz: 70.0,
-      waterGoalOz: 80.0,
-      currentStreak: 365,
-      recordStreak: 365,
-      goalMetToday: false,
-      completedChallenges: 6,
-      challengeActive: const [true, true, true, true, true, true],
-      totalWaterConsumedOz: 15000.0,
-      totalDaysLogged: 365,
-      totalDrinksLogged: 2000,
-      totalHealthyPicks: 500,
-      uniqueDrinksLogged: allDrinks,
-      totalGoalsMet: 300,
-      clearNextEntryTime: true,
-      totalXp: 25000,
-      drops: 999,
-      inventory: const UserInventory(
-        streakFreezes: 3,
-        doubleXpTokens: 2,
-        cooldownSkips: 5,
-      ),
-    );
-
-    emit(currentState.copyWith(hydration: debugState));
+    // Don't change any values — the user will set what they need
+    // via the debug menu.  Just emit a fresh copy so the menu knows
+    // debug mode is active.
+    emit(currentState.copyWith(hydration: currentState.hydration));
   }
 
   /// Deactivate debug mode — restore the real state.
@@ -666,12 +1093,22 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     double? waterGoalOz,
     bool? goalMetToday,
     int? completedChallenges,
+    List<bool>? challengeActive,
     double? totalWaterConsumedOz,
     int? totalDaysLogged,
     int? totalDrinksLogged,
     int? totalGoalsMet,
+    int? totalHealthyPicks,
     int? totalXp,
     int? drops,
+    UserInventory? inventory,
+    List<int>? homeDuckIndices,
+    Map<int, DuckBondData>? duckBonds,
+    List<String>? ownedAccessoryIds,
+    List<String>? purchasedThemeIds,
+    List<String>? uniqueDrinksLogged,
+    List<String>? claimedSeasonalPackIds,
+    bool? isSubscribed,
     bool clearNextEntryTime = false,
   }) {
     if (_realState == null) return; // not in debug mode
@@ -685,12 +1122,22 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
       waterGoalOz: waterGoalOz,
       goalMetToday: goalMetToday,
       completedChallenges: completedChallenges,
+      challengeActive: challengeActive,
       totalWaterConsumedOz: totalWaterConsumedOz,
       totalDaysLogged: totalDaysLogged,
       totalDrinksLogged: totalDrinksLogged,
       totalGoalsMet: totalGoalsMet,
+      totalHealthyPicks: totalHealthyPicks,
       totalXp: totalXp,
       drops: drops,
+      inventory: inventory,
+      homeDuckIndices: homeDuckIndices,
+      duckBonds: duckBonds,
+      ownedAccessoryIds: ownedAccessoryIds,
+      purchasedThemeIds: purchasedThemeIds,
+      uniqueDrinksLogged: uniqueDrinksLogged,
+      claimedSeasonalPackIds: claimedSeasonalPackIds,
+      isSubscribed: isSubscribed,
       clearNextEntryTime: clearNextEntryTime,
     );
 
@@ -843,7 +1290,8 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
       }
 
       // Reset daily quests + doubleXp flag for new day
-      final newQuests = DailyQuests.pickForDay(now);
+      final newQuests =
+          DailyQuests.pickForDay(now, count: state.isSubscribed ? 4 : 3);
       final todayStr =
           '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
       final questProgress =
@@ -879,13 +1327,20 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
       final xpMul = hydrationState.inventory.doubleXpActive ? 2 : 1;
       final rewardedState = hydrationState.copyWith(
         totalXp: hydrationState.totalXp + challenge.xpReward * xpMul,
-        drops: hydrationState.drops + challenge.dropsReward,
+        drops: hydrationState.drops +
+            _subDrops(challenge.dropsReward, hydrationState),
       );
       _hydrationRepository.saveHydrationState(_userId, rewardedState);
       emit(ChallengeCompleted(
         challengeIndex: hydrationState.activeChallengeIndex!,
         hydration: rewardedState,
       ));
+      _sendInbox(
+        type: InboxMessageType.challengeProgress,
+        title: '🏆 Challenge Complete!',
+        body:
+            '${challenge.title} conquered! You earned ${challenge.xpReward} XP and ${challenge.dropsReward} drops.',
+      );
     } else if (hydrationState.challengeFailed &&
         hydrationState.activeChallengeIndex != null) {
       emit(ChallengeFailed(
@@ -1065,7 +1520,7 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
         '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     if (h.dailyQuestsDate == todayStr && h.dailyQuests.isNotEmpty) return h;
 
-    final quests = DailyQuests.pickForDay(now);
+    final quests = DailyQuests.pickForDay(now, count: h.isSubscribed ? 4 : 3);
     final progress =
         quests.map((q) => DailyQuestProgress(questId: q.id)).toList();
     return h.copyWith(
@@ -1164,8 +1619,14 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     if (tmpl == null) return false;
 
     final xpMul = currentState.hydration.inventory.doubleXpActive ? 2 : 1;
+    final questBonuses = _getActiveBonuses(currentState.hydration);
     int claimedXp = tmpl.xpReward * xpMul;
-    int claimedDrops = tmpl.dropsReward;
+    int claimedDrops = _subDrops(tmpl.dropsReward, currentState.hydration);
+
+    // Duck passive: quest bonus
+    claimedXp = (claimedXp * (1.0 + questBonuses.questBonusFraction)).round();
+    claimedDrops =
+        (claimedDrops * (1.0 + questBonuses.questBonusFraction)).round();
 
     // Mark this quest as claimed
     final updatedQuests = List<DailyQuestProgress>.from(quests);
@@ -1175,7 +1636,13 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     final allClaimed = updatedQuests.every((q) => q.claimed);
     if (allClaimed) {
       claimedXp += XpEvent.allDailyQuests.xp * xpMul;
-      claimedDrops += 20; // bonus drops
+      claimedDrops += _subDrops(25, currentState.hydration); // bonus drops
+      _sendInbox(
+        type: InboxMessageType.allQuestsComplete,
+        title: '⭐ All Quests Complete!',
+        body:
+            'You knocked out every daily quest today. Bonus XP and drops are yours!',
+      );
     }
 
     final newState = currentState.hydration.copyWith(
@@ -1191,7 +1658,8 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     final prevLevel = XpLevel.levelForXp(currentState.hydration.totalXp);
     final newLevel = XpLevel.levelForXp(newState.totalXp);
     if (newLevel > prevLevel) {
-      final levelUpDrops = (newLevel - prevLevel) * 30;
+      final levelUpDrops =
+          _subDrops((newLevel - prevLevel) * 50, currentState.hydration);
       final levelState = newState.copyWith(
         drops: newState.drops + levelUpDrops,
       );
@@ -1202,6 +1670,12 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
         newLevel: newLevel,
         dropsAwarded: levelUpDrops,
       ));
+      _sendInbox(
+        type: InboxMessageType.levelUp,
+        title: '⬆️ Level $newLevel!',
+        body:
+            'You leveled up from $prevLevel to $newLevel and earned $levelUpDrops drops!',
+      );
       emit(HydrationLoaded(
         hydration: levelState,
         todayLogs: currentState.todayLogs,
@@ -1211,11 +1685,79 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     return true;
   }
 
+  // ── Scheduled inbox checks (run once per app launch) ─────────────
+  void _checkScheduledInbox(HydrationState h) {
+    try {
+      final inbox = getIt<InboxService>();
+      final existing = inbox.getAll();
+      final today = DateTime.now();
+
+      /// Helper to avoid duplicate messages for the same type+day
+      bool alreadySentToday(InboxMessageType type) => existing.any((m) =>
+          m.type == type &&
+          m.createdAt.year == today.year &&
+          m.createdAt.month == today.month &&
+          m.createdAt.day == today.day);
+
+      // Seasonal packs currently available but not yet claimed
+      for (final pack in SeasonalPacks.all) {
+        if (pack.isCurrentlyAvailable &&
+            !h.claimedSeasonalPackIds.contains(pack.id) &&
+            !alreadySentToday(InboxMessageType.seasonalPackAvailable)) {
+          inbox.add(
+            type: InboxMessageType.seasonalPackAvailable,
+            title: '🎁 ${pack.name} is here!',
+            body:
+                '${pack.description} Available for a limited time — check the Market!',
+          );
+          break; // only one seasonal announcement per launch
+        }
+      }
+
+      // Daily quests refreshed (if it's a new day and quests exist)
+      if (h.dailyQuests.isNotEmpty &&
+          h.dailyQuests.every((q) => !q.completed) &&
+          !alreadySentToday(InboxMessageType.questsRefreshed)) {
+        inbox.add(
+          type: InboxMessageType.questsRefreshed,
+          title: '📋 New Daily Quests',
+          body:
+              'Fresh quests are ready! Complete them all for bonus XP and drops.',
+        );
+      }
+
+      // Clean up old messages (30+ days)
+      inbox.clearOld(days: 30);
+    } catch (_) {
+      // InboxService not available yet
+    }
+  }
+
+  // ── Inbox helper ─────────────────────────────────────────────────
+  void _sendInbox({
+    required InboxMessageType type,
+    required String title,
+    required String body,
+    String? actionRoute,
+  }) {
+    try {
+      getIt<InboxService>().add(
+        type: type,
+        title: title,
+        body: body,
+        actionRoute: actionRoute,
+      );
+    } catch (_) {
+      // silently ignore if service not yet registered
+    }
+  }
+
   @override
   Future<void> close() {
     _dailyResetTimer?.cancel();
     _resetWatchdog?.cancel();
     _animationTimer?.cancel();
+    _iapSub?.cancel();
     return super.close();
   }
 }

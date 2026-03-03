@@ -5,10 +5,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:waddle/data/repositories/auth_repository_impl.dart';
 import 'package:waddle/data/repositories/health_repository_impl.dart';
 import 'package:waddle/data/repositories/hydration_repository_impl.dart';
+import 'package:waddle/data/services/inbox_service.dart';
 import 'package:waddle/data/services/notification_service.dart';
 import 'package:waddle/data/services/app_settings_service.dart';
 import 'package:waddle/data/services/debug_mode_service.dart';
 import 'package:waddle/data/services/friend_service.dart';
+import 'package:waddle/data/services/iap_service.dart';
 import 'package:waddle/domain/repositories/auth_repository.dart';
 import 'package:waddle/domain/repositories/health_repository.dart';
 import 'package:waddle/domain/repositories/hydration_repository.dart';
@@ -53,6 +55,10 @@ Future<void> setupDependencies() async {
     () => AppSettingsService(prefs: getIt()),
   );
 
+  getIt.registerLazySingleton<InboxService>(
+    () => InboxService(prefs: getIt()),
+  );
+
   getIt.registerLazySingleton<FriendService>(
     () => FriendService(
       firestore: getIt(),
@@ -62,6 +68,10 @@ Future<void> setupDependencies() async {
 
   getIt.registerLazySingleton<DebugModeService>(
     () => DebugModeService(),
+  );
+
+  getIt.registerLazySingleton<IapService>(
+    () => IapService(),
   );
 
   // Cubits

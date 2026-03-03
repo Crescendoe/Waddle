@@ -4,8 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:waddle/core/theme/app_theme.dart';
 import 'package:waddle/domain/entities/app_theme_reward.dart';
+import 'package:waddle/domain/entities/duck_accessory.dart';
 import 'package:waddle/domain/entities/duck_companion.dart';
-import 'package:waddle/presentation/screens/main/duck_collection_screen.dart';
 import 'package:waddle/presentation/widgets/common.dart';
 import 'package:waddle/presentation/widgets/duck_avatar.dart';
 
@@ -15,7 +15,7 @@ import 'package:waddle/presentation/widgets/duck_avatar.dart';
 // Similar to CongratsScreen but with a distinct shimmer + glow vibe.
 // ═══════════════════════════════════════════════════════════════════════
 
-enum UnlockRewardType { duck, theme }
+enum UnlockRewardType { duck, theme, accessory }
 
 class UnlockRewardScreen extends StatefulWidget {
   final UnlockRewardType type;
@@ -26,11 +26,15 @@ class UnlockRewardScreen extends StatefulWidget {
   /// For [UnlockRewardType.theme]: the [ThemeReward.id].
   final String? themeId;
 
+  /// For [UnlockRewardType.accessory]: the [DuckAccessory.id].
+  final String? accessoryId;
+
   const UnlockRewardScreen({
     super.key,
     required this.type,
     this.duckIndex,
     this.themeId,
+    this.accessoryId,
   });
 
   @override
@@ -100,16 +104,23 @@ class _UnlockRewardScreenState extends State<UnlockRewardScreen>
   @override
   Widget build(BuildContext context) {
     final isDuck = widget.type == UnlockRewardType.duck;
+    final isTheme = widget.type == UnlockRewardType.theme;
+    final isAccessory = widget.type == UnlockRewardType.accessory;
     final duck = isDuck && widget.duckIndex != null
         ? DuckCompanions.all[widget.duckIndex!]
         : null;
-    final theme = !isDuck && widget.themeId != null
+    final theme = isTheme && widget.themeId != null
         ? ThemeRewards.all.where((t) => t.id == widget.themeId).firstOrNull
+        : null;
+    final accessory = isAccessory && widget.accessoryId != null
+        ? DuckAccessories.byId(widget.accessoryId!)
         : null;
 
     final accentColor = isDuck
         ? (duck?.rarity.color ?? AppColors.accent)
-        : (theme?.primaryColor ?? AppColors.accent);
+        : isAccessory
+            ? (accessory?.rarity.color ?? AppColors.accent)
+            : (theme?.primaryColor ?? AppColors.accent);
 
     return Scaffold(
       body: Stack(
@@ -132,7 +143,11 @@ class _UnlockRewardScreenState extends State<UnlockRewardScreen>
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        isDuck ? 'NEW COMPANION' : 'NEW THEME',
+                        isDuck
+                            ? 'NEW COMPANION'
+                            : isAccessory
+                                ? 'NEW ACCESSORY'
+                                : 'NEW THEME',
                         style: AppTextStyles.bodySmall.copyWith(
                           color: accentColor,
                           fontWeight: FontWeight.w700,
@@ -166,7 +181,7 @@ class _UnlockRewardScreenState extends State<UnlockRewardScreen>
                         height: 140,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: isDuck
+                          gradient: isDuck || isAccessory
                               ? null
                               : LinearGradient(
                                   begin: Alignment.topCenter,
@@ -179,7 +194,9 @@ class _UnlockRewardScreenState extends State<UnlockRewardScreen>
                                 ),
                           color: isDuck
                               ? duck!.rarity.color.withValues(alpha: 0.12)
-                              : null,
+                              : isAccessory
+                                  ? accentColor.withValues(alpha: 0.12)
+                                  : null,
                           boxShadow: [
                             BoxShadow(
                               color: accentColor.withValues(alpha: 0.35),
@@ -191,11 +208,18 @@ class _UnlockRewardScreenState extends State<UnlockRewardScreen>
                         child: Center(
                           child: isDuck
                               ? DuckAvatar(duck: duck!, size: 100)
-                              : Icon(
-                                  theme?.icon ?? Icons.palette_rounded,
-                                  size: 60,
-                                  color: Colors.white,
-                                ),
+                              : isAccessory
+                                  ? Icon(
+                                      accessory?.icon ??
+                                          Icons.checkroom_rounded,
+                                      size: 60,
+                                      color: accessory?.color ?? accentColor,
+                                    )
+                                  : Icon(
+                                      theme?.icon ?? Icons.palette_rounded,
+                                      size: 60,
+                                      color: Colors.white,
+                                    ),
                         ),
                       ),
                     )
@@ -217,7 +241,11 @@ class _UnlockRewardScreenState extends State<UnlockRewardScreen>
 
                     // ── Name ─────────────────────────────────────────
                     Text(
-                      isDuck ? (duck?.name ?? '') : (theme?.name ?? ''),
+                      isDuck
+                          ? (duck?.name ?? '')
+                          : isAccessory
+                              ? (accessory?.name ?? '')
+                              : (theme?.name ?? ''),
                       style: AppTextStyles.headlineSmall.copyWith(fontSize: 26),
                     ).animate().fadeIn(delay: 1000.ms),
 
@@ -242,6 +270,24 @@ class _UnlockRewardScreenState extends State<UnlockRewardScreen>
                         ),
                       ).animate().fadeIn(delay: 1100.ms),
 
+                    if (isAccessory && accessory != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: accessory.rarity.color.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${accessory.slot.label} · ${accessory.rarity.label}',
+                          style: TextStyle(
+                            color: accessory.rarity.color,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ).animate().fadeIn(delay: 1100.ms),
+
                     const SizedBox(height: 16),
 
                     // ── Description ──────────────────────────────────
@@ -250,7 +296,9 @@ class _UnlockRewardScreenState extends State<UnlockRewardScreen>
                       child: Text(
                         isDuck
                             ? (duck?.description ?? '')
-                            : (theme?.description ?? ''),
+                            : isAccessory
+                                ? (accessory?.description ?? '')
+                                : (theme?.description ?? ''),
                         style: AppTextStyles.bodyLarge.copyWith(
                           color: AppColors.textSecondary,
                         ),
@@ -281,7 +329,9 @@ class _UnlockRewardScreenState extends State<UnlockRewardScreen>
                     Text(
                       isDuck
                           ? 'Check it out in your Collection!'
-                          : 'Apply it from the Themes tab!',
+                          : isAccessory
+                              ? 'Equip it from the Accessories tab!'
+                              : 'Apply it from the Themes tab!',
                       style: AppTextStyles.bodySmall.copyWith(
                         color: AppColors.textHint,
                       ),

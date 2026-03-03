@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:waddle/domain/entities/daily_quest.dart';
+import 'package:waddle/domain/entities/duck_bond.dart';
 import 'package:waddle/domain/entities/shop_item.dart';
 import 'package:waddle/domain/entities/xp_level.dart';
 
@@ -53,6 +54,21 @@ class HydrationState extends Equatable {
   // ── Purchased market themes ───────────────────────────────────────
   final List<String> purchasedThemeIds;
 
+  // ── Subscription (Waddle+) ────────────────────────────────────────
+  final bool isSubscribed;
+  final DateTime? subscriptionExpiry;
+  final String? subscriptionProductId;
+
+  // ── Custom duck nickname (subscriber perk) ────────────────────────
+  final String? duckNickname;
+
+  // ── Duck bonds & accessories ──────────────────────────────────────
+  final Map<int, DuckBondData> duckBonds;
+  final List<String> ownedAccessoryIds;
+
+  // ── Seasonal / holiday cosmetic packs ─────────────────────────────
+  final List<String> claimedSeasonalPackIds;
+
   const HydrationState({
     this.waterConsumedOz = 0.0,
     this.waterGoalOz = 80.0,
@@ -86,6 +102,13 @@ class HydrationState extends Equatable {
     this.seenDuckIndices = const [],
     this.seenThemeIds = const [],
     this.purchasedThemeIds = const [],
+    this.isSubscribed = false,
+    this.subscriptionExpiry,
+    this.subscriptionProductId,
+    this.duckNickname,
+    this.duckBonds = const {},
+    this.ownedAccessoryIds = const [],
+    this.claimedSeasonalPackIds = const [],
   });
 
   double get progressPercent =>
@@ -118,10 +141,12 @@ class HydrationState extends Equatable {
       dailyQuests.isNotEmpty && dailyQuests.every((q) => q.completed);
 
   StreakTier get streakTier {
-    if (currentStreak >= 30) return StreakTier.platinum;
-    if (currentStreak >= 20) return StreakTier.gold;
-    if (currentStreak >= 15) return StreakTier.silver;
-    if (currentStreak >= 10) return StreakTier.bronze;
+    if (currentStreak >= 1000) return StreakTier.obsidian;
+    if (currentStreak >= 365) return StreakTier.diamond;
+    if (currentStreak >= 150) return StreakTier.platinum;
+    if (currentStreak >= 60) return StreakTier.gold;
+    if (currentStreak >= 30) return StreakTier.silver;
+    if (currentStreak >= 14) return StreakTier.bronze;
     return StreakTier.normal;
   }
 
@@ -164,6 +189,16 @@ class HydrationState extends Equatable {
     List<int>? seenDuckIndices,
     List<String>? seenThemeIds,
     List<String>? purchasedThemeIds,
+    bool? isSubscribed,
+    DateTime? subscriptionExpiry,
+    bool clearSubscriptionExpiry = false,
+    String? subscriptionProductId,
+    bool clearSubscriptionProductId = false,
+    String? duckNickname,
+    bool clearDuckNickname = false,
+    Map<int, DuckBondData>? duckBonds,
+    List<String>? ownedAccessoryIds,
+    List<String>? claimedSeasonalPackIds,
   }) {
     return HydrationState(
       waterConsumedOz: waterConsumedOz ?? this.waterConsumedOz,
@@ -207,6 +242,19 @@ class HydrationState extends Equatable {
       seenDuckIndices: seenDuckIndices ?? this.seenDuckIndices,
       seenThemeIds: seenThemeIds ?? this.seenThemeIds,
       purchasedThemeIds: purchasedThemeIds ?? this.purchasedThemeIds,
+      isSubscribed: isSubscribed ?? this.isSubscribed,
+      subscriptionExpiry: clearSubscriptionExpiry
+          ? null
+          : (subscriptionExpiry ?? this.subscriptionExpiry),
+      subscriptionProductId: clearSubscriptionProductId
+          ? null
+          : (subscriptionProductId ?? this.subscriptionProductId),
+      duckNickname:
+          clearDuckNickname ? null : (duckNickname ?? this.duckNickname),
+      duckBonds: duckBonds ?? this.duckBonds,
+      ownedAccessoryIds: ownedAccessoryIds ?? this.ownedAccessoryIds,
+      claimedSeasonalPackIds:
+          claimedSeasonalPackIds ?? this.claimedSeasonalPackIds,
     );
   }
 
@@ -244,14 +292,25 @@ class HydrationState extends Equatable {
         seenDuckIndices,
         seenThemeIds,
         purchasedThemeIds,
+        isSubscribed,
+        subscriptionExpiry,
+        subscriptionProductId,
+        duckNickname,
+        duckBonds,
+        ownedAccessoryIds,
+        claimedSeasonalPackIds,
       ];
 }
 
-enum StreakTier { normal, bronze, silver, gold, platinum }
+enum StreakTier { normal, bronze, silver, gold, platinum, diamond, obsidian }
 
 extension StreakTierExtension on StreakTier {
   Color get color {
     switch (this) {
+      case StreakTier.obsidian:
+        return const Color(0xFF1A1A2E);
+      case StreakTier.diamond:
+        return const Color(0xFF00BCD4);
       case StreakTier.platinum:
         return const Color(0xFF36708B);
       case StreakTier.gold:
@@ -267,6 +326,10 @@ extension StreakTierExtension on StreakTier {
 
   String get label {
     switch (this) {
+      case StreakTier.obsidian:
+        return 'Obsidian';
+      case StreakTier.diamond:
+        return 'Diamond';
       case StreakTier.platinum:
         return 'Platinum';
       case StreakTier.gold:
@@ -282,8 +345,12 @@ extension StreakTierExtension on StreakTier {
 
   IconData get icon {
     switch (this) {
-      case StreakTier.platinum:
+      case StreakTier.obsidian:
+        return Icons.auto_awesome_rounded;
+      case StreakTier.diamond:
         return Icons.diamond_rounded;
+      case StreakTier.platinum:
+        return Icons.stars_rounded;
       case StreakTier.gold:
         return Icons.emoji_events_rounded;
       case StreakTier.silver:

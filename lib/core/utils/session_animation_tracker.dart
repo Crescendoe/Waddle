@@ -23,16 +23,27 @@ class SessionAnimationTracker {
   static const challenges = 'challenges';
   static const duckCollection = 'duckCollection';
   static const profile = 'profile';
+
+  /// Screen keys for secondary screens.
+  static const settings = 'settings';
+  static const notifications = 'notifications';
+  static const healthSync = 'healthSync';
+  static const duckDetail = 'duckDetail';
+  static const friends = 'friends';
+  static const friendProfile = 'friendProfile';
 }
 
 /// Extension that replaces `.animate()` with a once-per-session variant.
 /// When [shouldAnimate] is true, the animation plays normally.
-/// When false, the widget jumps straight to its final state (no motion).
+/// When false, the widget snaps to its final state instantly (no motion).
 extension AnimateOnce on Widget {
   Animate animateOnce(bool shouldAnimate) {
+    if (shouldAnimate) return animate();
+    // Snap the controller to the end so all chained effects
+    // (fadeIn, slideY, etc.) render at their final values immediately.
     return animate(
-      autoPlay: shouldAnimate,
-      target: shouldAnimate ? null : 1,
+      autoPlay: false,
+      onInit: (controller) => controller.value = 1.0,
     );
   }
 }

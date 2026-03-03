@@ -8,6 +8,7 @@ import 'package:waddle/presentation/blocs/hydration/hydration_cubit.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_state.dart'
     as bloc;
 import 'package:waddle/presentation/widgets/common.dart';
+import 'package:waddle/presentation/widgets/market_confirmation.dart';
 
 /// Opens the Drops shop as a bottom sheet.
 void showShopSheet(BuildContext context) {
@@ -154,6 +155,53 @@ class _ShopSheet extends StatelessWidget {
                   ),
                 ),
 
+              // ── Get more drops link ──
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.of(context).pop(); // close sheet
+                    // Navigate to market tab (index 2)
+                    // The parent DuckCollectionScreen uses a tab controller
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          tc.primary.withValues(alpha: 0.10),
+                          tc.accent.withValues(alpha: 0.10),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: tc.primary.withValues(alpha: 0.20),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_circle_outline_rounded,
+                            color: tc.primary, size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Need more Drops? Visit the Market!',
+                          style: TextStyle(
+                            color: tc.primary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
               SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
             ],
           ),
@@ -277,6 +325,13 @@ class _ShopItemTile extends StatelessWidget {
                   onTap: canBuy
                       ? () async {
                           HapticFeedback.mediumImpact();
+                          final confirmed = await showMarketConfirmation(
+                            context,
+                            action: 'purchase',
+                            itemName: item.name,
+                            cost: item.price,
+                          );
+                          if (!confirmed || !context.mounted) return;
                           await context
                               .read<HydrationCubit>()
                               .purchaseShopItem(item);
@@ -320,6 +375,12 @@ class _ShopItemTile extends StatelessWidget {
                   GestureDetector(
                     onTap: () async {
                       HapticFeedback.lightImpact();
+                      final confirmed = await showMarketConfirmation(
+                        context,
+                        action: 'use',
+                        itemName: item.name,
+                      );
+                      if (!confirmed || !context.mounted) return;
                       final cubit = context.read<HydrationCubit>();
                       bool success = false;
                       String message = '';

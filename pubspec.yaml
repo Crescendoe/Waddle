@@ -1,7 +1,7 @@
 name: waddle
 description: "Waddle - A fun water tracking app with a duck mascot."
 publish_to: "none"
-version: 0.9.3+6
+version: 0.9.6+8
 
 environment:
   sdk: ^3.5.3
@@ -66,6 +66,9 @@ dependencies:
   logger: ^2.5.0
   rxdart: ^0.28.0
   flutter_timezone: ^5.0.1
+
+  # In-App Purchases
+  in_app_purchase: ^3.2.0
 
 dev_dependencies:
   flutter_test:

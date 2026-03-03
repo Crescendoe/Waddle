@@ -379,6 +379,12 @@ class FriendService {
       'friendCount': data['friendCount'] as int? ?? 0,
       'createdAt': (data['createdAt'] as Timestamp?)?.toDate(),
       'totalXp': data['totalXp'] as int? ?? 0,
+      'challenge1Active': data['challenge1Active'] as bool? ?? false,
+      'challenge2Active': data['challenge2Active'] as bool? ?? false,
+      'challenge3Active': data['challenge3Active'] as bool? ?? false,
+      'challenge4Active': data['challenge4Active'] as bool? ?? false,
+      'challenge5Active': data['challenge5Active'] as bool? ?? false,
+      'challenge6Active': data['challenge6Active'] as bool? ?? false,
     };
   }
 

@@ -10,6 +10,7 @@ import 'package:waddle/domain/entities/duck_companion.dart';
 import 'package:waddle/domain/entities/hydration_state.dart';
 import 'package:waddle/domain/entities/xp_level.dart';
 import 'package:waddle/presentation/widgets/common.dart';
+import 'package:waddle/core/utils/session_animation_tracker.dart';
 
 class FriendProfileScreen extends StatefulWidget {
   final String friendUid;
@@ -24,6 +25,8 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
   Map<String, dynamic>? _stats;
   bool _loading = true;
   String? _error;
+  late final bool _animate = SessionAnimationTracker.shouldAnimate(
+      SessionAnimationTracker.friendProfile);
 
   @override
   void initState() {
@@ -306,7 +309,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                 ),
               ],
             ),
-          ).animate().fadeIn().slideY(begin: -0.05, end: 0),
+          ).animateOnce(_animate).fadeIn().slideY(begin: -0.05, end: 0),
           const SizedBox(height: 12),
 
           // ── Stats grid (matches user's own profile) ──
@@ -423,7 +426,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                   ),
               ],
             ),
-          ).animate().fadeIn(delay: 200.ms),
+          ).animateOnce(_animate).fadeIn(delay: 200.ms),
           const SizedBox(height: 16),
 
           // ── Remove friend button ──
@@ -439,7 +442,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
               ),
               onTap: () => _confirmRemove(username),
             ),
-          ).animate().fadeIn(delay: 300.ms),
+          ).animateOnce(_animate).fadeIn(delay: 300.ms),
         ],
       ),
     );
@@ -609,10 +612,12 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
   }
 
   StreakTier _streakTierFor(int streak) {
-    if (streak >= 30) return StreakTier.platinum;
-    if (streak >= 20) return StreakTier.gold;
-    if (streak >= 15) return StreakTier.silver;
-    if (streak >= 10) return StreakTier.bronze;
+    if (streak >= 1000) return StreakTier.obsidian;
+    if (streak >= 365) return StreakTier.diamond;
+    if (streak >= 150) return StreakTier.platinum;
+    if (streak >= 60) return StreakTier.gold;
+    if (streak >= 30) return StreakTier.silver;
+    if (streak >= 14) return StreakTier.bronze;
     return StreakTier.normal;
   }
 

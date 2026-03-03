@@ -334,6 +334,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
               ),
+              // Supporter badge
+              if (hydration?.isSubscribed == true) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFFD54F), Color(0xFFFFA726)],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.favorite_rounded,
+                          size: 12, color: Colors.white),
+                      const SizedBox(width: 3),
+                      Text(
+                        'Supporter',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const Spacer(),
               // Actions
               _compactActionChip(

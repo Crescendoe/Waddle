@@ -7,10 +7,12 @@ import 'package:flutter/material.dart';
 //
 // Drops are earned through gameplay actions and spent in the Shop.
 // Earning sources:
-//   • Daily quest completion: 8-20 drops each
+//   • Daily quest completion: 12-30 drops each
 //   • Level-up: 50 drops
-//   • Daily goal met: 5 drops
-//   • Challenge completed: 100 drops
+//   • Daily goal met: 10 drops
+//   • Challenge completed: 200 drops
+//   • Streak milestone: 50 drops
+//   • All-quests bonus: 25 drops
 //
 // The shop contains consumable items and (in the future) cosmetics.
 // ═══════════════════════════════════════════════════════════════════════

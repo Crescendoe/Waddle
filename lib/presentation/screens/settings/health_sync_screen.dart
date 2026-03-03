@@ -5,6 +5,7 @@ import 'package:waddle/core/di/injection.dart';
 import 'package:waddle/core/theme/app_theme.dart';
 import 'package:waddle/domain/repositories/health_repository.dart';
 import 'package:waddle/presentation/widgets/common.dart';
+import 'package:waddle/core/utils/session_animation_tracker.dart';
 
 class HealthSyncScreen extends StatefulWidget {
   const HealthSyncScreen({super.key});
@@ -18,6 +19,8 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> {
   bool _isSyncEnabled = false;
   bool _isLoading = true;
   double? _todayIntakeOz;
+  late final bool _animate =
+      SessionAnimationTracker.shouldAnimate(SessionAnimationTracker.healthSync);
 
   @override
   void initState() {
@@ -129,7 +132,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> {
                         ),
                       ],
                     ),
-                  ).animate().fadeIn(),
+                  ).animateOnce(_animate).fadeIn(),
                   const SizedBox(height: 16),
 
                   if (_isAvailable) ...[
@@ -150,7 +153,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> {
                         onChanged: _toggleSync,
                         activeTrackColor: AppColors.primary,
                       ),
-                    ).animate().fadeIn(delay: 200.ms),
+                    ).animateOnce(_animate).fadeIn(delay: 200.ms),
                     const SizedBox(height: 16),
 
                     if (_isSyncEnabled && _todayIntakeOz != null)
@@ -179,7 +182,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> {
                             ),
                           ],
                         ),
-                      ).animate().fadeIn(delay: 400.ms),
+                      ).animateOnce(_animate).fadeIn(delay: 400.ms),
                   ],
 
                   const SizedBox(height: 16),
@@ -200,7 +203,7 @@ class _HealthSyncScreenState extends State<HealthSyncScreen> {
                             'Your health data stays on your device'),
                       ],
                     ),
-                  ).animate().fadeIn(delay: 600.ms),
+                  ).animateOnce(_animate).fadeIn(delay: 600.ms),
                 ],
               ),
       ),
