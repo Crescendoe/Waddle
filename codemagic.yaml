@@ -1,0 +1,178 @@
+workflows:
+  # ═══════════════════════════════════════════════════════════════
+  # iOS Build & Publish – runs on Codemagic's Mac build machines
+  # so you never need a Mac of your own.
+  # ═══════════════════════════════════════════════════════════════
+  ios-release:
+    name: iOS Release
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    
+    integrations:
+      app_store_connect: Waddle_ASC  # name of your App Store Connect API key in Codemagic
+    
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.waterly.app
+      groups:
+        - firebase_ios  # contains GOOGLE_SERVICE_INFO_PLIST_BASE64 & FIREBASE_OPTIONS_DART_BASE64
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      vars:
+        BUNDLE_ID: "com.waterly.app"
+        APP_STORE_APP_ID: "REPLACE_WITH_APP_STORE_ID"  # numeric App Store ID after creating the app
+
+    cache:
+      cache_paths:
+        - $FLUTTER_ROOT/.pub-cache
+        - $HOME/.gradle/caches
+        - $HOME/Library/Caches/CocoaPods
+
+    scripts:
+      # ── 1. Restore secret files from environment variables ──
+      - name: Decode GoogleService-Info.plist
+        script: |
+          echo $GOOGLE_SERVICE_INFO_PLIST_BASE64 | base64 --decode > $CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist
+      
+      - name: Decode firebase_options.dart
+        script: |
+          echo $FIREBASE_OPTIONS_DART_BASE64 | base64 --decode > $CM_BUILD_DIR/lib/firebase_options.dart
+
+      # ── 2. Flutter setup ──
+      - name: Install dependencies
+        script: flutter pub get
+
+      # ── 3. iOS code signing (automatic via Codemagic integration) ──
+      - name: Set up code signing
+        script: xcode-project use-profiles
+
+      # ── 4. Set build version from pubspec ──
+      - name: Set Xcode version numbers
+        script: |
+          FLUTTER_BUILD_NAME=$(grep 'version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f1)
+          FLUTTER_BUILD_NUMBER=$(grep 'version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f2)
+          agvtool new-marketing-version $FLUTTER_BUILD_NAME
+          agvtool new-version -all $FLUTTER_BUILD_NUMBER
+        working_directory: ios
+
+      # ── 5. Install CocoaPods ──
+      - name: Pod install
+        script: |
+          find . -name "Podfile" -execdir pod install \;
+
+      # ── 6. Build the IPA ──
+      - name: Flutter build IPA
+        script: |
+          flutter build ipa \
+            --release \
+            --export-options-plist=/Users/builder/export_options.plist
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - flutter_drive.log
+
+    publishing:
+      email:
+        recipients:
+          - your-email@example.com  # REPLACE with your email
+        notify:
+          success: true
+          failure: true
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        # submit_to_app_store: false  # uncomment when ready for production
+
+  # ═══════════════════════════════════════════════════════════════
+  # iOS Debug Build – quick test build without publishing
+  # ═══════════════════════════════════════════════════════════════
+  ios-debug:
+    name: iOS Debug Build
+    max_build_duration: 30
+    instance_type: mac_mini_m2
+
+    environment:
+      groups:
+        - firebase_ios
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+
+    cache:
+      cache_paths:
+        - $FLUTTER_ROOT/.pub-cache
+        - $HOME/Library/Caches/CocoaPods
+
+    scripts:
+      - name: Decode GoogleService-Info.plist
+        script: |
+          echo $GOOGLE_SERVICE_INFO_PLIST_BASE64 | base64 --decode > $CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist
+      
+      - name: Decode firebase_options.dart
+        script: |
+          echo $FIREBASE_OPTIONS_DART_BASE64 | base64 --decode > $CM_BUILD_DIR/lib/firebase_options.dart
+
+      - name: Install dependencies
+        script: flutter pub get
+
+      - name: Pod install
+        script: find . -name "Podfile" -execdir pod install \;
+
+      - name: Build iOS (debug, no codesign)
+        script: |
+          flutter build ios --debug --no-codesign
+
+    artifacts:
+      - build/ios/iphoneos/*.app
+      - /tmp/xcodebuild_logs/*.log
+
+  # ═══════════════════════════════════════════════════════════════
+  # Android Release – bonus: also builds Android on Codemagic
+  # ═══════════════════════════════════════════════════════════════
+  android-release:
+    name: Android Release
+    max_build_duration: 30
+    instance_type: mac_mini_m2
+
+    environment:
+      groups:
+        - firebase_android  # contains GOOGLE_SERVICES_JSON_BASE64, KEY_PROPERTIES_BASE64, KEYSTORE_BASE64
+      flutter: stable
+      java: 17
+
+    cache:
+      cache_paths:
+        - $FLUTTER_ROOT/.pub-cache
+        - $HOME/.gradle/caches
+
+    scripts:
+      - name: Decode google-services.json
+        script: |
+          echo $GOOGLE_SERVICES_JSON_BASE64 | base64 --decode > $CM_BUILD_DIR/android/app/google-services.json
+
+      - name: Decode firebase_options.dart
+        script: |
+          echo $FIREBASE_OPTIONS_DART_BASE64 | base64 --decode > $CM_BUILD_DIR/lib/firebase_options.dart
+
+      - name: Decode keystore & key.properties
+        script: |
+          echo $KEY_PROPERTIES_BASE64 | base64 --decode > $CM_BUILD_DIR/android/key.properties
+          echo $KEYSTORE_BASE64 | base64 --decode > /tmp/waddle-release.jks
+          # Update storeFile path in key.properties
+          sed -i '' "s|storeFile=.*|storeFile=/tmp/waddle-release.jks|" $CM_BUILD_DIR/android/key.properties
+
+      - name: Install dependencies
+        script: flutter pub get
+
+      - name: Build APK
+        script: flutter build apk --release
+
+      - name: Build App Bundle
+        script: flutter build appbundle --release
+
+    artifacts:
+      - build/app/outputs/apk/**/*.apk
+      - build/app/outputs/bundle/**/*.aab

@@ -1,0 +1,156 @@
+# ═══════════════════════════════════════════════════════════════════════
+# Build iOS IPA on GitHub Actions (macOS runner) – no Mac needed!
+# ═══════════════════════════════════════════════════════════════════════
+#
+# Trigger:  Push to main  OR  manual dispatch from GitHub UI
+# Secrets required (set in Settings → Secrets):
+#   GOOGLE_SERVICE_INFO_PLIST_BASE64  – base64-encoded GoogleService-Info.plist
+#   FIREBASE_OPTIONS_DART_BASE64      – base64-encoded lib/firebase_options.dart
+#   IOS_CERTIFICATE_BASE64            – base64-encoded .p12 distribution cert
+#   IOS_CERTIFICATE_PASSWORD          – password for the .p12 file
+#   IOS_PROVISIONING_PROFILE_BASE64   – base64-encoded .mobileprovision file
+#   KEYCHAIN_PASSWORD                 – any random password for temp keychain
+#   APP_STORE_CONNECT_KEY_BASE64      – (optional) base64 AuthKey_XXXX.p8
+#   APP_STORE_CONNECT_KEY_ID          – (optional) App Store Connect API key ID
+#   APP_STORE_CONNECT_ISSUER_ID       – (optional) App Store Connect issuer ID
+# ═══════════════════════════════════════════════════════════════════════
+
+name: iOS Build
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'android/**'
+      - 'web/**'
+      - 'windows/**'
+      - 'linux/**'
+  workflow_dispatch:     # allows manual trigger from GitHub UI
+    inputs:
+      build_mode:
+        description: 'Build mode'
+        required: true
+        default: 'release'
+        type: choice
+        options:
+          - debug
+          - release
+
+jobs:
+  build-ios:
+    runs-on: macos-14          # Apple Silicon runner (M1), free for public repos
+    timeout-minutes: 45
+
+    steps:
+      # ── 1. Checkout ──
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Set up Flutter ──
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.1'   # match your local SDK version
+          channel: stable
+          cache: true
+
+      # ── 3. Restore secret files ──
+      - name: Decode GoogleService-Info.plist
+        run: |
+          echo "${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}" | base64 --decode \
+            > ios/Runner/GoogleService-Info.plist
+
+      - name: Decode firebase_options.dart
+        run: |
+          echo "${{ secrets.FIREBASE_OPTIONS_DART_BASE64 }}" | base64 --decode \
+            > lib/firebase_options.dart
+
+      # ── 4. Install dependencies ──
+      - name: Flutter pub get
+        run: flutter pub get
+
+      # ── 5. CocoaPods ──
+      - name: Pod install
+        working-directory: ios
+        run: pod install
+
+      # ── 6a. DEBUG BUILD (no codesign) ──
+      - name: Build iOS (debug, no codesign)
+        if: ${{ github.event.inputs.build_mode == 'debug' || github.event_name == 'push' }}
+        run: flutter build ios --debug --no-codesign
+
+      # ── 6b. RELEASE BUILD (with signing) ──
+      - name: Install Apple certificate & provisioning profile
+        if: ${{ github.event.inputs.build_mode == 'release' }}
+        env:
+          P12_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          PROVISION_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          KEYCHAIN_PW: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          # Create temporary keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          security create-keychain -p "$KEYCHAIN_PW" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PW" $KEYCHAIN_PATH
+
+          # Import certificate
+          echo "$P12_BASE64" | base64 --decode > $RUNNER_TEMP/certificate.p12
+          security import $RUNNER_TEMP/certificate.p12 \
+            -P "$P12_PASSWORD" \
+            -A -t cert -f pkcs12 \
+            -k $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PW" $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          # Install provisioning profile
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo "$PROVISION_BASE64" | base64 --decode \
+            > ~/Library/MobileDevice/Provisioning\ Profiles/waddle.mobileprovision
+
+      - name: Build IPA
+        if: ${{ github.event.inputs.build_mode == 'release' }}
+        run: |
+          flutter build ipa \
+            --release \
+            --export-options-plist=ios/ExportOptions.plist
+
+      # ── 7. Upload artifacts ──
+      - name: Upload IPA
+        if: ${{ github.event.inputs.build_mode == 'release' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: waddle-ios-release
+          path: build/ios/ipa/*.ipa
+
+      - name: Upload debug app
+        if: ${{ github.event.inputs.build_mode == 'debug' || github.event_name == 'push' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: waddle-ios-debug
+          path: build/ios/iphoneos/*.app
+
+      # ── 8. (Optional) Upload to TestFlight ──
+      - name: Upload to TestFlight
+        if: ${{ github.event.inputs.build_mode == 'release' && secrets.APP_STORE_CONNECT_KEY_BASE64 != '' }}
+        env:
+          ASC_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_KEY_BASE64 }}
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          echo "$ASC_KEY_BASE64" | base64 --decode > $RUNNER_TEMP/AuthKey.p8
+          xcrun altool --upload-app \
+            --type ios \
+            --file build/ios/ipa/*.ipa \
+            --apiKey "$ASC_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER_ID" \
+            --apiKeyPath $RUNNER_TEMP
+
+      # ── 9. Cleanup ──
+      - name: Cleanup keychain
+        if: always()
+        run: |
+          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db 2>/dev/null || true
+          rm -f $RUNNER_TEMP/certificate.p12
+          rm -f $RUNNER_TEMP/AuthKey.p8
