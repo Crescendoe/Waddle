@@ -845,6 +845,62 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 children: [
                   _changelogVersion(
+                    version: '0.9.7',
+                    date: 'March 5, 2026',
+                    changes: [
+                      _ChangeEntry(
+                        icon: Icons.emoji_events_rounded,
+                        title: 'Challenge Bug Fix',
+                        description:
+                            'Challenges no longer falsely show as completed when simply active. '
+                            'Duck companions tied to challenge-specific unlocks now only unlock upon actual completion.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.notifications_active_rounded,
+                        title: 'Android Notification Fix',
+                        description:
+                            'Scheduled notifications (reminders, streaks) now appear reliably on Android. '
+                            'Fixed icon, added exact-alarm permission, and registered boot/scheduled receivers. '
+                            'Goal and halfway toasts no longer fire while you\'re in the app.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.map_rounded,
+                        title: 'Active Challenge on Home',
+                        description:
+                            'The home screen challenge card now shows the challenge title, a progress bar, and days left. '
+                            'Tap it for full details, rules, allowed drinks, rewards, and a Give Up option.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.cruelty_free_rounded,
+                        title: 'Duck Collection Rework',
+                        description:
+                            'Duck cards now show bond level, AFK progress gauge, time till next level, '
+                            'and a condensed passive bonus row with icons. Grid switched to 2-column for more detail.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.task_alt_rounded,
+                        title: 'Quest Reward Toast',
+                        description:
+                            'Claiming daily quests now shows actual earned XP and drops (including duck bonuses). '
+                            'Completing all quests displays bonus amounts separately.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.mail_rounded,
+                        title: 'Inbox Fix',
+                        description:
+                            'Seasonal pack inbox alerts no longer repeat every day — one notification per pack.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.phone_iphone_rounded,
+                        title: 'iOS Groundwork',
+                        description:
+                            'iOS deployment target set to 14.0, entitlements configured for push and IAP, '
+                            'Codemagic CI/CD and GitHub Actions workflows added.',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  _changelogVersion(
                     version: '0.9.6',
                     date: 'March 1, 2026',
                     changes: [

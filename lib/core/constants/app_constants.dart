@@ -4,7 +4,7 @@ class AppConstants {
 
   // App Info
   static const String appName = 'Waddle';
-  static const String appVersion = '0.9.6';
+  static const String appVersion = '0.9.7';
   static const String developerName = 'William Wyler';
   static const String supportEmail = 'crescendoedd@gmail.com';
 
