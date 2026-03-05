@@ -24,6 +24,27 @@ import 'package:waddle/domain/repositories/health_repository.dart';
 import 'package:waddle/domain/repositories/hydration_repository.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_state.dart';
 
+/// Result returned by [HydrationCubit.claimQuest] so the UI can display
+/// a toast with the actual amounts (including duck bonuses, double-XP, etc.).
+class QuestClaimResult {
+  final int xp;
+  final int drops;
+  final bool allQuestsCompleted;
+  final int bonusXp;
+  final int bonusDrops;
+
+  const QuestClaimResult({
+    required this.xp,
+    required this.drops,
+    this.allQuestsCompleted = false,
+    this.bonusXp = 0,
+    this.bonusDrops = 0,
+  });
+
+  int get totalXp => xp + bonusXp;
+  int get totalDrops => drops + bonusDrops;
+}
+
 class HydrationCubit extends Cubit<HydrationBlocState> {
   final HydrationRepository _hydrationRepository;
   final HealthRepository? _healthRepository;
@@ -1604,41 +1625,45 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
   }
 
   /// Manually claim a completed daily quest reward.
-  /// Returns true if the claim was successful.
-  Future<bool> claimQuest(int questIndex) async {
-    if (_realState != null) return false;
+  /// Returns a [QuestClaimResult] with actual amounts, or null on failure.
+  Future<QuestClaimResult?> claimQuest(int questIndex) async {
+    if (_realState != null) return null;
 
     final currentState = state;
-    if (currentState is! HydrationLoaded) return false;
+    if (currentState is! HydrationLoaded) return null;
 
     final quests = currentState.hydration.dailyQuests;
-    if (questIndex < 0 || questIndex >= quests.length) return false;
+    if (questIndex < 0 || questIndex >= quests.length) return null;
 
     final quest = quests[questIndex];
-    if (!quest.completed || quest.claimed) return false;
+    if (!quest.completed || quest.claimed) return null;
 
     final tmpl = DailyQuests.byId(quest.questId);
-    if (tmpl == null) return false;
+    if (tmpl == null) return null;
 
     final xpMul = currentState.hydration.inventory.doubleXpActive ? 2 : 1;
     final questBonuses = _getActiveBonuses(currentState.hydration);
-    int claimedXp = tmpl.xpReward * xpMul;
-    int claimedDrops = _subDrops(tmpl.dropsReward, currentState.hydration);
+    int baseXp = tmpl.xpReward * xpMul;
+    int baseDrops = _subDrops(tmpl.dropsReward, currentState.hydration);
 
     // Duck passive: quest bonus
-    claimedXp = (claimedXp * (1.0 + questBonuses.questBonusFraction)).round();
-    claimedDrops =
-        (claimedDrops * (1.0 + questBonuses.questBonusFraction)).round();
+    int claimedXp = (baseXp * (1.0 + questBonuses.questBonusFraction)).round();
+    int claimedDrops =
+        (baseDrops * (1.0 + questBonuses.questBonusFraction)).round();
 
     // Mark this quest as claimed
     final updatedQuests = List<DailyQuestProgress>.from(quests);
     updatedQuests[questIndex] = quest.copyWith(claimed: true);
 
     // Check if ALL quests are now claimed → bonus
+    int bonusXp = 0;
+    int bonusDrops = 0;
     final allClaimed = updatedQuests.every((q) => q.claimed);
     if (allClaimed) {
-      claimedXp += XpEvent.allDailyQuests.xp * xpMul;
-      claimedDrops += _subDrops(25, currentState.hydration); // bonus drops
+      bonusXp = XpEvent.allDailyQuests.xp * xpMul;
+      bonusDrops = _subDrops(25, currentState.hydration);
+      claimedXp += bonusXp;
+      claimedDrops += bonusDrops;
       _sendInbox(
         type: InboxMessageType.allQuestsComplete,
         title: '⭐ All Quests Complete!',
@@ -1684,7 +1709,13 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
       ));
     }
 
-    return true;
+    return QuestClaimResult(
+      xp: claimedXp - bonusXp,
+      drops: claimedDrops - bonusDrops,
+      allQuestsCompleted: allClaimed,
+      bonusXp: bonusXp,
+      bonusDrops: bonusDrops,
+    );
   }
 
   // ── Scheduled inbox checks (run once per app launch) ─────────────
@@ -1701,16 +1732,21 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
           m.createdAt.month == today.month &&
           m.createdAt.day == today.day);
 
-      // Seasonal packs currently available but not yet claimed
+      // Seasonal packs currently available but not yet claimed.
+      // Only send one notification per pack (not per day).
+      bool alreadySentForPack(String packId) => existing.any((m) =>
+          m.type == InboxMessageType.seasonalPackAvailable &&
+          m.body.contains(packId));
+
       for (final pack in SeasonalPacks.all) {
         if (pack.isCurrentlyAvailable &&
             !h.claimedSeasonalPackIds.contains(pack.id) &&
-            !alreadySentToday(InboxMessageType.seasonalPackAvailable)) {
+            !alreadySentForPack(pack.id)) {
           inbox.add(
             type: InboxMessageType.seasonalPackAvailable,
             title: '🎁 ${pack.name} is here!',
             body:
-                '${pack.description} Available for a limited time — check the Market!',
+                '${pack.description} Available for a limited time — check the Market! [${pack.id}]',
           );
           break; // only one seasonal announcement per launch
         }

@@ -7,6 +7,7 @@ import 'package:waddle/presentation/blocs/hydration/hydration_cubit.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_state.dart'
     as bloc;
 import 'package:waddle/presentation/widgets/common.dart';
+import 'package:waddle/presentation/widgets/waddle_toast.dart';
 
 /// Daily quests section — shows all quests directly (no dropdown).
 /// Completed-but-unclaimed quests show a "Claim" button.
@@ -332,28 +333,28 @@ class _ClaimButton extends StatelessWidget {
     return GestureDetector(
       onTap: () async {
         final cubit = context.read<HydrationCubit>();
-        final success = await cubit.claimQuest(questIndex);
-        if (success && context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.celebration_rounded,
-                      color: Colors.white, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Claimed +$xpReward XP & +$dropsReward drops!',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-              backgroundColor: const Color(0xFF66BB6A),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              duration: const Duration(seconds: 2),
-            ),
+        final result = await cubit.claimQuest(questIndex);
+        if (result != null && context.mounted) {
+          final buf = StringBuffer('+${result.xp} XP  +${result.drops} 💧');
+          if (result.allQuestsCompleted) {
+            buf.write(
+                '\n🌟 All quests done! +${result.bonusXp} XP  +${result.bonusDrops} 💧 bonus');
+          }
+          WaddleToast.show(
+            context,
+            title: result.allQuestsCompleted
+                ? 'All Quests Complete!'
+                : 'Quest Claimed!',
+            body: buf.toString(),
+            icon: result.allQuestsCompleted
+                ? Icons.star_rounded
+                : Icons.celebration_rounded,
+            color: result.allQuestsCompleted
+                ? const Color(0xFFFFA000)
+                : const Color(0xFF66BB6A),
+            duration: result.allQuestsCompleted
+                ? const Duration(seconds: 4)
+                : const Duration(seconds: 3),
           );
         }
       },
