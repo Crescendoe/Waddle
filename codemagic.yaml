@@ -125,7 +125,17 @@ workflows:
         script: |
           flutter build ios --debug --no-codesign
 
+      # Package the .app into a sideloadable .ipa
+      - name: Create IPA for sideloading
+        script: |
+          mkdir -p $CM_BUILD_DIR/build/ios/ipa/Payload
+          cp -r $CM_BUILD_DIR/build/ios/iphoneos/Runner.app \
+                $CM_BUILD_DIR/build/ios/ipa/Payload/Runner.app
+          cd $CM_BUILD_DIR/build/ios/ipa
+          zip -r Waddle-debug.ipa Payload
+
     artifacts:
+      - build/ios/ipa/*.ipa
       - build/ios/iphoneos/*.app
       - /tmp/xcodebuild_logs/*.log
 
