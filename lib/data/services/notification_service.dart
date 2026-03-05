@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,9 +11,12 @@ import 'package:timezone/timezone.dart' as tz;
 ///
 /// Persists user preferences to SharedPreferences and schedules/cancels
 /// notifications via flutter_local_notifications accordingly.
-class NotificationService {
+class NotificationService with WidgetsBindingObserver {
   final SharedPreferences _prefs;
   final FlutterLocalNotificationsPlugin _plugin;
+
+  /// Tracks whether the app is currently in the foreground.
+  bool _isInForeground = true;
 
   // ── SharedPreferences keys ──
   static const _kEnabled = 'notif_enabled';
@@ -103,12 +107,16 @@ class NotificationService {
   // ══════════════════════════════════════════════════════════════
 
   Future<void> init() async {
+    // Track app lifecycle to suppress foreground notifications
+    WidgetsBinding.instance.addObserver(this);
+
     tz.initializeTimeZones();
     try {
       final tzInfo = await FlutterTimezone.getLocalTimezone();
       tz.setLocalLocation(tz.getLocation(tzInfo.identifier));
+      debugPrint('[Notif] Timezone set to: ${tzInfo.identifier}');
     } catch (e) {
-      debugPrint('Timezone detection failed, using UTC fallback: $e');
+      debugPrint('[Notif] Timezone detection failed, using UTC fallback: $e');
       tz.setLocalLocation(tz.getLocation('UTC'));
     }
 
@@ -133,7 +141,8 @@ class NotificationService {
       ),
     );
 
-    const androidSettings = AndroidInitializationSettings('app_icon');
+    const androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
@@ -143,13 +152,32 @@ class NotificationService {
       android: androidSettings,
       iOS: iosSettings,
     );
-    await _plugin.initialize(initSettings);
+    await _plugin.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: (_) {
+        // Notification tapped — no-op for now; app opens automatically
+      },
+    );
 
     if (Platform.isAndroid) {
+      // Request POST_NOTIFICATIONS permission (Android 13+)
       await androidImpl?.requestNotificationsPermission();
+
+      // Request exact alarm permission (Android 12+) — needed for zonedSchedule
+      final exactAlarmGranted =
+          await androidImpl?.requestExactAlarmsPermission();
+      debugPrint('[Notif] Exact alarm permission: $exactAlarmGranted');
     }
 
     await rescheduleAll();
+    debugPrint('[Notif] Initialization complete. Enabled=$isEnabled, '
+        'interval=${intervalHours}h, morning=$morningEnabled, '
+        'evening=$eveningEnabled, streak=$streakReminder');
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _isInForeground = state == AppLifecycleState.resumed;
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -250,6 +278,10 @@ class NotificationService {
 
   Future<void> showGoalReachedNotification() async {
     if (!isEnabled || !goalAlert) return;
+    if (_isInForeground) {
+      debugPrint('[Notif] Skipping goal notification — app is in foreground');
+      return;
+    }
     if (_isInQuietHours()) return;
 
     final msgs = _goalMessages();
@@ -258,10 +290,32 @@ class NotificationService {
 
   Future<void> showHalfwayNotification() async {
     if (!isEnabled || !halfwayAlert) return;
+    if (_isInForeground) {
+      debugPrint(
+          '[Notif] Skipping halfway notification — app is in foreground');
+      return;
+    }
     if (_isInQuietHours()) return;
 
     final msgs = _halfwayMessages();
     await _plugin.show(9998, msgs.$1, msgs.$2, _notificationDetails());
+  }
+
+  /// Fires a test notification immediately — bypasses foreground/quiet checks.
+  /// Use from the debug menu to verify the notification pipeline works.
+  Future<void> showTestNotification() async {
+    debugPrint('[Notif] Firing test notification...');
+    await _plugin.show(
+      8888,
+      'Test Notification 🦆',
+      'If you can see this, notifications are working!',
+      _notificationDetails(),
+    );
+  }
+
+  /// Returns a list of currently pending scheduled notifications.
+  Future<List<PendingNotificationRequest>> getPendingNotifications() async {
+    return _plugin.pendingNotificationRequests();
   }
 
   Future<void> showFCMNotification({
@@ -278,7 +332,10 @@ class NotificationService {
 
   Future<void> rescheduleAll() async {
     await _plugin.cancelAll();
-    if (!isEnabled) return;
+    if (!isEnabled) {
+      debugPrint('[Notif] All notifications disabled — cancelled all');
+      return;
+    }
 
     await _scheduleIntervalReminders();
 
@@ -350,17 +407,22 @@ class NotificationService {
       scheduled = scheduled.add(const Duration(days: 1));
     }
 
-    await _plugin.zonedSchedule(
-      id,
-      title,
-      body,
-      scheduled,
-      _notificationDetails(),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      matchDateTimeComponents: DateTimeComponents.time,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-    );
+    try {
+      await _plugin.zonedSchedule(
+        id,
+        title,
+        body,
+        scheduled,
+        _notificationDetails(),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
+      debugPrint('[Notif] Scheduled id=$id at $scheduled: "$title"');
+    } catch (e) {
+      debugPrint('[Notif] ERROR scheduling id=$id: $e');
+    }
   }
 
   // ══════════════════════════════════════════════════════════════

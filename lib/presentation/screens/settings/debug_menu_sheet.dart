@@ -219,6 +219,18 @@ class _DebugMenuSheetState extends State<DebugMenuSheet> {
                       subtitle: 'Fire the 50% milestone notification',
                       onTap: _fireHalfwayNotification,
                     ),
+                    _triggerTile(
+                      icon: Icons.bug_report_rounded,
+                      label: 'Test Notification',
+                      subtitle: 'Bypasses all checks — always fires',
+                      onTap: _fireTestNotification,
+                    ),
+                    _triggerTile(
+                      icon: Icons.schedule_rounded,
+                      label: 'View Pending Notifications',
+                      subtitle: 'See all scheduled notifications',
+                      onTap: _showPendingNotifications,
+                    ),
                     const SizedBox(height: 12),
                     _section('State Overrides'),
                     _sliderTile(
@@ -1263,6 +1275,58 @@ class _DebugMenuSheetState extends State<DebugMenuSheet> {
       _showSnack('Halfway notification fired');
     } catch (e) {
       _showSnack('Notification error: $e');
+    }
+  }
+
+  void _fireTestNotification() {
+    try {
+      getIt<NotificationService>().showTestNotification();
+      _showSnack('Test notification fired — check your notification shade');
+    } catch (e) {
+      _showSnack('Notification error: $e');
+    }
+  }
+
+  void _showPendingNotifications() async {
+    try {
+      final pending =
+          await getIt<NotificationService>().getPendingNotifications();
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('Pending Notifications (${pending.length})'),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 300,
+            child: pending.isEmpty
+                ? const Center(child: Text('No scheduled notifications'))
+                : ListView.builder(
+                    itemCount: pending.length,
+                    itemBuilder: (_, i) {
+                      final n = pending[i];
+                      return ListTile(
+                        dense: true,
+                        title: Text(n.title ?? '(no title)',
+                            style: const TextStyle(fontSize: 13)),
+                        subtitle: Text('ID: ${n.id}\n${n.body ?? ''}',
+                            style: const TextStyle(fontSize: 11)),
+                      );
+                    },
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      _showSnack('Error: $e');
     }
   }
 
