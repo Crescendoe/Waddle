@@ -464,13 +464,19 @@ class HydrationRepositoryImpl implements HydrationRepository {
       if (currentState.hasActiveChallenge) {
         final daysLeft = currentState.challengeDaysLeft - 1;
         if (daysLeft <= 0) {
-          // Challenge completed!
+          // Challenge completed! Mark challengeActive[i] = true NOW.
+          final completedActive = List<bool>.from(newState.challengeActive);
+          if (currentState.activeChallengeIndex != null &&
+              currentState.activeChallengeIndex! < completedActive.length) {
+            completedActive[currentState.activeChallengeIndex!] = true;
+          }
           await saveHydrationState(
             userId,
             newState.copyWith(
               challengeCompleted: true,
               challengeDaysLeft: 0,
               completedChallenges: currentState.completedChallenges + 1,
+              challengeActive: completedActive,
             ),
           );
         } else if (!currentState.goalMetToday) {

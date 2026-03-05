@@ -8,6 +8,7 @@ import 'package:waddle/core/constants/app_constants.dart';
 import 'package:waddle/core/di/injection.dart';
 import 'package:waddle/core/theme/app_theme.dart';
 import 'package:waddle/data/services/inbox_service.dart';
+import 'package:waddle/domain/entities/challenge.dart';
 import 'package:waddle/domain/entities/drink_type.dart';
 import 'package:waddle/domain/entities/hydration_state.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_cubit.dart';
@@ -818,36 +819,460 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildChallengeCard(HydrationState hydration) {
-    final challenge = hydration.activeChallengeIndex!;
-    return GlassCard(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Image.asset(
-            AppConstants.challengeImages[challenge],
-            width: 48,
-            height: 48,
-            errorBuilder: (_, __, ___) =>
-                const Icon(Icons.emoji_events_rounded, size: 48),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Active Challenge',
+    final challengeIndex = hydration.activeChallengeIndex!;
+    final challenge = Challenges.getByIndex(challengeIndex);
+    final progress =
+        (AppConstants.challengeDurationDays - hydration.challengeDaysLeft) /
+            AppConstants.challengeDurationDays;
+
+    return GestureDetector(
+      onTap: () => _showActiveChallengeModal(context, hydration, challenge),
+      child: GlassCard(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Image.asset(
+              challenge.imagePath,
+              width: 48,
+              height: 48,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Icon(
+                Icons.emoji_events_rounded,
+                size: 48,
+                color: challenge.color,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(challenge.title,
+                      style: AppTextStyles.labelLarge.copyWith(
+                        color: challenge.color,
+                      )),
+                  const SizedBox(height: 4),
+                  // Progress bar
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: progress.clamp(0.0, 1.0),
+                      backgroundColor: challenge.color.withValues(alpha: 0.12),
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(challenge.color),
+                      minHeight: 6,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${hydration.challengeDaysLeft} days left',
                     style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.textHint,
-                    )),
-                Text('${hydration.challengeDaysLeft} days left',
-                    style: AppTextStyles.labelLarge),
-              ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const Icon(Icons.chevron_right_rounded, color: AppColors.textHint),
-        ],
+            const SizedBox(width: 8),
+            Icon(Icons.chevron_right_rounded, color: challenge.color),
+          ],
+        ),
       ),
     ).animateOnce(_animate).fadeIn(delay: 700.ms);
+  }
+
+  void _showActiveChallengeModal(
+    BuildContext context,
+    HydrationState hydration,
+    Challenge challenge,
+  ) {
+    final progress =
+        (AppConstants.challengeDurationDays - hydration.challengeDaysLeft) /
+            AppConstants.challengeDurationDays;
+    final allowedDrinks = DrinkTypes.forChallenge(challenge.index);
+    final restrictedDrinks = DrinkTypes.restrictedForChallenge(challenge.index);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Drag handle
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.divider,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+
+              // ── Hero header ──
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      challenge.color.withValues(alpha: 0.12),
+                      challenge.color.withValues(alpha: 0.04),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: challenge.color.withValues(alpha: 0.15),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Image.asset(
+                      challenge.imagePath,
+                      width: 100,
+                      height: 100,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Icon(
+                        Icons.emoji_events_rounded,
+                        size: 64,
+                        color: challenge.color,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      challenge.title,
+                      style: AppTextStyles.headlineSmall.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: challenge.color,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    // Progress
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: challenge.color,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            'ACTIVE',
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 10,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          '${hydration.challengeDaysLeft} days remaining',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: LinearProgressIndicator(
+                        value: progress.clamp(0.0, 1.0),
+                        backgroundColor:
+                            challenge.color.withValues(alpha: 0.15),
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(challenge.color),
+                        minHeight: 8,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Day ${AppConstants.challengeDurationDays - hydration.challengeDaysLeft} of ${AppConstants.challengeDurationDays}',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.textHint,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // ── Description ──
+              Text(challenge.fullDescription, style: AppTextStyles.bodyMedium),
+              const SizedBox(height: 16),
+
+              Text('Rules', style: AppTextStyles.labelLarge),
+              const SizedBox(height: 8),
+              Text(challenge.details, style: AppTextStyles.bodySmall),
+              const SizedBox(height: 16),
+
+              // ── Health factoids ──
+              Text('Did You Know?', style: AppTextStyles.labelLarge),
+              const SizedBox(height: 8),
+              ...challenge.healthFactoids.map((fact) => Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('• ', style: TextStyle(fontSize: 16)),
+                        Expanded(
+                            child: Text(fact, style: AppTextStyles.bodySmall)),
+                      ],
+                    ),
+                  )),
+              const SizedBox(height: 20),
+
+              // ── Restricted drinks ──
+              if (restrictedDrinks.isNotEmpty) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF3F0),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFFFCDD2)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.block_rounded,
+                              color: Color(0xFFE53935), size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Off Limits',
+                            style: AppTextStyles.labelLarge.copyWith(
+                              color: const Color(0xFFE53935),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: restrictedDrinks.map((d) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFEBEE),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: const Color(0xFFEF9A9A),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(d.icon,
+                                    size: 14, color: const Color(0xFFE53935)),
+                                const SizedBox(width: 4),
+                                Text(
+                                  d.name,
+                                  style: AppTextStyles.bodySmall.copyWith(
+                                    color: const Color(0xFFE53935),
+                                    fontWeight: FontWeight.w500,
+                                    decoration: TextDecoration.lineThrough,
+                                    decorationColor: const Color(0xFFE53935),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // ── Allowed drinks ──
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F8E9),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFC8E6C9)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.check_circle_outline_rounded,
+                            color: Color(0xFF43A047), size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Allowed Drinks',
+                          style: AppTextStyles.labelLarge.copyWith(
+                            color: const Color(0xFF43A047),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: allowedDrinks.map((d) {
+                        return Chip(
+                          avatar: Icon(d.icon, size: 16, color: d.color),
+                          label: Text(d.name,
+                              style: const TextStyle(fontSize: 12)),
+                          backgroundColor: d.color.withValues(alpha: 0.1),
+                          side: BorderSide.none,
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // ── Rewards ──
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFFF8E1), Color(0xFFFFF3E0)],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFFFE082)),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.emoji_events_rounded,
+                            color: Color(0xFFFFA000), size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Completion Rewards',
+                          style: AppTextStyles.labelLarge.copyWith(
+                            color: const Color(0xFFFFA000),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.star_rounded,
+                            size: 16, color: Color(0xFFFFA000)),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${challenge.xpReward} XP',
+                          style: const TextStyle(
+                            color: Color(0xFFFFA000),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                        const Icon(Icons.water_drop,
+                            size: 16, color: Color(0xFF42A5F5)),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${challenge.dropsReward} drops',
+                          style: const TextStyle(
+                            color: Color(0xFF42A5F5),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // ── Give Up button ──
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _confirmGiveUpChallenge(context, challenge);
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.error,
+                    side: const BorderSide(color: AppColors.error),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('Give Up Challenge'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmGiveUpChallenge(BuildContext context, Challenge challenge) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Give Up Challenge?'),
+        content: Text(
+          'Are you sure you want to give up "${challenge.title}"? '
+          'Your progress will be lost.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<HydrationCubit>().giveUpChallenge();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+            ),
+            child: const Text('Give Up'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _confirmRemoveLog(dynamic log) {

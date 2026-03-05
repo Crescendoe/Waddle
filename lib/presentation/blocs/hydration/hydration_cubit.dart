@@ -549,13 +549,10 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     final currentState = state;
     if (currentState is! HydrationLoaded) return;
 
-    final challengeActive =
-        List<bool>.from(currentState.hydration.challengeActive);
-    challengeActive[challengeIndex] = true;
-
+    // NOTE: challengeActive[i] is only set to true when the challenge is
+    // actually COMPLETED (in the daily-reset path), not on start.
     final newState = currentState.hydration.copyWith(
       activeChallengeIndex: challengeIndex,
-      challengeActive: challengeActive,
       challengeFailed: false,
       challengeCompleted: false,
       challengeDaysLeft: AppConstants.challengeDurationDays,
@@ -565,23 +562,14 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
     await _hydrationRepository.saveHydrationState(_userId, newState);
   }
 
-  /// Give up current challenge — resets the active flag so it is NOT
-  /// shown as completed.
+  /// Give up current challenge.
   Future<void> giveUpChallenge() async {
     final currentState = state;
     if (currentState is! HydrationLoaded) return;
 
-    // Undo the challengeActive flag for this challenge
-    final activeIdx = currentState.hydration.activeChallengeIndex;
-    final challengeActive =
-        List<bool>.from(currentState.hydration.challengeActive);
-    if (activeIdx != null && activeIdx < challengeActive.length) {
-      challengeActive[activeIdx] = false;
-    }
-
+    // challengeActive[i] was never set to true on start, so nothing to undo.
     final newState = currentState.hydration.copyWith(
       clearActiveChallengeIndex: true,
-      challengeActive: challengeActive,
       challengeFailed: false,
       challengeCompleted: false,
       challengeDaysLeft: 14,
@@ -592,36 +580,24 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
   }
 
   /// Acknowledge challenge result (failure/completion) and return to normal.
-  /// On failure, revert the challengeActive flag so the challenge is not
-  /// shown as completed.
   Future<void> acknowledgeChallengeResult() async {
     final currentState = state;
     HydrationState? hydration;
-    bool wasFailed = false;
 
     if (currentState is ChallengeFailed) {
       hydration = currentState.hydration;
-      wasFailed = true;
     } else if (currentState is ChallengeCompleted) {
       hydration = currentState.hydration;
     } else if (currentState is HydrationLoaded) {
       hydration = currentState.hydration;
-      // If the persisted flags indicate failure, treat as failed
-      wasFailed = hydration.challengeFailed;
     }
 
     if (hydration == null) return;
 
-    // On failure: undo the challengeActive flag so it shows as "not completed"
-    final challengeActive = List<bool>.from(hydration.challengeActive);
-    if (wasFailed && hydration.activeChallengeIndex != null) {
-      final idx = hydration.activeChallengeIndex!;
-      if (idx < challengeActive.length) challengeActive[idx] = false;
-    }
-
+    // challengeActive[i] is already true from the completion path and
+    // was never set on failure, so no mutation needed here.
     final newState = hydration.copyWith(
       clearActiveChallengeIndex: true,
-      challengeActive: challengeActive,
       challengeFailed: false,
       challengeCompleted: false,
       challengeDaysLeft: 14,
@@ -1297,7 +1273,7 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
       final questProgress =
           newQuests.map((q) => DailyQuestProgress(questId: q.id)).toList();
 
-      return state.copyWith(
+      var resetState = state.copyWith(
         waterConsumedOz: 0.0,
         goalMetToday: false,
         lastResetDate: now,
@@ -1313,6 +1289,32 @@ class HydrationCubit extends Cubit<HydrationBlocState> {
               )
             : state.inventory.copyWith(doubleXpActive: false),
       );
+
+      // Handle challenge day count (mirrors resetDailyData in repository)
+      if (state.hasActiveChallenge) {
+        final daysLeft = state.challengeDaysLeft - 1;
+        if (daysLeft <= 0) {
+          // Challenge completed!
+          final completedActive = List<bool>.from(resetState.challengeActive);
+          if (state.activeChallengeIndex != null &&
+              state.activeChallengeIndex! < completedActive.length) {
+            completedActive[state.activeChallengeIndex!] = true;
+          }
+          resetState = resetState.copyWith(
+            challengeCompleted: true,
+            challengeDaysLeft: 0,
+            completedChallenges: state.completedChallenges + 1,
+            challengeActive: completedActive,
+          );
+        } else if (!state.goalMetToday) {
+          // Failed challenge by not meeting yesterday's goal
+          resetState = resetState.copyWith(challengeFailed: true);
+        } else {
+          resetState = resetState.copyWith(challengeDaysLeft: daysLeft);
+        }
+      }
+
+      return resetState;
     }
 
     return state;
