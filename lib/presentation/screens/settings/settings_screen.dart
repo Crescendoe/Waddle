@@ -845,6 +845,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 children: [
                   _changelogVersion(
+                    version: '0.9.8',
+                    date: 'March 7, 2026',
+                    changes: [
+                      _ChangeEntry(
+                        icon: Icons.ac_unit_rounded,
+                        title: 'Seasonal Items Hidden Until Owned',
+                        description:
+                            'Seasonal accessories and themes are now completely hidden from all lists '
+                            'until you claim their pack. Once owned, they appear at the bottom of each list.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.water_drop_rounded,
+                        title: 'Duck Puddle Fix',
+                        description:
+                            'Ducks no longer get cut off at the bottom of the cup when no water is logged. '
+                            'A small resting puddle now appears so your ducks always float visibly.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.checkroom_rounded,
+                        title: 'Accessory Descriptions',
+                        description:
+                            'All accessory descriptions shortened to fit cleanly in the market UI without truncation.',
+                      ),
+                      _ChangeEntry(
+                        icon: Icons.grid_view_rounded,
+                        title: 'Duck Collection Layout',
+                        description:
+                            'Duck collection grid switched back to 3 columns with larger card elements '
+                            'and sorted by rarity (Common → Legendary).',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  _changelogVersion(
                     version: '0.9.7',
                     date: 'March 5, 2026',
                     changes: [

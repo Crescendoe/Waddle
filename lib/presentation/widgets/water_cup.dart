@@ -387,6 +387,11 @@ class _AnimatedWaterCupState extends State<AnimatedWaterCup>
     final cupHeight = widget.size * 1.36;
     final segments = _segments;
     final hasSegments = segments.isNotEmpty;
+    // When ducks are present but no water, show a small resting puddle
+    final hasDucks = widget.cupDuckCount > 0;
+    final visualFill = hasDucks && widget.effectiveFillPercent < 0.08
+        ? 0.08
+        : widget.effectiveFillPercent;
 
     return GestureDetector(
       onTap: widget.onTapToggle,
@@ -407,7 +412,7 @@ class _AnimatedWaterCupState extends State<AnimatedWaterCup>
                       size: Size(widget.size, cupHeight),
                       painter: SegmentedWavePainter(
                         segments: segments,
-                        totalFillPercent: widget.effectiveFillPercent,
+                        totalFillPercent: visualFill,
                         goalOz: widget.goalOz,
                         wavePhase: _waveController.value * 2 * pi,
                         waveAmplitude: 4.0,
@@ -417,7 +422,7 @@ class _AnimatedWaterCupState extends State<AnimatedWaterCup>
                   return CustomPaint(
                     size: Size(widget.size, cupHeight),
                     painter: WavePainter(
-                      fillPercent: widget.effectiveFillPercent,
+                      fillPercent: visualFill,
                       wavePhase: _waveController.value * 2 * pi,
                       color: AppColors.water,
                       waveAmplitude: 4.0,
@@ -442,8 +447,12 @@ class _AnimatedWaterCupState extends State<AnimatedWaterCup>
                   final phaseOffset = duckI * 2.1;
                   final phase = elapsedSec * baseFreq + phaseOffset;
 
-                  final fillH =
-                      cupHeight * widget.effectiveFillPercent.clamp(0.0, 0.93);
+                  // Ensure ducks always have a visible puddle to float in.
+                  // When fill is near-zero, use a minimum so they aren't
+                  // clipped below the cup bottom.
+                  final rawFill = widget.effectiveFillPercent.clamp(0.0, 0.93);
+                  final duckFill = rawFill < 0.08 ? 0.08 : rawFill;
+                  final fillH = cupHeight * duckFill;
                   final waterSurfaceY = cupHeight - fillH;
                   final bobOffset = sin(phase) * 3.0;
                   final tilt = sin(phase * 0.7 + 0.5) * 0.12;

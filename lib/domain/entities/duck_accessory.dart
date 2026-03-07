@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 
+import 'seasonal_pack.dart';
+
 // ═══════════════════════════════════════════════════════════════════════
 // ACCESSORY SLOTS
 // ═══════════════════════════════════════════════════════════════════════
@@ -123,7 +125,7 @@ class DuckAccessories {
   static const beanie = DuckAccessory(
     id: 'hat_beanie',
     name: 'Beanie',
-    description: 'A cozy knit beanie for chilly pond mornings.',
+    description: 'Cozy knit for chilly ponds.',
     slot: AccessorySlot.hat,
     rarity: AccessoryRarity.common,
     price: 50,
@@ -134,7 +136,7 @@ class DuckAccessories {
   static const topHat = DuckAccessory(
     id: 'hat_top_hat',
     name: 'Top Hat',
-    description: 'A distinguished topper for the most refined ducks.',
+    description: 'Distinguished and refined.',
     slot: AccessorySlot.hat,
     rarity: AccessoryRarity.uncommon,
     price: 100,
@@ -145,7 +147,7 @@ class DuckAccessories {
   static const crown = DuckAccessory(
     id: 'hat_crown',
     name: 'Crown',
-    description: 'A golden crown befitting pond royalty.',
+    description: 'Fit for pond royalty.',
     slot: AccessorySlot.hat,
     rarity: AccessoryRarity.rare,
     price: 200,
@@ -156,7 +158,7 @@ class DuckAccessories {
   static const flowerCrown = DuckAccessory(
     id: 'hat_flower_crown',
     name: 'Flower Crown',
-    description: 'Woven from the finest water lilies.',
+    description: 'Woven from water lilies.',
     slot: AccessorySlot.hat,
     rarity: AccessoryRarity.uncommon,
     price: 100,
@@ -167,7 +169,7 @@ class DuckAccessories {
   static const wizardHat = DuckAccessory(
     id: 'hat_wizard',
     name: 'Wizard Hat',
-    description: 'Channel ancient hydration magic.',
+    description: 'Ancient hydration magic.',
     slot: AccessorySlot.hat,
     rarity: AccessoryRarity.rare,
     price: 200,
@@ -178,7 +180,7 @@ class DuckAccessories {
   static const halo = DuckAccessory(
     id: 'hat_halo',
     name: 'Halo',
-    description: 'An angelic glow for a truly devoted duck.',
+    description: 'An angelic glow.',
     slot: AccessorySlot.hat,
     rarity: AccessoryRarity.epic,
     price: 350,
@@ -191,7 +193,7 @@ class DuckAccessories {
   static const sunglasses = DuckAccessory(
     id: 'eye_sunglasses',
     name: 'Sunglasses',
-    description: 'Cool shades for a cool duck.',
+    description: 'Cool shades, cool duck.',
     slot: AccessorySlot.eyewear,
     rarity: AccessoryRarity.common,
     price: 50,
@@ -202,7 +204,7 @@ class DuckAccessories {
   static const roundGlasses = DuckAccessory(
     id: 'eye_round_glasses',
     name: 'Round Glasses',
-    description: 'Scholarly frames for a studious quacker.',
+    description: 'Scholarly and studious.',
     slot: AccessorySlot.eyewear,
     rarity: AccessoryRarity.common,
     price: 50,
@@ -213,7 +215,7 @@ class DuckAccessories {
   static const aviators = DuckAccessory(
     id: 'eye_aviators',
     name: 'Aviators',
-    description: 'Top-gun style for high-flying ducks.',
+    description: 'Top-gun style.',
     slot: AccessorySlot.eyewear,
     rarity: AccessoryRarity.uncommon,
     price: 100,
@@ -224,7 +226,7 @@ class DuckAccessories {
   static const monocle = DuckAccessory(
     id: 'eye_monocle',
     name: 'Monocle',
-    description: 'For ducks of distinguished taste.',
+    description: 'Distinguished taste.',
     slot: AccessorySlot.eyewear,
     rarity: AccessoryRarity.rare,
     price: 150,
@@ -235,7 +237,7 @@ class DuckAccessories {
   static const swimGoggles = DuckAccessory(
     id: 'eye_swim_goggles',
     name: 'Swim Goggles',
-    description: 'Ready for a deep dive into hydration.',
+    description: 'Ready to dive deep.',
     slot: AccessorySlot.eyewear,
     rarity: AccessoryRarity.common,
     price: 75,
@@ -246,7 +248,7 @@ class DuckAccessories {
   static const starShades = DuckAccessory(
     id: 'eye_star_shades',
     name: 'Star Shades',
-    description: 'Superstar frames that shimmer and shine.',
+    description: 'Shimmer and shine.',
     slot: AccessorySlot.eyewear,
     rarity: AccessoryRarity.epic,
     price: 300,
@@ -259,7 +261,7 @@ class DuckAccessories {
   static const bowTie = DuckAccessory(
     id: 'neck_bow_tie',
     name: 'Bow Tie',
-    description: 'Dapper and delightful.',
+    description: 'Dapper and classy.',
     slot: AccessorySlot.neckwear,
     rarity: AccessoryRarity.common,
     price: 50,
@@ -270,7 +272,7 @@ class DuckAccessories {
   static const scarf = DuckAccessory(
     id: 'neck_scarf',
     name: 'Scarf',
-    description: 'A warm wrap for cold-weather waddling.',
+    description: 'Warm cold-weather wrap.',
     slot: AccessorySlot.neckwear,
     rarity: AccessoryRarity.common,
     price: 50,
@@ -281,7 +283,7 @@ class DuckAccessories {
   static const bandana = DuckAccessory(
     id: 'neck_bandana',
     name: 'Bandana',
-    description: 'A rugged bandana for adventurous ducks.',
+    description: 'Rugged and adventurous.',
     slot: AccessorySlot.neckwear,
     rarity: AccessoryRarity.common,
     price: 75,
@@ -292,7 +294,7 @@ class DuckAccessories {
   static const pearlNecklace = DuckAccessory(
     id: 'neck_pearl',
     name: 'Pearl Necklace',
-    description: 'Elegant pearls from the deepest pond.',
+    description: 'Elegant deep-pond pearls.',
     slot: AccessorySlot.neckwear,
     rarity: AccessoryRarity.uncommon,
     price: 100,
@@ -303,7 +305,7 @@ class DuckAccessories {
   static const medal = DuckAccessory(
     id: 'neck_medal',
     name: 'Medal',
-    description: 'A shining medal for hydration excellence.',
+    description: 'Hydration excellence.',
     slot: AccessorySlot.neckwear,
     rarity: AccessoryRarity.rare,
     price: 150,
@@ -314,7 +316,7 @@ class DuckAccessories {
   static const cape = DuckAccessory(
     id: 'neck_cape',
     name: 'Cape',
-    description: 'Every duck deserves a hero moment.',
+    description: 'Every duck\'s hero moment.',
     slot: AccessorySlot.neckwear,
     rarity: AccessoryRarity.epic,
     price: 300,
@@ -327,7 +329,7 @@ class DuckAccessories {
   static const umbrella = DuckAccessory(
     id: 'held_umbrella',
     name: 'Umbrella',
-    description: 'Stay dry — or don\'t! Either way it looks great.',
+    description: 'Looks great rain or shine.',
     slot: AccessorySlot.held,
     rarity: AccessoryRarity.common,
     price: 75,
@@ -338,7 +340,7 @@ class DuckAccessories {
   static const waterBottle = DuckAccessory(
     id: 'held_water_bottle',
     name: 'Water Bottle',
-    description: 'A duck that practices what it preaches.',
+    description: 'Practice what you preach.',
     slot: AccessorySlot.held,
     rarity: AccessoryRarity.common,
     price: 50,
@@ -349,7 +351,7 @@ class DuckAccessories {
   static const magicWand = DuckAccessory(
     id: 'held_magic_wand',
     name: 'Magic Wand',
-    description: 'One flick and hydration goals are met!',
+    description: 'One flick, goals met.',
     slot: AccessorySlot.held,
     rarity: AccessoryRarity.rare,
     price: 200,
@@ -360,7 +362,7 @@ class DuckAccessories {
   static const fishingRod = DuckAccessory(
     id: 'held_fishing_rod',
     name: 'Fishing Rod',
-    description: 'Catching compliments left and right.',
+    description: 'Catching compliments.',
     slot: AccessorySlot.held,
     rarity: AccessoryRarity.uncommon,
     price: 100,
@@ -371,7 +373,7 @@ class DuckAccessories {
   static const surfboard = DuckAccessory(
     id: 'held_surfboard',
     name: 'Surfboard',
-    description: 'Ride the hydration wave!',
+    description: 'Ride the wave.',
     slot: AccessorySlot.held,
     rarity: AccessoryRarity.rare,
     price: 150,
@@ -382,7 +384,7 @@ class DuckAccessories {
   static const trophy = DuckAccessory(
     id: 'held_trophy',
     name: 'Trophy',
-    description: 'A gleaming trophy for the ultimate champion.',
+    description: 'The ultimate champion.',
     slot: AccessorySlot.held,
     rarity: AccessoryRarity.epic,
     price: 350,
@@ -403,12 +405,13 @@ class DuckAccessories {
     umbrella, waterBottle, magicWand, fishingRod, surfboard, trophy,
   ];
 
-  /// Look up an accessory by its ID.
+  /// Look up an accessory by its ID (includes seasonal accessories).
   static DuckAccessory? byId(String id) {
     try {
       return all.firstWhere((a) => a.id == id);
     } catch (_) {
-      return null;
+      // Fallback: check seasonal accessories
+      return SeasonalPacks.accessoryById(id);
     }
   }
 

@@ -694,6 +694,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildTodayLogs(HydrationLoaded state) {
     if (state.todayLogs.isEmpty) {
+      final hasDucks = state.hydration.homeDuckIndices.isNotEmpty;
       return GlassCard(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -703,7 +704,10 @@ class _HomeScreenState extends State<HomeScreen> {
               size: 80,
             ),
             const SizedBox(height: 12),
-            Text('No drinks logged yet today',
+            Text(
+                hasDucks
+                    ? 'Your ducks are waiting!'
+                    : 'No drinks logged yet today',
                 style: AppTextStyles.bodyMedium.copyWith(
                   color: AppColors.textSecondary,
                 )),

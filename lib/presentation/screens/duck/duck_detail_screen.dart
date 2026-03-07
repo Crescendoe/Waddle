@@ -6,6 +6,7 @@ import 'package:waddle/core/theme/app_theme.dart';
 import 'package:waddle/domain/entities/duck_accessory.dart';
 import 'package:waddle/domain/entities/duck_bond.dart';
 import 'package:waddle/domain/entities/duck_companion.dart';
+import 'package:waddle/domain/entities/seasonal_pack.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_cubit.dart';
 import 'package:waddle/presentation/blocs/hydration/hydration_state.dart';
 import 'package:waddle/presentation/widgets/common.dart';
@@ -1001,7 +1002,7 @@ class _AccessorySlotsSection extends StatelessWidget {
   }
 
   void _showAccessoryPicker(BuildContext context, AccessorySlot slot) {
-    final slotAccessories = DuckAccessories.forSlot(slot);
+    final baseAccessories = DuckAccessories.forSlot(slot);
     final cubit = context.read<HydrationCubit>();
 
     showModalBottomSheet(
@@ -1017,6 +1018,15 @@ class _AccessorySlotsSection extends StatelessWidget {
             final h = state.hydration;
             final currentBond = h.duckBonds[duckIndex] ?? const DuckBondData();
             final currentEquipped = currentBond.accessoryForSlot(slot);
+
+            // Build list: base accessories + owned seasonal accessories at bottom
+            final ownedSeasonalForSlot = SeasonalPacks.accessoriesForSlot(slot)
+                .where((a) => h.ownedAccessoryIds.contains(a.id))
+                .toList();
+            final slotAccessories = [
+              ...baseAccessories,
+              ...ownedSeasonalForSlot,
+            ];
 
             return Container(
               constraints: BoxConstraints(

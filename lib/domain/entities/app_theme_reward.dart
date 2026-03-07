@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 
+import 'seasonal_pack.dart';
+
 // ── Theme floating effects ──────────────────────────────────────────
 
 /// Visual effect type for theme backgrounds — floating silhouettes, particles.
@@ -1046,12 +1048,13 @@ class ThemeRewards {
     ),
   ];
 
-  /// Look up a theme by its ID.
+  /// Look up a theme by its ID (includes seasonal themes).
   static ThemeReward? byId(String id) {
     for (final t in all) {
       if (t.id == id) return t;
     }
-    return null;
+    // Fallback: check seasonal themes
+    return SeasonalPacks.themeById(id);
   }
 
   /// All purchasable themes (sorted cheapest-first by default).

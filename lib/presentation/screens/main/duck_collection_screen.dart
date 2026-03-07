@@ -165,14 +165,15 @@ class _DucksTab extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           sliver: SliverGrid(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 0.85,
+              crossAxisCount: 3,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              childAspectRatio: 0.58,
             ),
             delegate: SliverChildBuilderDelegate(
               (context, index) {
-                final duck = DuckCompanions.all[index];
+                final duckIndex = DuckCompanions.displayOrder[index];
+                final duck = DuckCompanions.all[duckIndex];
                 final debugMode = GetIt.instance<DebugModeService>().isActive;
                 final isUnlocked = debugMode ||
                     duck.unlockCondition.isUnlocked(
@@ -309,10 +310,18 @@ class _ThemesTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final h = loaded.hydration;
+
+    // Build combined list: base themes + owned seasonal themes at bottom
+    final ownedSeasonalThemes = SeasonalPacks.allThemes
+        .where((t) => h.purchasedThemeIds.contains(t.id))
+        .toList();
+    final allThemes = [...ThemeRewards.all, ...ownedSeasonalThemes];
+
     final unlocked = ThemeRewards.countUnlocked(
-      level: h.level,
-      purchasedThemeIds: h.purchasedThemeIds,
-    );
+          level: h.level,
+          purchasedThemeIds: h.purchasedThemeIds,
+        ) +
+        ownedSeasonalThemes.length;
 
     return CustomScrollView(
       slivers: [
@@ -323,7 +332,7 @@ class _ThemesTab extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '$unlocked of ${ThemeRewards.all.length} unlocked',
+                  '$unlocked of ${allThemes.length} unlocked',
                   style: AppTextStyles.bodyMedium
                       .copyWith(color: AppColors.textSecondary),
                 ),
@@ -331,7 +340,7 @@ class _ThemesTab extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(6),
                   child: LinearProgressIndicator(
-                    value: unlocked / ThemeRewards.all.length,
+                    value: unlocked / allThemes.length,
                     minHeight: 10,
                     backgroundColor: ActiveThemeColors.of(context)
                         .primary
@@ -356,7 +365,7 @@ class _ThemesTab extends StatelessWidget {
             ),
             delegate: SliverChildBuilderDelegate(
               (context, index) {
-                final theme = ThemeRewards.all[index];
+                final theme = allThemes[index];
                 final debugMode = GetIt.instance<DebugModeService>().isActive;
                 final isUnlocked = debugMode ||
                     theme.unlockCondition.isUnlocked(
@@ -375,7 +384,7 @@ class _ThemesTab extends StatelessWidget {
                       _showThemeDetail(context, theme, isUnlocked, isActive),
                 ).animateOnce(animate).fadeIn(delay: (100 + index * 50).ms);
               },
-              childCount: ThemeRewards.all.length,
+              childCount: allThemes.length,
             ),
           ),
         ),
@@ -597,7 +606,7 @@ class _DuckCard extends StatelessWidget {
           color: isUnlocked
               ? duck.rarity.color.withValues(alpha: 0.06)
               : Colors.grey.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: isUnlocked
                 ? duck.rarity.color.withValues(alpha: 0.2)
@@ -605,85 +614,76 @@ class _DuckCard extends StatelessWidget {
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Top row: avatar + name/level ──
+              // ── Avatar ──
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: isUnlocked
+                      ? duck.rarity.color.withValues(alpha: 0.12)
+                      : Colors.grey.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: DuckAvatar(
+                    duck: duck,
+                    size: 44,
+                    locked: !isUnlocked,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+
+              // ── Name ──
+              Text(
+                isUnlocked ? (nickname ?? duck.name) : '???',
+                style: AppTextStyles.bodySmall.copyWith(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color:
+                      isUnlocked ? AppColors.textPrimary : AppColors.textHint,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+
+              // ── Rarity pill + status icons ──
+              const SizedBox(height: 3),
               Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    width: 52,
-                    height: 52,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: isUnlocked
-                          ? duck.rarity.color.withValues(alpha: 0.12)
+                          ? duck.rarity.color.withValues(alpha: 0.15)
                           : Colors.grey.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
+                      borderRadius: BorderRadius.circular(6),
                     ),
-                    child: Center(
-                      child: DuckAvatar(
-                        duck: duck,
-                        size: 44,
-                        locked: !isUnlocked,
+                    child: Text(
+                      duck.rarity.label,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: isUnlocked ? duck.rarity.color : Colors.grey,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          isUnlocked ? (nickname ?? duck.name) : '???',
-                          style: AppTextStyles.bodySmall.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: isUnlocked
-                                ? AppColors.textPrimary
-                                : AppColors.textHint,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        // Rarity pill + status icons
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: isUnlocked
-                                    ? duck.rarity.color.withValues(alpha: 0.15)
-                                    : Colors.grey.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                duck.rarity.label,
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w600,
-                                  color: isUnlocked
-                                      ? duck.rarity.color
-                                      : Colors.grey,
-                                ),
-                              ),
-                            ),
-                            if (isUnlocked && isBadgeDuck) ...[
-                              const SizedBox(width: 4),
-                              Icon(Icons.star_rounded,
-                                  size: 12, color: Colors.amber.shade700),
-                            ],
-                            if (isUnlocked && isHomeDuck) ...[
-                              const SizedBox(width: 2),
-                              const Icon(Icons.home_rounded,
-                                  size: 12, color: AppColors.primary),
-                            ],
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+                  if (isUnlocked && isBadgeDuck) ...[
+                    const SizedBox(width: 4),
+                    Icon(Icons.star_rounded,
+                        size: 13, color: Colors.amber.shade700),
+                  ],
+                  if (isUnlocked && isHomeDuck) ...[
+                    const SizedBox(width: 3),
+                    const Icon(Icons.home_rounded,
+                        size: 13, color: AppColors.primary),
+                  ],
                 ],
               ),
 
@@ -691,27 +691,29 @@ class _DuckCard extends StatelessWidget {
                 const Spacer(),
                 // Locked: show unlock requirement
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Icon(Icons.lock_rounded,
                         size: 12, color: AppColors.textHint),
                     const SizedBox(width: 4),
-                    Expanded(
+                    Flexible(
                       child: Text(
                         duck.unlockCondition.displayText,
-                        style: AppTextStyles.bodySmall.copyWith(
+                        style: TextStyle(
                           fontSize: 10,
                           color: AppColors.textHint,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
                       ),
                     ),
                   ],
                 ),
               ] else ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
 
-                // ── Level + bond gauge ──
+                // ── Level pill + bond gauge ──
                 Row(
                   children: [
                     Container(
@@ -734,89 +736,72 @@ class _DuckCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 5),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(3),
-                            child: LinearProgressIndicator(
-                              value: isMaxLevel ? 1.0 : bondData.afkProgress(),
-                              minHeight: 4,
-                              backgroundColor:
-                                  duck.rarity.color.withValues(alpha: 0.1),
-                              valueColor: AlwaysStoppedAnimation(
-                                isMaxLevel ? Colors.amber : duck.rarity.color,
-                              ),
-                            ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(3),
+                        child: LinearProgressIndicator(
+                          value: isMaxLevel ? 1.0 : bondData.afkProgress(),
+                          minHeight: 4,
+                          backgroundColor:
+                              duck.rarity.color.withValues(alpha: 0.1),
+                          valueColor: AlwaysStoppedAnimation(
+                            isMaxLevel ? Colors.amber : duck.rarity.color,
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ],
                 ),
 
-                // ── Time till next level ──
+                // ── Time or placement hint ──
                 if (!isMaxLevel) ...[
                   const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      const Icon(Icons.schedule_rounded,
-                          size: 10, color: AppColors.textHint),
-                      const SizedBox(width: 3),
-                      Text(
-                        isHomeDuck
-                            ? '${_formatDuration(bondData.afkTimeRemaining())} left'
-                            : 'Place on home to bond',
-                        style: TextStyle(
-                          fontSize: 9,
-                          color: AppColors.textHint,
-                        ),
-                      ),
-                    ],
+                  Text(
+                    isHomeDuck
+                        ? '${_formatDuration(bondData.afkTimeRemaining())} left'
+                        : 'Place on home to bond',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: AppColors.textHint,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
                 ],
 
                 const Spacer(),
 
-                // ── Passive bonus row ──
+                // ── Passive bonus chip ──
                 if (passive != null)
                   Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.7),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(7),
                       border: Border.all(
                         color: duck.rarity.color.withValues(alpha: 0.12),
                       ),
                     ),
                     child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
                           passive.type.icon,
-                          size: 14,
+                          size: 13,
                           color: duck.rarity.color,
                         ),
                         const SizedBox(width: 4),
-                        Expanded(
+                        Flexible(
                           child: Text(
-                            passive.type.label,
+                            passive.formattedValue(level),
                             style: TextStyle(
-                              fontSize: 9,
-                              color: AppColors.textSecondary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: duck.rarity.color,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Text(
-                          passive.formattedValue(level),
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: duck.rarity.color,
                           ),
                         ),
                       ],

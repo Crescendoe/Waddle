@@ -152,7 +152,7 @@ class DuckCompanions {
         displayText: 'Reach a 3-day streak',
       ),
       rarity: DuckRarity.common,
-      tintColor: Color(0xFF90CAF9), // light blue
+      tintColor: Color(0xFFF5F5F0), // white — classic duck
     ),
     DuckCompanion(
       index: 1,
@@ -500,4 +500,38 @@ class DuckCompanions {
             ))
         .length;
   }
+
+  /// Display order for the collection grid.
+  /// Grouped by rarity (Common → Legendary), then by unlock category.
+  static const List<int> displayOrder = [
+    // ── Common (5) ──
+    0, // Puddle      — 3-day streak
+    1, // Ripple      — 7-day streak
+    4, // Dewdrop     — 500 oz total
+    7, // Sprout      — 25 healthy drinks
+    9, // Bullseye    — 10 goals met
+    // ── Uncommon (9) ──
+    5, // Brook       — 2,000 oz total
+    8, // Botanist    — 100 healthy drinks
+    20, // Mixologist  — 12 unique drinks
+    12, // Purist      — Challenge: Nothing But Water
+    13, // Brewmaster  — Challenge: Tea Time
+    14, // Serene      — Challenge: Caffeine Cut
+    15, // Frostbite   — Challenge: Sugar-Free Sips
+    16, // Herbivore   — Challenge: Dairy-Free Refresh
+    17, // Elixir      — Challenge: Vitamin Vitality
+    // ── Rare (4) ──
+    2, // Current     — 30-day streak
+    10, // Marksman    — 100 goals met
+    11, // Nightingale — 500 drinks logged
+    18, // Verdant     — 300 healthy drinks
+    // ── Epic (3) ──
+    3, // Tidal       — 60-day streak
+    6, // Cascade     — 10,000 oz total
+    19, // Leviathan   — 2,000 drinks logged
+    // ── Legendary (3) ──
+    21, // Marathon    — 200-day streak
+    22, // Zenith      — 365 days logged
+    23, // Kraken      — 50,000 oz total
+  ];
 }

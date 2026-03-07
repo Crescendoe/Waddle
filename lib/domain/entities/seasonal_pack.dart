@@ -1288,4 +1288,19 @@ class SeasonalPacks {
     }
     return null;
   }
+
+  /// Look up a seasonal theme by ID (across all packs).
+  static ThemeReward? themeById(String id) {
+    for (final pack in all) {
+      if (pack.theme.id == id) return pack.theme;
+    }
+    return null;
+  }
+
+  /// All seasonal accessories for a given slot.
+  static List<DuckAccessory> accessoriesForSlot(AccessorySlot slot) =>
+      all.expand((p) => p.accessories).where((a) => a.slot == slot).toList();
+
+  /// All seasonal themes across every pack.
+  static List<ThemeReward> get allThemes => all.map((p) => p.theme).toList();
 }
