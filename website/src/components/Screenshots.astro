@@ -1,0 +1,57 @@
+---
+/* Screenshot Gallery */
+const screens = [
+  { label: 'Home Screen', desc: 'Animated water cup with floating ducks, drink logging, and XP bar', file: 'home_screen.png' },
+  { label: 'Challenges', desc: 'Browse and start 14-day themed hydration challenges', file: 'challenges_screen.png' },
+  { label: 'Duck Collection', desc: 'View your 24 ducks, bond levels, and accessories', file: 'duck_collection.png' },
+  { label: 'Streaks & Stats', desc: 'Calendar view, streak tiers, and drink analytics', file: 'streaks_screen.png' },
+  { label: 'Profile', desc: 'Your stats, achievements, friends, and settings', file: 'profile_screen.png' },
+  { label: 'Market / Shop', desc: 'Browse themes, accessories, items, and Drops bundles', file: 'market_screen.png' },
+  { label: 'Daily Quests', desc: 'Track your daily quest progress and claim rewards', file: 'daily_quests.png' },
+  { label: 'Celebrations', desc: 'Goal reached confetti, level up, and duck unlock screens', file: 'celebration_screen.png' },
+];
+---
+
+<section class="screenshots-section" id="screenshots">
+  <div class="container">
+    <div style="text-align: center;">
+      <span class="section-badge" style="background: rgba(54,112,139,0.1); color: var(--primary);">📱 See It In Action</span>
+      <h2 class="section-title">App Screenshots</h2>
+      <p class="section-subtitle">
+        Explore every corner of Waddle — from the animated water cup to duck collections, challenges, and celebrations.
+      </p>
+    </div>
+  </div>
+
+  <div class="screenshots-track">
+    <!-- Spacer for scroll start -->
+    <div style="flex-shrink:0; width:calc((100vw - 1200px) / 2); min-width:24px;"></div>
+
+    {screens.map((s, i) => (
+      <div class="screenshot-item reveal" style={`transition-delay: ${0.1 + i * 0.08}s;`}>
+        <div class="screenshot-frame">
+          <div class="screenshot-inner">
+            <div class="notch"></div>
+            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding:40px 20px; text-align:center;">
+              <div style="font-size:2.5rem; opacity:0.3;">📱</div>
+              <span style="font-weight:500; font-size:0.85rem;">{s.label}</span>
+              <span style="font-size:0.72rem; opacity:0.5; max-width:180px;">{s.desc}</span>
+              <span style="font-size:0.65rem; opacity:0.35; margin-top:8px;">
+                Place: /images/screenshots/{s.file}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="screenshot-label">{s.label}</div>
+      </div>
+    ))}
+
+    <!-- Spacer for scroll end -->
+    <div style="flex-shrink:0; width:calc((100vw - 1200px) / 2); min-width:24px;"></div>
+  </div>
+
+  <!-- Scroll hint -->
+  <div style="text-align:center; margin-top:20px; color:var(--text-hint); font-size:0.85rem;">
+    ← Scroll to explore all screens →
+  </div>
+</section>

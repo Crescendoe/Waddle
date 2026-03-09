@@ -1,0 +1,99 @@
+---
+/* Challenges Section */
+const challenges = [
+  {
+    title: 'Nothing But Water',
+    color: '#42A5F5',
+    gradient: 'linear-gradient(135deg, #42A5F5, #1976D2)',
+    image: '/images/wade_nothing_but_water.png',
+    duration: '14 days',
+    description: 'Only water, sparkling water, and coconut water allowed. The purest hydration challenge — strip it back to basics.',
+    xp: 500,
+    drops: 200,
+  },
+  {
+    title: 'Tea Time',
+    color: '#66BB6A',
+    gradient: 'linear-gradient(135deg, #66BB6A, #388E3C)',
+    image: '/images/wade_tea_time.png',
+    duration: '14 days',
+    description: 'Drink at least 12 oz of tea every day. Explore the world of herbal, green, chamomile, and more.',
+    xp: 500,
+    drops: 200,
+  },
+  {
+    title: 'Caffeine Cut',
+    color: '#8D6E63',
+    gradient: 'linear-gradient(135deg, #8D6E63, #5D4037)',
+    image: '/images/wade_caffeine_cut.png',
+    duration: '14 days',
+    description: 'No coffee, energy drinks, matcha, or black tea for 14 days. Give your body a caffeine reset.',
+    xp: 500,
+    drops: 200,
+  },
+  {
+    title: 'Sugar-Free Sips',
+    color: '#EF5350',
+    gradient: 'linear-gradient(135deg, #EF5350, #C62828)',
+    image: '/images/wade_sugar_free_sips.png',
+    duration: '14 days',
+    description: 'Cut out soda, lemonade, milkshakes, bubble tea, and other sugary drinks. Your body will thank you.',
+    xp: 500,
+    drops: 200,
+  },
+  {
+    title: 'Dairy-Free Refresh',
+    color: '#FFA726',
+    gradient: 'linear-gradient(135deg, #FFA726, #EF6C00)',
+    image: '/images/wade_dairy_free_refresh.png',
+    duration: '14 days',
+    description: 'No dairy drinks — explore plant-based alternatives like almond, oat, and coconut milk instead.',
+    xp: 500,
+    drops: 200,
+  },
+  {
+    title: 'Vitamin Vitality',
+    color: '#AB47BC',
+    gradient: 'linear-gradient(135deg, #AB47BC, #7B1FA2)',
+    image: '/images/wade_vitamin_vitality.png',
+    duration: '14 days',
+    description: 'Drink 12+ oz of vitamin-rich beverages daily. Juices, smoothies, and nutrient-packed drinks count.',
+    xp: 500,
+    drops: 200,
+  },
+];
+---
+
+<section class="challenges-section" id="challenges">
+  <div class="container">
+    <div style="text-align: center;">
+      <span class="section-badge" style="background: rgba(255,152,0,0.1); color: #e65100;">🏆 Push Your Limits</span>
+      <h2 class="section-title">6 Themed Challenges</h2>
+      <p class="section-subtitle">
+        Take on 14-day hydration challenges that reshape your drinking habits. Each comes with exclusive rewards, health factoids, and a unique duck companion.
+      </p>
+    </div>
+
+    <div class="challenges-grid stagger-children">
+      {challenges.map((ch) => (
+        <div class="challenge-card reveal">
+          <div class="challenge-header" style={`background: ${ch.gradient};`}>
+            <img src={ch.image} alt={ch.title} />
+            <div>
+              <h3>{ch.title}</h3>
+              <span class="duration">⏱ {ch.duration}</span>
+            </div>
+          </div>
+          <div class="challenge-body">
+            <p>{ch.description}</p>
+            <div class="challenge-rewards">
+              <span class="challenge-reward reward-xp">⚡ {ch.xp} XP</span>
+              <span class="challenge-reward reward-drops">💧 {ch.drops} Drops</span>
+              <span class="challenge-reward" style={`background: rgba(171,71,188,0.1); color: #7b1fa2;`}>🦆 Exclusive Duck</span>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

@@ -1,0 +1,126 @@
+---
+/* Daily Quests Section */
+const quests = [
+  {
+    icon: '🫗',
+    iconBg: 'linear-gradient(135deg, #E3F2FD, #BBDEFB)',
+    title: 'Sip Sip Sip',
+    desc: 'Log 3 drinks today',
+    xp: '20 XP',
+    drops: '12 💧',
+    xpColor: 'rgba(108,204,209,0.15)',
+    dropColor: 'rgba(79,195,247,0.15)',
+  },
+  {
+    icon: '🌊',
+    iconBg: 'linear-gradient(135deg, #E0F7FA, #B2EBF2)',
+    title: 'Ocean Chug',
+    desc: 'Drink 64 oz of water',
+    xp: '50 XP',
+    drops: '30 💧',
+    xpColor: 'rgba(108,204,209,0.15)',
+    dropColor: 'rgba(79,195,247,0.15)',
+  },
+  {
+    icon: '🌅',
+    iconBg: 'linear-gradient(135deg, #FFF3E0, #FFE0B2)',
+    title: 'Early Bird',
+    desc: 'Log a drink before 9 AM',
+    xp: '25 XP',
+    drops: '15 💧',
+    xpColor: 'rgba(108,204,209,0.15)',
+    dropColor: 'rgba(79,195,247,0.15)',
+  },
+  {
+    icon: '🎨',
+    iconBg: 'linear-gradient(135deg, #F3E5F5, #E1BEE7)',
+    title: 'Variety Pack',
+    desc: 'Log 3 unique drink types',
+    xp: '30 XP',
+    drops: '20 💧',
+    xpColor: 'rgba(108,204,209,0.15)',
+    dropColor: 'rgba(79,195,247,0.15)',
+  },
+  {
+    icon: '🏁',
+    iconBg: 'linear-gradient(135deg, #E8F5E9, #C8E6C9)',
+    title: 'Finish Line',
+    desc: 'Meet your daily hydration goal',
+    xp: '35 XP',
+    drops: '22 💧',
+    xpColor: 'rgba(108,204,209,0.15)',
+    dropColor: 'rgba(79,195,247,0.15)',
+  },
+  {
+    icon: '⏰',
+    iconBg: 'linear-gradient(135deg, #FDE9EC, #F8BBD0)',
+    title: 'All-Day Hydrator',
+    desc: 'Log drinks in 5 different hours',
+    xp: '40 XP',
+    drops: '25 💧',
+    xpColor: 'rgba(108,204,209,0.15)',
+    dropColor: 'rgba(79,195,247,0.15)',
+  },
+];
+---
+
+<section class="quests-section" id="quests">
+  <div class="container">
+    <div style="text-align: center;">
+      <span class="section-badge" style="background: rgba(76,175,80,0.1); color: #2e7d32;">🎯 Fresh Every Day</span>
+      <h2 class="section-title">Daily Quests</h2>
+      <p class="section-subtitle">
+        Wake up to 3 new quests every day (4 with Waddle+). Complete them all for bonus XP and Drops to fuel your collection.
+      </p>
+    </div>
+
+    <div class="quests-layout">
+      <!-- Quest List -->
+      <div class="quest-examples stagger-children">
+        {quests.map((q) => (
+          <div class="quest-item reveal">
+            <div class="quest-icon" style={`background: ${q.iconBg};`}>{q.icon}</div>
+            <div class="quest-details">
+              <h4>{q.title}</h4>
+              <p>{q.desc}</p>
+            </div>
+            <div class="quest-reward">
+              <span style={`background: ${q.xpColor}; color: var(--accent-dark);`}>{q.xp}</span>
+              <span style={`background: ${q.dropColor}; color: var(--water-dark);`}>{q.drops}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <!-- Quest Info -->
+      <div class="reveal-right" style="display:flex; flex-direction:column; gap:24px;">
+        <div class="glass-card" style="padding:28px;">
+          <h3 style="font-size:1.3rem; color: var(--primary-dark); margin-bottom:12px;">📋 24 Quest Templates</h3>
+          <p style="color: var(--text-secondary); line-height:1.7; font-size:0.95rem;">
+            Quests rotate from a pool of 24 unique templates, deterministically seeded each day.
+            Types include logging drinks, hitting oz targets, choosing healthy picks,
+            early morning hydration, drink variety, and more.
+          </p>
+        </div>
+
+        <div class="glass-card" style="padding:28px;">
+          <h3 style="font-size:1.3rem; color: var(--primary-dark); margin-bottom:12px;">🎁 Completion Bonuses</h3>
+          <p style="color: var(--text-secondary); line-height:1.7; font-size:0.95rem;">
+            Finish all your daily quests to earn a
+            <strong style="color: var(--accent-dark);">bonus reward</strong> on top
+            of individual quest payouts. Duck bonuses like Double XP and Drop
+            Multiplier stack with quest earnings for maximum gains.
+          </p>
+        </div>
+
+        <div class="glass-card" style="padding:28px; background: linear-gradient(135deg, rgba(108,204,209,0.1), rgba(54,112,139,0.05));">
+          <h3 style="font-size:1.3rem; color: var(--primary-dark); margin-bottom:12px;">⭐ Waddle+ Perk</h3>
+          <p style="color: var(--text-secondary); line-height:1.7; font-size:0.95rem;">
+            Subscribers get a <strong style="color: var(--accent-dark);">4th quest slot</strong> every day,
+            plus a 1.5× Drop multiplier, supporter badge, and free seasonal packs.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
