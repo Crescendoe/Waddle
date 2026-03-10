@@ -492,7 +492,7 @@ section {
   display: flex;
   align-items: center;
   position: relative;
-  overflow: hidden;
+  overflow: clip;
   background: linear-gradient(180deg, var(--gradient-top) 0%, var(--gradient-bottom) 100%);
   padding-top: 80px;
 }
@@ -564,29 +564,7 @@ section {
   display: flex;
   justify-content: center;
   align-items: center;
-  perspective: 800px;
-}
-
-/* ── Phone entrance animation ── */
-@keyframes phoneEntrance {
-  0% {
-    opacity: 0;
-    transform: perspective(800px) rotateY(360deg) translateY(100px) scale(0.85);
-    filter: blur(6px);
-  }
-  30% {
-    opacity: 1;
-    filter: blur(0px);
-  }
-  70% {
-    transform: perspective(800px) rotateY(-10deg) translateY(-5px) scale(1.01);
-  }
-  85% {
-    transform: perspective(800px) rotateY(4deg) translateY(0) scale(1);
-  }
-  100% {
-    transform: perspective(800px) rotateY(0deg) translateY(0) scale(1);
-  }
+  perspective: 1000px;
 }
 
 /* ── Phone Mockup ── */
@@ -594,38 +572,103 @@ section {
   position: relative;
   width: 300px;
   height: 620px;
-  background: #1A2B3C;
-  border-radius: 44px;
-  padding: 12px;
-  box-shadow:
-    0 20px 60px rgba(27, 77, 99, 0.3),
-    0 0 0 2px rgba(255,255,255,0.1),
-    inset 0 0 0 2px rgba(255,255,255,0.05);
   will-change: transform;
-  animation: phoneEntrance 2.5s cubic-bezier(0.22, 0.68, 0.35, 1.0) 0.4s both;
   transform-style: preserve-3d;
 }
 
 .phone-mockup.entrance-done {
-  transition: transform 0.12s ease-out, box-shadow 0.3s ease;
+  transition: transform 0.12s ease-out;
 }
 
-/* Glow that intensifies as phone tilts (controlled via JS) */
-.phone-mockup::after {
-  content: '';
+/* Shared face styles */
+.phone-front,
+.phone-back {
   position: absolute;
-  inset: -2px;
-  border-radius: 46px;
-  background: linear-gradient(135deg, rgba(108,204,209,0.0), rgba(79,195,247,0.15), rgba(108,204,209,0.0));
-  opacity: 0;
-  transition: opacity 0.3s;
-  pointer-events: none;
-  z-index: -1;
+  inset: 0;
+  border-radius: 44px;
 }
 
-.phone-mockup:hover::after {
-  opacity: 1;
-  box-shadow: 0 0 40px rgba(108, 204, 209, 0.25);
+/* Front face — pushed forward for 3D depth */
+.phone-front {
+  background: #1A2B3C;
+  padding: 12px;
+  transform: translateZ(8px);
+  backface-visibility: hidden;
+  box-shadow:
+    0 20px 60px rgba(27, 77, 99, 0.3),
+    0 0 0 2px rgba(255,255,255,0.1),
+    inset 0 0 0 2px rgba(255,255,255,0.05);
+}
+
+/* Back face — pushed behind + mirrored */
+.phone-back {
+  background: linear-gradient(180deg, #2a3a4a 0%, #1A2B3C 100%);
+  transform: rotateY(180deg) translateZ(8px);
+  backface-visibility: hidden;
+  box-shadow:
+    0 20px 60px rgba(27, 77, 99, 0.3),
+    0 0 0 2px rgba(255,255,255,0.08),
+    inset 0 0 0 2px rgba(255,255,255,0.03);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  pointer-events: none;
+}
+
+/* 3D body slices — stacked in Z to form curved edges that follow border-radius */
+.phone-body-slice {
+  position: absolute;
+  inset: 0;
+  border-radius: 44px;
+  background: #1a2a38;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.03);
+  transform: translateZ(var(--z, 0px));
+  pointer-events: none;
+}
+
+/* Camera module */
+.phone-back-camera {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  width: 80px;
+  height: 80px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+}
+
+.camera-lens {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #3a5a7a, #0a1520);
+  border: 2px solid rgba(255,255,255,0.08);
+  box-shadow: inset 0 0 4px rgba(79,195,247,0.3);
+}
+
+.camera-lens-small {
+  width: 18px;
+  height: 18px;
+}
+
+.camera-flash {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffeebb, #aa8844);
+}
+
+.phone-back-logo {
+  opacity: 0.5;
 }
 
 .phone-screen {

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:waddle/core/constants/app_constants.dart';
@@ -254,7 +255,10 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Good ${_timeGreeting()}!',
-                    style: AppTextStyles.headlineSmall),
+                    style: GoogleFonts.cherryBombOne(
+                      fontSize: 22,
+                      color: AppColors.textPrimary,
+                    )),
                 Text(
                   hydration.goalMetToday
                       ? 'Goal reached! 💧'

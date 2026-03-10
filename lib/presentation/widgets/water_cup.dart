@@ -133,8 +133,8 @@ class WavePainter extends CustomPainter {
   }
 }
 
-/// Segmented wave painter — draws multiple colored bands from bottom to top,
-/// with the topmost segment getting the animated wave surface.
+/// Segmented wave painter — draws the water fill as a single smooth gradient
+/// that naturally fades between drink colors from bottom to top.
 class SegmentedWavePainter extends CustomPainter {
   final List<DrinkSegment> segments;
   final double totalFillPercent; // 0..1 how full the cup is
@@ -158,88 +158,135 @@ class SegmentedWavePainter extends CustomPainter {
     if (totalOz <= 0) return;
 
     // Cap at 93% so the wave ripple is always visible at the top
-    final totalFillHeight = size.height * totalFillPercent.clamp(0.0, 0.93);
+    final fillHeight = size.height * totalFillPercent.clamp(0.0, 0.93);
+    final fillTop = size.height - fillHeight;
 
-    // Draw each segment from bottom up
-    double drawnHeight = 0;
+    // Build the fill path — wave on top, flat on bottom/sides
+    final fillPath = Path();
+    fillPath.moveTo(0, size.height);
+    // Wave along the top surface
+    for (double x = 0; x <= size.width; x++) {
+      final t = x / size.width;
+      final edgeFade = sin(t * pi);
+      final wave1 = sin(t * 2 * pi + wavePhase) * waveAmplitude;
+      final wave2 = cos(t * 3 * pi + wavePhase) * (waveAmplitude * 0.4);
+      final y = fillTop + (wave1 + wave2) * edgeFade;
+      fillPath.lineTo(x, y);
+    }
+    fillPath.lineTo(size.width, size.height);
+    fillPath.close();
 
+    // Build a multi-stop gradient: each drink stays solid through ~85% of its
+    // band, with a short ~15% fade zone at each boundary so transitions feel
+    // natural while still clearly showing how much of each drink was logged.
+    final gradientColors = <Color>[];
+    final gradientStops = <double>[];
+
+    // How much of each boundary to fade (fraction of the smaller segment)
+    const fadeFraction = 0.15;
+
+    double cumFraction = 0;
     for (int i = 0; i < segments.length; i++) {
       final seg = segments[i];
-      final segFraction = seg.amountOz / goalOz;
-      final segHeight =
-          (segFraction * size.height).clamp(0.0, totalFillHeight - drawnHeight);
+      final frac = (seg.amountOz / totalOz).clamp(0.0, 1.0);
+      final segStart = cumFraction;
+      final segEnd = (cumFraction + frac).clamp(0.0, 1.0);
 
-      if (segHeight <= 0) continue;
+      // Fade zone is 15% of the smaller neighbour segment
+      final fadeBelow = i > 0
+          ? fadeFraction *
+              (segments[i - 1].amountOz / totalOz).clamp(0.0, 1.0) *
+              0.5
+          : 0.0;
+      final fadeAbove =
+          i < segments.length - 1 ? fadeFraction * frac * 0.5 : 0.0;
 
-      final isTop = (i == segments.length - 1);
-      final segBottom = size.height - drawnHeight;
-      final segTop = segBottom - segHeight;
+      // Solid-color region after fade-in, before fade-out
+      final solidStart = (segStart + fadeBelow).clamp(0.0, 1.0);
+      final solidEnd = (segEnd - fadeAbove).clamp(0.0, 1.0);
 
-      final path = Path();
+      if (i == 0) {
+        // Bottom of fill — start with this drink's color
+        gradientColors.add(seg.color.withValues(alpha: 0.85));
+        gradientStops.add(0.0);
+      }
 
-      if (isTop) {
-        // Top segment gets the wave
-        path.moveTo(0, segBottom);
-        for (double x = 0; x <= size.width; x++) {
-          final t = x / size.width;
-          final edgeFade = sin(t * pi);
-          final wave1 = sin(t * 2 * pi + wavePhase) * waveAmplitude;
-          final wave2 = cos(t * 3 * pi + wavePhase) * (waveAmplitude * 0.4);
-          final y = segTop + (wave1 + wave2) * edgeFade;
-          path.lineTo(x, y);
+      // Solid band start
+      if (solidStart > (gradientStops.lastOrNull ?? -1) + 0.001) {
+        gradientColors.add(seg.color.withValues(alpha: 0.75));
+        gradientStops.add(solidStart.clamp(0.001, 0.999));
+      }
+
+      // Solid band end
+      if (solidEnd > solidStart + 0.001) {
+        gradientColors.add(seg.color.withValues(alpha: 0.6));
+        gradientStops.add(solidEnd.clamp(0.001, 0.999));
+      }
+
+      if (i == segments.length - 1) {
+        // Top of fill
+        gradientColors.add(seg.color.withValues(alpha: 0.45));
+        gradientStops.add(1.0);
+      }
+
+      cumFraction = segEnd;
+    }
+
+    // Gradient goes from bottom of fill (stop 0) to top (stop 1)
+    final fillRect = Rect.fromLTRB(0, fillTop, size.width, size.height);
+    final paint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.bottomCenter,
+        end: Alignment.topCenter,
+        colors: gradientColors,
+        stops: gradientStops,
+      ).createShader(fillRect);
+
+    canvas.drawPath(fillPath, paint);
+
+    // Subtle highlight along the wave surface
+    final hPath = Path();
+    hPath.moveTo(0, size.height);
+    for (double x = 0; x <= size.width; x++) {
+      final t = x / size.width;
+      final edgeFade = sin(t * pi);
+      final y = fillTop +
+          sin(t * 2 * pi + wavePhase + 1.0) * (waveAmplitude * 0.5) * edgeFade +
+          3;
+      hPath.lineTo(x, y);
+    }
+    hPath.lineTo(size.width, size.height);
+    hPath.close();
+    canvas.drawPath(
+        hPath, Paint()..color = Colors.white.withValues(alpha: 0.12));
+
+    // Dotted boundary lines at each drink segment boundary
+    if (segments.length > 1) {
+      double cumOz = 0;
+      for (int i = 0; i < segments.length - 1; i++) {
+        cumOz += segments[i].amountOz;
+        final boundaryFrac = cumOz / totalOz;
+        final boundaryY = size.height - (fillHeight * boundaryFrac);
+
+        final dotPaint = Paint()
+          ..color = Colors.white.withValues(alpha: 0.45)
+          ..strokeWidth = 1.2
+          ..style = PaintingStyle.stroke;
+
+        // Draw dashes across the width
+        const dashWidth = 4.0;
+        const gapWidth = 4.0;
+        double dx = 0;
+        while (dx < size.width) {
+          final dashEnd = (dx + dashWidth).clamp(0.0, size.width);
+          canvas.drawLine(
+            Offset(dx, boundaryY),
+            Offset(dashEnd, boundaryY),
+            dotPaint,
+          );
+          dx += dashWidth + gapWidth;
         }
-        path.lineTo(size.width, segBottom);
-        path.close();
-      } else {
-        // Lower segments are flat rectangles
-        path.addRect(Rect.fromLTRB(0, segTop, size.width, segBottom));
       }
-
-      final paint = Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            seg.color.withValues(alpha: 0.45),
-            seg.color.withValues(alpha: 0.7),
-            seg.color.withValues(alpha: 0.9),
-          ],
-        ).createShader(Rect.fromLTRB(0, segTop, size.width, segBottom));
-
-      canvas.drawPath(path, paint);
-
-      // Subtle highlight on top segment
-      if (isTop) {
-        final hPath = Path();
-        hPath.moveTo(0, segBottom);
-        for (double x = 0; x <= size.width; x++) {
-          final t = x / size.width;
-          final edgeFade = sin(t * pi);
-          final y = segTop +
-              sin(t * 2 * pi + wavePhase + 1.0) *
-                  (waveAmplitude * 0.5) *
-                  edgeFade +
-              3;
-          hPath.lineTo(x, y);
-        }
-        hPath.lineTo(size.width, segBottom);
-        hPath.close();
-        canvas.drawPath(
-            hPath, Paint()..color = Colors.white.withValues(alpha: 0.12));
-      }
-
-      // Draw thin separator line between segments
-      if (i > 0) {
-        canvas.drawLine(
-          Offset(0, segBottom),
-          Offset(size.width, segBottom),
-          Paint()
-            ..color = Colors.white.withValues(alpha: 0.35)
-            ..strokeWidth = 0.8,
-        );
-      }
-
-      drawnHeight += segHeight;
     }
   }
 
@@ -563,6 +610,7 @@ class _AnimatedWaterCupState extends State<AnimatedWaterCup>
           Text(
             widget.effectiveWaterOz.toStringAsFixed(0),
             style: AppTextStyles.waterAmount.copyWith(
+              fontSize: 64,
               color: labelColor,
               shadows: [
                 Shadow(
@@ -579,11 +627,11 @@ class _AnimatedWaterCupState extends State<AnimatedWaterCup>
             ),
           ),
           Text(
-            'oz',
+            'OZ',
             style: AppTextStyles.labelLarge.copyWith(
-              fontSize: 18,
+              fontSize: 22,
               color: labelColor,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
               shadows: [
                 Shadow(
                     color: Colors.black.withValues(alpha: 0.6), blurRadius: 4),

@@ -89,22 +89,98 @@ const {
       const hero = document.querySelector('.hero') as HTMLElement;
       const phoneMockup = document.querySelector('.phone-mockup') as HTMLElement;
       const heroDucks = document.querySelectorAll('.hero-duck') as NodeListOf<HTMLElement>;
+      // All phone children that need opacity/filter (applied individually to preserve 3D context)
+      const phoneChildren = document.querySelectorAll('.phone-front, .phone-back, .phone-body-slice') as NodeListOf<HTMLElement>;
 
       if (hero && phoneMockup) {
-        // Wait for the entrance animation to finish before enabling mouse tracking
         let entranceDone = false;
 
-        function onEntranceDone() {
-          entranceDone = true;
-          // Remove the CSS animation so JS can control transform freely
-          phoneMockup.style.animation = 'none';
-          phoneMockup.style.transform = 'perspective(800px) rotateY(0deg) rotateX(0deg)';
-          phoneMockup.classList.add('entrance-done');
+        // Cubic-bezier solver matching CSS cubic-bezier(0.22, 0.68, 0.35, 1.0)
+        function bezier(t: number): number {
+          const x1 = 0.22, y1 = 0.68, x2 = 0.35, y2 = 1.0;
+          let lo = 0, hi = 1;
+          for (let i = 0; i < 20; i++) {
+            const mid = (lo + hi) / 2;
+            const om = 1 - mid;
+            const x = 3 * x1 * om * om * mid + 3 * x2 * om * mid * mid + mid * mid * mid;
+            if (x < t) lo = mid; else hi = mid;
+          }
+          const s = (lo + hi) / 2;
+          const os = 1 - s;
+          return 3 * y1 * os * os * s + 3 * y2 * os * s * s + s * s * s;
         }
 
-        phoneMockup.addEventListener('animationend', onEntranceDone);
-        // Fallback in case animationend doesn't fire
-        setTimeout(onEntranceDone, 3200);
+        function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
+
+        // Keyframe stops matching the original CSS @keyframes phoneEntrance
+        const stops = [
+          { p: 0.00, rotY: 360, tY: 100, scale: 0.85 },
+          { p: 0.70, rotY: -10, tY: -5,  scale: 1.01 },
+          { p: 0.85, rotY: 4,   tY: 0,   scale: 1.0  },
+          { p: 1.00, rotY: 0,   tY: 0,   scale: 1.0  },
+        ];
+
+        function interpolate(progress: number) {
+          let i = 0;
+          for (; i < stops.length - 1; i++) {
+            if (progress <= stops[i + 1].p) break;
+          }
+          const a = stops[i], b = stops[i + 1];
+          const localP = Math.max(0, Math.min(1, (progress - a.p) / (b.p - a.p)));
+          const ep = bezier(localP);
+          return {
+            rotY: lerp(a.rotY, b.rotY, ep),
+            tY: lerp(a.tY, b.tY, ep),
+            scale: lerp(a.scale, b.scale, ep),
+          };
+        }
+
+        // Apply opacity/filter to children individually — NEVER to .phone-mockup
+        // because opacity/filter on the parent flattens transform-style: preserve-3d
+        function setChildrenAppearance(opacity: string, filter: string) {
+          phoneChildren.forEach(c => {
+            c.style.opacity = opacity;
+            c.style.filter = filter;
+          });
+        }
+
+        const entranceDelay = 400;
+        const entranceDuration = 2500;
+
+        function runEntrance() {
+          const startTime = performance.now();
+
+          function tick(now: number) {
+            const elapsed = now - startTime;
+            const rawP = Math.min(elapsed / entranceDuration, 1);
+            const v = interpolate(rawP);
+
+            // Quick opacity pop-in over first 10% to avoid layered slice artifacts
+            const opacity = Math.min(rawP / 0.1, 1);
+
+            // Slight X tilt during spin to show off 3D depth — peaks at ~50% then eases out
+            const tiltProgress = rawP < 0.5 ? rawP / 0.5 : (1 - rawP) / 0.5;
+            const rotX = -8 * Math.max(0, tiltProgress);
+
+            phoneMockup.style.transform = `rotateY(${v.rotY}deg) rotateX(${rotX}deg) translateY(${v.tY}px) scale(${v.scale})`;
+            setChildrenAppearance(String(opacity), 'none');
+
+            if (rawP < 1) {
+              requestAnimationFrame(tick);
+            } else {
+              phoneMockup.style.transform = 'rotateY(0deg) rotateX(0deg)';
+              setChildrenAppearance('1', 'none');
+              phoneMockup.classList.add('entrance-done');
+              entranceDone = true;
+            }
+          }
+
+          requestAnimationFrame(tick);
+        }
+
+        // Hide children initially (NOT the mockup itself — that would flatten 3D)
+        setChildrenAppearance('0', 'none');
+        setTimeout(runEntrance, entranceDelay);
 
         let targetX = 0, targetY = 0, currentX = 0, currentY = 0;
         let rafId: number | null = null;
@@ -113,7 +189,8 @@ const {
           currentX += (targetX - currentX) * 0.08;
           currentY += (targetY - currentY) * 0.08;
 
-          phoneMockup.style.transform = `perspective(800px) rotateY(${currentX * 25}deg) rotateX(${-currentY * 18}deg)`;
+          const yDeg = currentX * 25;
+          phoneMockup.style.transform = `rotateY(${yDeg}deg) rotateX(${-currentY * 18}deg)`;
 
           heroDucks.forEach((duck, i) => {
             const factor = (i + 1) * 20;
@@ -123,8 +200,7 @@ const {
           if (Math.abs(targetX - currentX) > 0.001 || Math.abs(targetY - currentY) > 0.001) {
             rafId = requestAnimationFrame(animatePhone);
           } else {
-            // Snap to exact target to avoid residual drift
-            phoneMockup.style.transform = `perspective(800px) rotateY(${targetX * 25}deg) rotateX(${-targetY * 18}deg)`;
+            phoneMockup.style.transform = `rotateY(${targetX * 25}deg) rotateX(${-targetY * 18}deg)`;
             rafId = null;
           }
         }
