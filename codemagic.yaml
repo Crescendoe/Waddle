@@ -113,7 +113,19 @@ workflows:
       
       - name: Decode firebase_options.dart
         script: |
-          echo $FIREBASE_OPTIONS_DART_BASE64 | base64 --decode > $CM_BUILD_DIR/lib/firebase_options.dart
+          printf '%s' "$FIREBASE_OPTIONS_DART_BASE64" | base64 --decode > $CM_BUILD_DIR/lib/firebase_options.dart
+
+      - name: Verify decoded files
+        script: |
+          echo "=== firebase_options.dart ==="
+          head -5 $CM_BUILD_DIR/lib/firebase_options.dart
+          echo ""
+          echo "File size: $(wc -c < $CM_BUILD_DIR/lib/firebase_options.dart) bytes"
+          echo ""
+          echo "=== GoogleService-Info.plist ==="
+          head -5 $CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist
+          echo ""
+          echo "File size: $(wc -c < $CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist) bytes"
 
       - name: Install dependencies
         script: flutter pub get
