@@ -121,22 +121,32 @@ workflows:
       - name: Pod install
         script: find . -name "Podfile" -execdir pod install \;
 
-      - name: Disable Xcode code signing
+      - name: Generate Xcode project
+        script: |
+          flutter build ios --config-only --debug --no-codesign
+
+      - name: Build iOS with xcodebuild (unsigned)
         script: |
           cd $CM_BUILD_DIR/ios
-          sed -i '' 's/CODE_SIGN_IDENTITY = "iPhone Developer"/CODE_SIGN_IDENTITY = ""/g' Runner.xcodeproj/project.pbxproj
-          sed -i '' 's/CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]" = "iPhone Developer"/CODE_SIGN_IDENTITY[sdk=iphoneos*]" = ""/g' Runner.xcodeproj/project.pbxproj
-          sed -i '' 's/CODE_SIGN_STYLE = Automatic/CODE_SIGN_STYLE = Manual/g' Runner.xcodeproj/project.pbxproj
-
-      - name: Build iOS (debug, no codesign)
-        script: |
-          flutter build ios --debug --no-codesign
+          xcodebuild build \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Debug \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath $CM_BUILD_DIR/build/ios/derived \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            CODE_SIGN_ENTITLEMENTS=""
 
       # Package the .app into a sideloadable .ipa
       - name: Create IPA for sideloading
         script: |
           mkdir -p $CM_BUILD_DIR/build/ios/ipa/Payload
-          cp -r $CM_BUILD_DIR/build/ios/iphoneos/Runner.app \
+          cp -r $CM_BUILD_DIR/build/ios/derived/Build/Products/Debug-iphoneos/Runner.app \
                 $CM_BUILD_DIR/build/ios/ipa/Payload/Runner.app
           cd $CM_BUILD_DIR/build/ios/ipa
           zip -r Waddle-debug.ipa Payload
