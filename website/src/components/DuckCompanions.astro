@@ -1,0 +1,103 @@
+---
+/* Duck Companions Section */
+const ducks = [
+  { name: 'Puddle', rarity: 'Common', unlock: '3-day streak', color: '#90CAF9' },
+  { name: 'Ripple', rarity: 'Common', unlock: '7-day streak', color: '#90CAF9' },
+  { name: 'Dewdrop', rarity: 'Common', unlock: '500 oz total', color: '#90CAF9' },
+  { name: 'Sprout', rarity: 'Common', unlock: '25 healthy picks', color: '#90CAF9' },
+  { name: 'Bullseye', rarity: 'Common', unlock: '10 goals met', color: '#90CAF9' },
+  { name: 'Brook', rarity: 'Uncommon', unlock: '2,000 oz total', color: '#66BB6A' },
+  { name: 'Botanist', rarity: 'Uncommon', unlock: '100 healthy picks', color: '#66BB6A' },
+  { name: 'Mixologist', rarity: 'Uncommon', unlock: '12 unique drinks', color: '#66BB6A' },
+  { name: 'Current', rarity: 'Rare', unlock: '30-day streak', color: '#4CAF50' },
+  { name: 'Marksman', rarity: 'Rare', unlock: '100 goals met', color: '#4CAF50' },
+  { name: 'Nightingale', rarity: 'Rare', unlock: '500 drinks logged', color: '#4CAF50' },
+  { name: 'Verdant', rarity: 'Rare', unlock: '300 healthy picks', color: '#4CAF50' },
+  { name: 'Tidal', rarity: 'Epic', unlock: '60-day streak', color: '#AB47BC' },
+  { name: 'Cascade', rarity: 'Epic', unlock: '10,000 oz total', color: '#AB47BC' },
+  { name: 'Leviathan', rarity: 'Epic', unlock: '2,000 drinks logged', color: '#AB47BC' },
+  { name: 'Marathon', rarity: 'Legendary', unlock: '200-day streak', color: '#FFD700' },
+  { name: 'Zenith', rarity: 'Legendary', unlock: '365 days logged', color: '#FFD700' },
+  { name: 'Kraken', rarity: 'Legendary', unlock: '50,000 oz total', color: '#FFD700' },
+];
+
+const challengeDucks = [
+  { name: 'Purist', challenge: 'Nothing But Water', color: '#42A5F5' },
+  { name: 'Brewmaster', challenge: 'Tea Time', color: '#66BB6A' },
+  { name: 'Serene', challenge: 'Caffeine Cut', color: '#8D6E63' },
+  { name: 'Frostbite', challenge: 'Sugar-Free Sips', color: '#EF5350' },
+  { name: 'Herbivore', challenge: 'Dairy-Free Refresh', color: '#FFA726' },
+  { name: 'Elixir', challenge: 'Vitamin Vitality', color: '#AB47BC' },
+];
+---
+
+<section class="ducks-section" id="ducks">
+  <div class="container">
+    <div style="text-align: center;">
+      <span class="section-badge" style="background: rgba(171,71,188,0.1); color: #7b1fa2;">🦆 Collect Them All</span>
+      <h2 class="section-title">24 Duck Companions</h2>
+      <p class="section-subtitle">
+        Unlock adorable duck friends by hitting hydration milestones. Bond with them, customize them with accessories, and earn powerful passive bonuses.
+      </p>
+    </div>
+
+    <div class="ducks-showcase">
+      <!-- Duck Grid -->
+      <div class="reveal-left">
+        <div class="duck-roster stagger-children">
+          {ducks.slice(0, 12).map((duck) => (
+            <div class="duck-card reveal" style={`border-bottom: 3px solid ${duck.color}`}>
+              <img src="/images/wade_floating.png" alt={duck.name}
+                style={`filter: hue-rotate(${duck.rarity === 'Common' ? '0' : duck.rarity === 'Uncommon' ? '80' : duck.rarity === 'Rare' ? '120' : duck.rarity === 'Epic' ? '260' : '40'}deg);`} />
+              <div class="duck-name">{duck.name}</div>
+              <span class={`duck-rarity rarity-${duck.rarity.toLowerCase()}`}>{duck.rarity}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <!-- Duck Info -->
+      <div class="duck-info reveal-right">
+        <div class="duck-feature" style="border-left: 4px solid var(--accent);">
+          <h3>🤝 Bond System</h3>
+          <p>
+            Each duck has <span class="highlight">10 bond levels</span>. Level them up using Drops currency,
+            or place them on your home screen for <span class="highlight">AFK bonding</span> — they'll accumulate
+            idle time and level up automatically over time.
+          </p>
+        </div>
+
+        <div class="duck-feature" style="border-left: 4px solid #AB47BC;">
+          <h3>⚡ Passive Bonuses</h3>
+          <p>
+            Higher bond levels unlock powerful passive effects: <span class="highlight">bonus Drops per log</span>,
+            <span class="highlight">XP boost %</span>, <span class="highlight">cooldown reduction</span>,
+            <span class="highlight">quest bonus %</span>, and more. Rarer ducks have stronger bonuses.
+          </p>
+        </div>
+
+        <div class="duck-feature" style="border-left: 4px solid var(--gold);">
+          <h3>👒 Accessories</h3>
+          <p>
+            Dress your ducks with <span class="highlight">24+ accessories</span> across 4 slots: Hats, Eyewear,
+            Neckwear, and Held items. From top hats to star shades to capes — with seasonal exclusives
+            from 13 holiday packs throughout the year!
+          </p>
+        </div>
+
+        <div class="duck-feature" style="border-left: 4px solid #EF5350;">
+          <h3>🏅 Challenge Ducks</h3>
+          <p>
+            Complete each of the 6 themed challenges to unlock their exclusive duck companion:
+            {challengeDucks.map((d, i) => (
+              <span>
+                <span style={`color: ${d.color}; font-weight: 600;`}>{d.name}</span>
+                {i < challengeDucks.length - 1 ? ', ' : '.'}
+              </span>
+            ))}
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,57 @@
+---
+/* Features Overview Grid */
+const features = [
+  {
+    icon: '💧',
+    title: 'Smart Water Tracking',
+    description: 'Log every sip with our beautiful animated water cup. Watch it fill up in real-time with colorful segmented layers for each drink type.',
+  },
+  {
+    icon: '🥤',
+    title: '70+ Beverages',
+    description: 'From water to kombucha to protein shakes — track any drink with science-backed hydration ratios based on the Beverage Hydration Index.',
+  },
+  {
+    icon: '🦆',
+    title: '24 Duck Companions',
+    description: 'Collect adorable duck friends by hitting milestones. Bond with them, dress them up with accessories, and unlock passive bonuses.',
+  },
+  {
+    icon: '🏆',
+    title: '6 Unique Challenges',
+    description: 'Push yourself with 14-day themed challenges like Nothing But Water, Tea Time, and Caffeine Cut. Earn XP and exclusive ducks.',
+  },
+  {
+    icon: '🔥',
+    title: 'Streaks & Leagues',
+    description: 'Build daily streaks from Bronze to Obsidian tier. Compete in weekly leagues — climb from Puddle to Ocean in the leaderboards.',
+  },
+  {
+    icon: '🎯',
+    title: 'Daily Quests',
+    description: 'Complete fresh daily challenges like Early Bird, Variety Pack, and Ocean Chug. Earn Drops currency and XP to level up.',
+  },
+];
+---
+
+<section class="features-section" id="features">
+  <div class="container" style="position: relative; z-index: 2;">
+    <div style="text-align: center;">
+      <span class="section-badge" style="background: rgba(108,204,209,0.12); color: var(--accent-dark);">✨ Everything You Need</span>
+      <h2 class="section-title">Hydration, Reimagined</h2>
+      <p class="section-subtitle">
+        Waddle turns drinking water into a rewarding adventure with gamification, cute companions, and smart tracking.
+      </p>
+    </div>
+
+    <div class="features-grid stagger-children">
+      {features.map((feat) => (
+        <div class="glass-card feature-card reveal">
+          <div class="feature-icon">{feat.icon}</div>
+          <h3>{feat.title}</h3>
+          <p>{feat.description}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

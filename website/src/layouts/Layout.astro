@@ -1,0 +1,236 @@
+---
+export interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = 'Waddle — Your Fun Hydration Companion',
+  description = 'Track your water intake, collect duck companions, complete challenges, and build healthy hydration habits with Waddle.',
+} = Astro.props;
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#36708B" />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/images/wade_wave.png" />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <slot />
+
+    <!-- Scroll reveal observer -->
+    <script>
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('visible');
+              // Also trigger .fill on cup water
+              const fills = entry.target.querySelectorAll('.cup-water');
+              fills.forEach((f) => f.classList.add('fill'));
+              const xpBars = entry.target.querySelectorAll('.xp-bar-fill');
+              xpBars.forEach((b) => b.classList.add('animate'));
+            }
+          });
+        },
+        { threshold: 0.15, rootMargin: '0px 0px -50px 0px' }
+      );
+
+      document.querySelectorAll('.reveal, .reveal-left, .reveal-right').forEach((el) => {
+        observer.observe(el);
+      });
+
+      // Nav scroll effect
+      const nav = document.querySelector('.nav');
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 60) {
+          nav?.classList.add('scrolled');
+        } else {
+          nav?.classList.remove('scrolled');
+        }
+      });
+
+      // Smooth scroll for nav links
+      document.querySelectorAll('a[href^="#"]').forEach((link) => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          const target = document.querySelector(link.getAttribute('href')!);
+          target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+          // Close mobile nav on click
+          const navLinks = document.querySelector('.nav-links') as HTMLElement;
+          const toggle = document.querySelector('.mobile-toggle');
+          if (navLinks) navLinks.classList.remove('open');
+          if (toggle) toggle.classList.remove('open');
+        });
+      });
+
+      // Mobile nav toggle
+      const mobileToggle = document.querySelector('.mobile-toggle');
+      const navLinks = document.querySelector('.nav-links');
+      mobileToggle?.addEventListener('click', () => {
+        navLinks?.classList.toggle('open');
+        mobileToggle.classList.toggle('open');
+      });
+
+      // Hero parallax / mouse-tracking
+      const hero = document.querySelector('.hero') as HTMLElement;
+      const phoneMockup = document.querySelector('.phone-mockup') as HTMLElement;
+      const heroDucks = document.querySelectorAll('.hero-duck') as NodeListOf<HTMLElement>;
+      // All phone children that need opacity/filter (applied individually to preserve 3D context)
+      const phoneChildren = document.querySelectorAll('.phone-front, .phone-back, .phone-body-slice') as NodeListOf<HTMLElement>;
+
+      if (hero && phoneMockup) {
+        let entranceDone = false;
+
+        // Cubic-bezier solver matching CSS cubic-bezier(0.22, 0.68, 0.35, 1.0)
+        function bezier(t: number): number {
+          const x1 = 0.22, y1 = 0.68, x2 = 0.35, y2 = 1.0;
+          let lo = 0, hi = 1;
+          for (let i = 0; i < 20; i++) {
+            const mid = (lo + hi) / 2;
+            const om = 1 - mid;
+            const x = 3 * x1 * om * om * mid + 3 * x2 * om * mid * mid + mid * mid * mid;
+            if (x < t) lo = mid; else hi = mid;
+          }
+          const s = (lo + hi) / 2;
+          const os = 1 - s;
+          return 3 * y1 * os * os * s + 3 * y2 * os * s * s + s * s * s;
+        }
+
+        function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
+
+        // Keyframe stops matching the original CSS @keyframes phoneEntrance
+        const stops = [
+          { p: 0.00, rotY: 360, tY: 100, scale: 0.85 },
+          { p: 0.70, rotY: -10, tY: -5,  scale: 1.01 },
+          { p: 0.85, rotY: 4,   tY: 0,   scale: 1.0  },
+          { p: 1.00, rotY: 0,   tY: 0,   scale: 1.0  },
+        ];
+
+        function interpolate(progress: number) {
+          let i = 0;
+          for (; i < stops.length - 1; i++) {
+            if (progress <= stops[i + 1].p) break;
+          }
+          const a = stops[i], b = stops[i + 1];
+          const localP = Math.max(0, Math.min(1, (progress - a.p) / (b.p - a.p)));
+          const ep = bezier(localP);
+          return {
+            rotY: lerp(a.rotY, b.rotY, ep),
+            tY: lerp(a.tY, b.tY, ep),
+            scale: lerp(a.scale, b.scale, ep),
+          };
+        }
+
+        // Apply opacity/filter to children individually — NEVER to .phone-mockup
+        // because opacity/filter on the parent flattens transform-style: preserve-3d
+        function setChildrenAppearance(opacity: string, filter: string) {
+          phoneChildren.forEach(c => {
+            c.style.opacity = opacity;
+            c.style.filter = filter;
+          });
+        }
+
+        const entranceDelay = 400;
+        const entranceDuration = 2500;
+
+        function runEntrance() {
+          const startTime = performance.now();
+
+          function tick(now: number) {
+            const elapsed = now - startTime;
+            const rawP = Math.min(elapsed / entranceDuration, 1);
+            const v = interpolate(rawP);
+
+            // Quick opacity pop-in over first 10% to avoid layered slice artifacts
+            const opacity = Math.min(rawP / 0.1, 1);
+
+            // Slight X tilt during spin to show off 3D depth — peaks at ~50% then eases out
+            const tiltProgress = rawP < 0.5 ? rawP / 0.5 : (1 - rawP) / 0.5;
+            const rotX = -8 * Math.max(0, tiltProgress);
+
+            phoneMockup.style.transform = `rotateY(${v.rotY}deg) rotateX(${rotX}deg) translateY(${v.tY}px) scale(${v.scale})`;
+            setChildrenAppearance(String(opacity), 'none');
+
+            if (rawP < 1) {
+              requestAnimationFrame(tick);
+            } else {
+              phoneMockup.style.transform = 'rotateY(0deg) rotateX(0deg)';
+              setChildrenAppearance('1', 'none');
+              phoneMockup.classList.add('entrance-done');
+              entranceDone = true;
+            }
+          }
+
+          requestAnimationFrame(tick);
+        }
+
+        // Hide children initially (NOT the mockup itself — that would flatten 3D)
+        setChildrenAppearance('0', 'none');
+        setTimeout(runEntrance, entranceDelay);
+
+        let targetX = 0, targetY = 0, currentX = 0, currentY = 0;
+        let rafId: number | null = null;
+
+        function animatePhone() {
+          currentX += (targetX - currentX) * 0.08;
+          currentY += (targetY - currentY) * 0.08;
+
+          const yDeg = currentX * 25;
+          phoneMockup.style.transform = `rotateY(${yDeg}deg) rotateX(${-currentY * 18}deg)`;
+
+          heroDucks.forEach((duck, i) => {
+            const factor = (i + 1) * 20;
+            duck.style.transform = `translate(${currentX * factor}px, ${currentY * factor}px)`;
+          });
+
+          if (Math.abs(targetX - currentX) > 0.001 || Math.abs(targetY - currentY) > 0.001) {
+            rafId = requestAnimationFrame(animatePhone);
+          } else {
+            phoneMockup.style.transform = `rotateY(${targetX * 25}deg) rotateX(${-targetY * 18}deg)`;
+            rafId = null;
+          }
+        }
+
+        hero.addEventListener('mousemove', (e) => {
+          if (!entranceDone) return;
+          const rect = hero.getBoundingClientRect();
+          targetX = (e.clientX - rect.left) / rect.width - 0.5;
+          targetY = (e.clientY - rect.top) / rect.height - 0.5;
+          if (!rafId) rafId = requestAnimationFrame(animatePhone);
+        });
+
+        hero.addEventListener('mouseleave', () => {
+          targetX = 0;
+          targetY = 0;
+          if (!rafId) rafId = requestAnimationFrame(animatePhone);
+        });
+      }
+
+      // Stagger children with counter support (extend beyond 8)
+      document.querySelectorAll('.stagger-children').forEach((parent) => {
+        const revealChildren = parent.querySelectorAll('.reveal') as NodeListOf<HTMLElement>;
+        revealChildren.forEach((child, i) => {
+          child.style.transitionDelay = `${0.05 + i * 0.05}s`;
+        });
+      });
+    </script>
+  </body>
+</html>
+
+<style is:global>
+  @import '../styles/global.css';
+</style>

@@ -1,0 +1,107 @@
+---
+/* Themes & Customization Section */
+const themes = [
+  { name: 'Default Pond', colors: ['#E8F4FC', '#B8E4E8'], unlock: 'Free' },
+  { name: 'Morning Dew', colors: ['#FFF9C4', '#C8E6C9'], unlock: 'Lv. 5' },
+  { name: 'Ocean Breeze', colors: ['#E0F7FA', '#80DEEA'], unlock: 'Lv. 10' },
+  { name: 'Sunset Glow', colors: ['#FFE0B2', '#FFAB91'], unlock: 'Lv. 15' },
+  { name: 'Lavender Fields', colors: ['#F3E5F5', '#CE93D8'], unlock: 'Lv. 20' },
+  { name: 'Golden Hour', colors: ['#FFF8E1', '#FFD54F'], unlock: 'Lv. 30' },
+  { name: 'Forest Canopy', colors: ['#E8F5E9', '#81C784'], unlock: 'Lv. 40' },
+  { name: 'Arctic Frost', colors: ['#E3F2FD', '#90CAF9'], unlock: 'Lv. 50' },
+  { name: 'Northern Lights', colors: ['#E8EAF6', '#7C4DFF'], unlock: 'Lv. 70' },
+  { name: 'Diamond Falls', colors: ['#E0F7FA', '#00BCD4'], unlock: 'Lv. 80' },
+  { name: 'Cosmic Tide', colors: ['#1A237E', '#7C4DFF'], unlock: 'Lv. 90' },
+  { name: 'Volcanic Spring', colors: ['#BF360C', '#FF6E40'], unlock: 'Lv. 100' },
+  { name: 'Cherry Blossom', colors: ['#FCE4EC', '#F48FB1'], unlock: '200 💧' },
+  { name: 'Coral Reef', colors: ['#FBE9E7', '#FF8A65'], unlock: '300 💧' },
+  { name: 'Neon Depths', colors: ['#1B2838', '#00E5FF'], unlock: '500 💧' },
+  { name: 'Dragon\'s Breath', colors: ['#3E2723', '#FF6F00'], unlock: '800 💧' },
+  { name: 'Bioluminescence', colors: ['#0D1B2A', '#00E676'], unlock: '1,000 💧' },
+  { name: 'Solar Eclipse', colors: ['#212121', '#FFC107'], unlock: '1,000 💧' },
+  { name: 'Nebula Drift', colors: ['#1A237E', '#E040FB'], unlock: '1,000 💧' },
+  { name: 'Void Walker', colors: ['#0A0A0A', '#7C4DFF'], unlock: '1,500 💧' },
+  { name: 'Supernova', colors: ['#311B92', '#FF6D00'], unlock: '2,000 💧' },
+  { name: 'Abyssal Depths', colors: ['#0D1B2A', '#006064'], unlock: '2,000 💧' },
+  { name: 'Paradise Lost', colors: ['#004D40', '#00E676'], unlock: '2,500 💧' },
+  { name: 'The Final Splash', colors: ['#1A237E', '#FFD700'], unlock: '3,000 💧' },
+];
+
+const effects = [
+  'Bubbles', 'Leaves', 'Snowflakes', 'Stars', 'Fireflies',
+  'Petals', 'Waves', 'Sparkles', 'Raindrops', 'Dust',
+  'Sunbeams', 'Blossoms', 'Embers',
+];
+
+const seasonalPacks = [
+  { name: "New Year's Bash", months: 'Dec–Jan', icon: '🎉' },
+  { name: "Valentine's Day", months: 'Feb', icon: '💕' },
+  { name: "St. Patrick's Day", months: 'Mar', icon: '☘️' },
+  { name: 'Easter / Spring', months: 'Mar–Apr', icon: '🐣' },
+  { name: 'Summer Splash', months: 'Jun–Aug', icon: '☀️' },
+  { name: 'Halloween', months: 'Oct–Nov', icon: '🎃' },
+  { name: 'Winter Wonderland', months: 'Dec', icon: '❄️' },
+  { name: 'Lunar New Year', months: 'Jan–Feb', icon: '🐉' },
+];
+---
+
+<section class="themes-section" id="themes">
+  <div class="container">
+    <div style="text-align: center;">
+      <span class="section-badge" style="background: rgba(124,77,255,0.1); color: #651fff;">🎨 Make It Yours</span>
+      <h2 class="section-title">48 Themes & Seasonal Packs</h2>
+      <p class="section-subtitle">
+        Transform your app with stunning gradient themes, animated particle effects, and limited-time seasonal cosmetic packs.
+      </p>
+    </div>
+
+    <div class="themes-layout">
+      <!-- Theme Swatches -->
+      <div class="reveal-left">
+        <div class="theme-grid">
+          {themes.map((t) => (
+            <div
+              class="theme-swatch"
+              data-name={t.name}
+              style={`background: linear-gradient(135deg, ${t.colors[0]}, ${t.colors[1]});`}
+            />
+          ))}
+        </div>
+      </div>
+
+      <!-- Info -->
+      <div class="themes-info reveal-right">
+        <h3>A Theme for Every Mood</h3>
+        <p>
+          Unlock themes by <strong>leveling up</strong> (13 themes from Level 5 to 100)
+          or purchase from the Market with <strong>Drops currency</strong> across 5 rarity tiers —
+          from Common (100 💧) to Legendary (3,000 💧).
+        </p>
+        <p>
+          Many themes feature <strong>animated particle overlays</strong> that float across
+          your screen while you track hydration:
+        </p>
+        <div class="theme-effects-list">
+          {effects.map((e) => (
+            <span class="effect-tag">✨ {e}</span>
+          ))}
+        </div>
+
+        <h3 style="margin-top:32px;">📅 13 Seasonal Packs</h3>
+        <p>
+          Limited-time cosmetic bundles throughout the year — each includes an exclusive theme
+          and themed duck accessories. Free for Waddle+ subscribers!
+        </p>
+        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;">
+          {seasonalPacks.map((sp) => (
+            <div style="padding:8px 14px; border-radius:12px; background:rgba(255,255,255,0.6); border:1px solid rgba(255,255,255,0.7); font-size:0.82rem; display:flex; align-items:center; gap:6px;">
+              <span>{sp.icon}</span>
+              <span style="font-weight:600;">{sp.name}</span>
+              <span style="color:var(--text-hint); font-size:0.75rem;">({sp.months})</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

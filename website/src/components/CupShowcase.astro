@@ -1,0 +1,59 @@
+---
+/* Water Cup + Drink Types showcase */
+const drinkCategories = [
+  { icon: '💧', name: 'Water', count: '6 drinks', desc: 'Pure, sparkling, coconut, mineral & more' },
+  { icon: '🍵', name: 'Tea', count: '11 drinks', desc: 'Green, herbal, matcha, kombucha, chai' },
+  { icon: '☕', name: 'Coffee', count: '11 drinks', desc: 'Espresso, latte, cold brew, mocha' },
+  { icon: '🧃', name: 'Juice', count: '10 drinks', desc: 'Orange, cranberry, celery, mango' },
+  { icon: '🥛', name: 'Dairy', count: '8 drinks', desc: 'Milk, kefir, yogurt, hot chocolate' },
+  { icon: '🌱', name: 'Dairy-Free', count: '7 drinks', desc: 'Almond, oat, soy, coconut milk' },
+  { icon: '🥤', name: 'Carbonated', count: '7 drinks', desc: 'Energy drink, ginger ale, tonic' },
+  { icon: '🥣', name: 'Blended', count: '5 drinks', desc: 'Smoothies, protein shakes, açaí' },
+  { icon: '⚡', name: 'Sports', count: '5 drinks', desc: 'Electrolytes, pedialyte, pre-workout' },
+];
+---
+
+<section class="cup-section" id="tracking">
+  <div class="container">
+    <div style="text-align: center;">
+      <span class="section-badge" style="background: rgba(79,195,247,0.12); color: var(--water-dark);">💧 Smart Tracking</span>
+      <h2 class="section-title">Every Sip Counts</h2>
+      <p class="section-subtitle">
+        Our animated water cup fills in real time with color-coded segments for each drink. Science-backed hydration ratios tell you exactly how much water you're getting.
+      </p>
+    </div>
+
+    <div class="cup-showcase">
+      <!-- Animated Cup Visual -->
+      <div class="reveal-left" style="display:flex; flex-direction:column; align-items:center; gap:20px;">
+        <div class="animated-cup">
+          <div class="cup-rim"></div>
+          <div class="cup-body">
+            <div class="cup-water" style="--fill-height: 72%;">
+              <img src="/images/wade_floating.png" alt="Duck in cup" class="cup-duck cup-duck-1" />
+              <img src="/images/wade_floating.png" alt="Duck in cup" class="cup-duck cup-duck-2" style="filter: hue-rotate(60deg) drop-shadow(0 2px 4px rgba(0,0,0,0.15));" />
+              <img src="/images/wade_floating.png" alt="Duck in cup" class="cup-duck cup-duck-3" style="filter: hue-rotate(180deg) drop-shadow(0 2px 4px rgba(0,0,0,0.15));" />
+            </div>
+          </div>
+        </div>
+        <div class="drink-count-badge">
+          <span class="count">70+</span>
+          <span class="label">Beverages Tracked<br/>with Hydration Ratios</span>
+        </div>
+      </div>
+
+      <!-- Drink Categories -->
+      <div class="drink-types reveal-right stagger-children">
+        {drinkCategories.map((cat) => (
+          <div class="drink-category reveal">
+            <div class="drink-category-icon">{cat.icon}</div>
+            <div class="drink-category-info">
+              <h4>{cat.name} <span style="color: var(--text-hint); font-weight:400;">— {cat.count}</span></h4>
+              <p>{cat.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>
