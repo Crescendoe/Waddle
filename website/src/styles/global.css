@@ -580,12 +580,13 @@ section {
   transition: transform 0.12s ease-out;
 }
 
-/* Shared face styles */
+/* Shared face styles — start invisible; entrance JS fades them in */
 .phone-front,
 .phone-back {
   position: absolute;
   inset: 0;
   border-radius: 44px;
+  opacity: 0;
 }
 
 /* Front face — pushed forward for 3D depth */
@@ -626,6 +627,7 @@ section {
   box-shadow: 0 0 0 1px rgba(255,255,255,0.03);
   transform: translateZ(var(--z, 0px));
   pointer-events: none;
+  opacity: 0;
 }
 
 /* Camera module */
