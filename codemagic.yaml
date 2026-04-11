@@ -121,6 +121,13 @@ workflows:
       - name: Pod install
         script: find . -name "Podfile" -execdir pod install \;
 
+      - name: Disable Xcode code signing
+        script: |
+          cd $CM_BUILD_DIR/ios
+          sed -i '' 's/CODE_SIGN_IDENTITY = "iPhone Developer"/CODE_SIGN_IDENTITY = ""/g' Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]" = "iPhone Developer"/CODE_SIGN_IDENTITY[sdk=iphoneos*]" = ""/g' Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGN_STYLE = Automatic/CODE_SIGN_STYLE = Manual/g' Runner.xcodeproj/project.pbxproj
+
       - name: Build iOS (debug, no codesign)
         script: |
           flutter build ios --debug --no-codesign
