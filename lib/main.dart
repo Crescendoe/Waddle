@@ -26,13 +26,15 @@ void main() async {
     // Firebase init
     await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform);
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-    await FirebaseMessaging.instance
-        .setForegroundNotificationPresentationOptions(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    if (!kSideload) {
+      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      await FirebaseMessaging.instance
+          .setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+    }
 
     // DI setup (registers SharedPreferences, repos, cubits, services)
     await setupDependencies();
@@ -82,6 +84,7 @@ class _WaddleAppState extends State<WaddleApp> {
   }
 
   void _setupFCM() {
+    if (kSideload) return;
     final notifService = getIt<NotificationService>();
     // Foreground FCM messages – show as local notification via service
     FirebaseMessaging.onMessage.listen((message) {

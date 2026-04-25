@@ -153,6 +153,75 @@ workflows:
       - /tmp/xcodebuild_logs/*.log
 
   # ═══════════════════════════════════════════════════════════════
+  # iOS Sideload Build – free Apple ID compatible (no HealthKit,
+  # no APNs). Sideload onto iPhone with Sideloadly using any
+  # Apple ID. Built with --dart-define=SIDELOAD=true.
+  # ═══════════════════════════════════════════════════════════════
+  ios-sideload:
+    name: iOS Sideload Build
+    max_build_duration: 30
+    instance_type: mac_mini_m2
+
+    environment:
+      groups:
+        - firebase_ios
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+
+    cache:
+      cache_paths:
+        - $FLUTTER_ROOT/.pub-cache
+        - $HOME/Library/Caches/CocoaPods
+
+    scripts:
+      - name: Decode GoogleService-Info.plist
+        script: |
+          echo $GOOGLE_SERVICE_INFO_PLIST_BASE64 | base64 --decode > $CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist
+
+      - name: Install dependencies
+        script: flutter pub get
+
+      - name: Pod install
+        script: find . -name "Podfile" -execdir pod install \;
+
+      - name: Generate Xcode project (sideload mode)
+        script: |
+          flutter build ios \
+            --config-only \
+            --debug \
+            --no-codesign \
+            --dart-define=SIDELOAD=true
+
+      - name: Build iOS with xcodebuild (unsigned, no restricted entitlements)
+        script: |
+          cd $CM_BUILD_DIR/ios
+          xcodebuild build \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Debug \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath $CM_BUILD_DIR/build/ios/derived \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            CODE_SIGN_ENTITLEMENTS=$CM_BUILD_DIR/ios/Runner/Sideload.entitlements
+
+      - name: Create IPA for sideloading
+        script: |
+          mkdir -p $CM_BUILD_DIR/build/ios/ipa/Payload
+          cp -r $CM_BUILD_DIR/build/ios/derived/Build/Products/Debug-iphoneos/Runner.app \
+                $CM_BUILD_DIR/build/ios/ipa/Payload/Runner.app
+          cd $CM_BUILD_DIR/build/ios/ipa
+          zip -r Waddle-sideload.ipa Payload
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+
+  # ═══════════════════════════════════════════════════════════════
   # Android Release – bonus: also builds Android on Codemagic
   # ═══════════════════════════════════════════════════════════════
   android-release:

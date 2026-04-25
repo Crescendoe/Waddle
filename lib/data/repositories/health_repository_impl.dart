@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:dartz/dartz.dart';
 import 'package:health/health.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:waddle/core/constants/app_constants.dart';
 import 'package:waddle/core/error/failures.dart';
 import 'package:waddle/domain/repositories/health_repository.dart';
 
@@ -16,6 +17,7 @@ class HealthRepositoryImpl implements HealthRepository {
 
   @override
   Future<Either<Failure, bool>> isAvailable() async {
+    if (kSideload) return const Right(false);
     try {
       // Health plugin is available on iOS and Android
       if (!Platform.isAndroid && !Platform.isIOS) {

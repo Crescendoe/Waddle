@@ -1,3 +1,7 @@
+/// True when built with --dart-define=SIDELOAD=true (free Apple ID sideload).
+/// Disables APNs/FCM and HealthKit, which require paid developer entitlements.
+const bool kSideload = bool.fromEnvironment('SIDELOAD', defaultValue: false);
+
 /// Application-wide constants
 class AppConstants {
   AppConstants._();
