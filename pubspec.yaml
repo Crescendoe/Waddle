@@ -77,6 +77,14 @@ dev_dependencies:
   bloc_test: ^9.1.7
   mocktail: ^1.0.4
   build_runner: ^2.4.14
+  flutter_launcher_icons: ^0.14.1
+
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  remove_alpha_ios: true
+  image_path: "lib/assets/icon/icon.png"
+  background_color_ios: "#36708B"
 
 flutter:
   uses-material-design: true
