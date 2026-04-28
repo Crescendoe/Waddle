@@ -145,7 +145,7 @@ workflows:
           cp -r $CM_BUILD_DIR/build/ios/derived/Build/Products/Debug-iphoneos/Runner.app \
                 $CM_BUILD_DIR/build/ios/ipa/Payload/Runner.app
           cd $CM_BUILD_DIR/build/ios/ipa
-          zip -r Waddle-debug.ipa Payload
+          zip -r Waddle-debug-XCODE-ONLY.ipa Payload
 
     artifacts:
       - build/ios/ipa/*.ipa
@@ -185,6 +185,11 @@ workflows:
       - name: Pod install
         script: find . -name "Podfile" -execdir pod install \;
 
+      - name: Strip restricted Info.plist keys (free Apple ID)
+        script: |
+          /usr/libexec/PlistBuddy -c "Delete :UIBackgroundModes" \
+            $CM_BUILD_DIR/ios/Runner/Info.plist 2>/dev/null || true
+
       - name: Generate Xcode project (sideload mode)
         script: |
           flutter build ios \
@@ -208,7 +213,8 @@ workflows:
             CODE_SIGN_IDENTITY="" \
             DEVELOPMENT_TEAM="" \
             PROVISIONING_PROFILE_SPECIFIER="" \
-            CODE_SIGN_ENTITLEMENTS=$CM_BUILD_DIR/ios/Runner/Sideload.entitlements
+            CODE_SIGN_ENTITLEMENTS=$CM_BUILD_DIR/ios/Runner/Sideload.entitlements \
+            SWIFT_ACTIVE_COMPILATION_CONDITIONS="DEBUG SIDELOAD"
 
       - name: Create IPA for sideloading
         script: |
